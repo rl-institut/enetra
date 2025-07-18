@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2023 Ludwig Hülk <https://github.com/Ludee> © Reiner Lemoine Institut
+# SPDX-FileCopyrightText: super-repo v0.5.0 <https://github.com/rl-institut/super-repo>
+# SPDX-License-Identifier: MIT
+
+name:  Documentation
+# branch is set to documentation to check documentation status during feature development
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - uses: actions/cache@v3
+        with:
+          key: ${{ github.ref }}
+          path: .cache
+      - name: Setup git
+        run: |
+          git config --global user.name Documentation
+          git config --global user.email docs@example.com
+      - name: Install UV
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+      - name: Install Dependency
+        run: |
+          uv sync --only-group docs
+      - run: |
+          git fetch origin gh-pages --verbose
+          uv run mike deploy --push --update-aliases dev
