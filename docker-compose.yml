@@ -13,6 +13,9 @@ services:
       - "8000:8000"
     depends_on:
       - my-docker-postgres
+    environment:
+      CELERY_BROKER_URL: redis://my-docker-redis:6379/0
+      DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
 
   celery:
     # Celery and Web can use the same image.
@@ -26,6 +29,9 @@ services:
       - my-docker-postgres
       - my-docker-redis
       - web
+    environment:
+      CELERY_BROKER_URL: redis://my-docker-redis:6379/0
+      DATABASE_URL: post:is://myprojectuser:1234@my-docker-postgres:5432/mydb
 
 
   my-docker-redis:
