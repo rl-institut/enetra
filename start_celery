@@ -5,4 +5,4 @@ set -o pipefail
 set -o nounset
 
 
-uv run celery -A enetra worker -l info
+python -m celery -A enetra worker -l info

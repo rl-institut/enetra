@@ -4,6 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-uv run python manage.py makemigrations
-uv run python manage.py migrate
-uv run python manage.py runserver 0.0.0.0:8000
+
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
