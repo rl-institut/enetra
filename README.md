@@ -34,6 +34,11 @@
         `pre-commit install`
         - to force commits during work in progress use
         `git commit --no-verify -m "commit message"`
+        - basic usage of ruff
+        as linter
+        `ruff check`
+        as formatter (check flag to disable auto formatting)
+        ruff format --check
 
     6. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
@@ -196,3 +201,10 @@ or removed
 sudo docker volume rm VOLUME_ID
 ```
 but only if the docker is not running
+
+
+
+## Documentation
+Documentation source is found in docs.
+Its auto deployed to github pages and can be found here
+(GH Pages([https://rl-institut.github.io/enetra/dev/]
