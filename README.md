@@ -25,11 +25,44 @@
        This installs the default/main dependencies as well as developer dependencies into .venv.
         - all python commands can be substituted by `uv run` which uses the venv python under the hood
         - alternatively the activating the venv works as usually
+
+            <p style="
+              display: inline-block;
+              border-top-left-radius: .5rem;
+              border-top-right-radius: .5rem;
+              font-family: Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
+              font-size: .65rem;
+              --bg-opacity: 1;
+              background-color: #e1e7ef;
+              background-color: rgba(240,240,240,var(--bg-opacity));
+              padding: .25rem .75rem;
+              --border-opacity: 1;
+              border-color: #ccd6e0;
+              margin-bottom: 0;
+            ">macOS or Linux</p>
+
             ```macOS or Linux
             source .venv/bin/activate
             ```
+            <p style="
+              display: inline-block;
+              border-top-left-radius: .5rem;
+              border-top-right-radius: .5rem;
+              font-family: Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
+              font-size: .65rem;
+              --bg-opacity: 1;
+              background-color: #e1e7ef;
+              background-color: rgba(240,240,240,var(--bg-opacity));
+              padding: .25rem .75rem;
+              --border-opacity: 1;
+              border-color: #ccd6e0;
+              margin-bottom: 0;
+            ">windows</p>
+
             ```Windows powershell
-            ``.venv\Scripts\activate`
+            .venv\Scripts\activate
+            ```
+
     6. install pre-commit to make sure every git commit is ruff conform
         `pre-commit install`
         - to force commits during work in progress use
@@ -40,13 +73,18 @@
         as formatter (check flag to disable auto formatting)
         ruff format --check
 
-    6. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
+    7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
+    DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
      ````
 
-3. Set up django (inside the virtual environment)
-    1. Set up the database: `uv run manage.py migrate`
-    2. Create admin account: `uv run manage.py createsuperuser`
+    7. Set up django (inside the virtual environment)
+        1. Set up the database: `uv run manage.py migrate`
+        2. Create admin account: `uv run manage.py createsuperuser`
+
+```
+
+
 
 ## Running
 1. Only if `.env`has a celery broker listed, start a celery worker (in another terminal): `celery -A ebusdjango worker -l info`
