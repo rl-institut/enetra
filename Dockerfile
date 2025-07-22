@@ -16,16 +16,23 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 
 # Requirements are installed here to ensure they will be cached.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+# Caprover does not support mounting yet. see https://github.com/caprover/caprover/issues/1582
+# RUN --mount=type=cache,target=/root/.cache/uv \
+#     --mount=type=bind,source=uv.lock,target=uv.lock \
+#     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+#     uv sync --frozen --no-install-project --no-dev
+
+COPY ./pyproject.toml ${APP_HOME}
+COPY ./uv.lock ${APP_HOME}
+RUN     uv sync --frozen --no-install-project --no-dev
+
 COPY . ${APP_HOME}
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-dev
+# RUN --mount=type=cache,target=/root/.cache/uv \
+#     --mount=type=bind,source=uv.lock,target=uv.lock \
+#     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+#     uv sync --frozen --no-dev
+RUN    uv sync --frozen --no-dev
 
 # Python 'run' stage
 FROM python:3.12-slim-bookworm AS python-run-stage
