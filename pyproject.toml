@@ -4,14 +4,14 @@ name = "django-enetra"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+# Django omeof is old with some oemof packages depending on <3.12 for distutils
+requires-python = ">=3.10,<3.11"
 dependencies = [
-    # for async tasks in a different process
-    "celery>=5.5.3",
+    # celery is part of omeof tabular
     "redis>=6.2.0",
     # for charset detection of files
     "charset-normalizer>=3.4.2",
-    # django as webframework
+    # django as webframework<F10>
     "django>=5.2.4",
     # improve updating of larger db queries by improving the queries
     "django-fast-update>=0.2.4",
@@ -19,22 +19,24 @@ dependencies = [
     "django-crispy-forms>=2.4",
     # nice progressbars in the terminal
     "tqdm>=4.67.1",
-    # django oemof capabilities
-    "django-oemof>=1.1.1",
-
+    "oemof-network==0.5.0a1",
+    "oemof-tabular",
+    "celery>=5.1.2",
+    # specified rev via git
+    "django-oemof",
+    "psycopg2>=2.9.10",
 ]
 [dependency-groups]
 dev = [
-    # linter and formatter for html
-    "djlint>=1.36.4",
+    # html formatter. only old version available because of omeof dependencies
+    # "djlint>=1.36.4",
+    "djlint>=0.3.4",
     # Formatter and linter to ensure consistent formatting
     "ruff>=0.12.4",
     # enhancement of django stubs and types to improve
     # type consistenty and lsp support
     "django-stubs>=5.2.2",
     "django-types>=0.22.0",
-    # better python shell experience
-    "ipython>=9.4.0",
     # ensure that some checks are made before committing
     # to force commits during work in progress use
     # git commit --no-verify -m "commit message"
@@ -114,3 +116,7 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 docstring-code-format = true
+
+[tool.uv.sources]
+oemof-tabular = { git = "https://github.com/oemof/oemof-tabular.git", rev = "0b17194eedf4940aa3abdbdb53cdcddb81880d12" }
+django-oemof = { git = "https://github.com/rl-institut/django-oemof.git", rev = "v0.18.0" }

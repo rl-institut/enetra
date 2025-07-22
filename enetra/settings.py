@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     # custom apps
     "ports",
     "core",
+    "django_oemof",
 ]
 
 MIDDLEWARE = [
@@ -211,6 +212,7 @@ X_FRAME_OPTIONS = "DENY"
 STATIC_URL = "static/"
 UPLOAD_PATH = "uploads/"
 MEDIA_ROOT = env.str("DJANGO_MEDIA_ROOT", "media/")
+MEDIA_URL = "media/"
 
 # Optional: maximum allowed file size for uploads.
 # Given in KB, stored in Bytes. Default 64 MB.
