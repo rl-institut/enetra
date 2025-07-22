@@ -87,10 +87,12 @@ COPY --from=python-build-stage --chown=django:django ${APP_HOME} ${APP_HOME}
 # make django owner of the WORKDIR directory as well.
 RUN chown django:django ${APP_HOME}
 
+# Dockercompose uses a mount bind.
+# Therefore an unpriviliged user can not be activated.
+# in this case django would not be able to write logs and more
+# USER django
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
-
-USER django
 
 CMD ${STARTUP_COMMAND}

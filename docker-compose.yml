@@ -9,6 +9,7 @@ services:
   web:
     build:
       context: .
+      dockerfile: local.Dockerfile
     image: django-web:latest
     command:
       /start
