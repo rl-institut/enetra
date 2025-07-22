@@ -1,5 +1,10 @@
 version: '3'
 
+# README
+# this docker compose is setup to not require any setup of environment variables.
+# This allows for direct `docker compose up` after cloning the repos with docker installed.
+# For a secure setup the environment variabels should be supplied through other means, e.g.
+# a .env file or environment variables
 services:
   web:
     build:
@@ -17,6 +22,9 @@ services:
     environment:
       CELERY_BROKER_URL: redis://my-docker-redis:6379/0
       DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
+      DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
+      DJANGO_LOCAL_DEVELOPMENT: True
+      DEBUG: True
 
   celery:
     # Celery and Web can use the same image.
@@ -25,7 +33,8 @@ services:
     command:
       /start_celery
     volumes:
-      - .:/app
+      - /app/.venv
+      - .:/app:z
     depends_on:
       - my-docker-postgres
       - my-docker-redis
@@ -33,7 +42,9 @@ services:
     environment:
       CELERY_BROKER_URL: redis://my-docker-redis:6379/0
       DATABASE_URL: post:is://myprojectuser:1234@my-docker-postgres:5432/mydb
-
+      DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
+      DJANGO_LOCAL_DEVELOPMENT: True
+      DEBUG: True
 
   my-docker-redis:
     # in .env_file
