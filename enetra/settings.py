@@ -174,7 +174,7 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "WARNING",
+        "level": "INFO",
     },
     "loggers": {
         "django": {
@@ -182,7 +182,7 @@ LOGGING = {
             "level": env.str("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
-        "custom": {
+        "django-ports": {
             "handlers": ["console", "file"],
             "level": env.str("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,

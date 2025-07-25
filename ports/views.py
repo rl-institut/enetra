@@ -1,16 +1,26 @@
 import json
+import logging
 
 import numpy as np
+from django.http import HttpRequest
 from django.http.response import HttpResponse
 from django.shortcuts import render  # noqa
+from django_oemof import models
+from django_oemof import simulation
+
+logger = logging.getLogger("django-ports")
 
 
 # Create your views here.
-def testview(request):
+def testview(request: HttpRequest):
     # Example with some hooks
-    from django_oemof import simulation
+    logger.info(request.GET.get("scenario"))
 
-    OEMOF_DATAPACKAGE = "dispatch"
+    OEMOF_DATAPACKAGE = request.GET.get("scenario") if request.GET.get("scenario") else "dispatch"
+    # working scenarios
+    # dispatch
+    # invest
+    # emission_constraint
 
     # Hook functions must be defined beforehand
     # ph = hooks.Hook(OEMOF_DATAPACKAGE, test_parameter_hook)
@@ -22,16 +32,15 @@ def testview(request):
     # hooks.register_hook(hook_type=hooks.HookType.MODEL, hook=mh)
     #
     parameters = {}
+    models.Simulation.objects.filter(scenario=OEMOF_DATAPACKAGE).delete()
     simulation_id = simulation.simulate_scenario(
-        scenario=OEMOF_DATAPACKAGE,
-        parameters=parameters,
+        scenario=OEMOF_DATAPACKAGE, parameters=parameters, lp_file="lastCBCModel.lp"
     )
-    print("Simulation ID:", simulation_id)
+    logger.info("Simulation ID:", simulation_id)
 
     # Restore oemof results from DB
-    from django_oemof import models
 
-    sim = models.Simulation.objects.get(id=1)
+    sim = models.Simulation.objects.get(id=simulation_id)
     inputs, outputs = sim.dataset.restore_results()
     data = {
         "result": {
