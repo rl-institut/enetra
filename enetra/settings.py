@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     "ports",
     "core",
     "django_oemof",
+    # misc
+    "django_extensions",
 ]
 
 MIDDLEWARE = [

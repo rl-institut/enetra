@@ -41,6 +41,9 @@ dev = [
     # to force commits during work in progress use
     # git commit --no-verify -m "commit message"
     "pre-commit>=4.2.0",
+    #  includes the shell_plus which makes the shell experiece better
+    # python manage.py shell_plus
+    "django-extensions>=4.1",
 ]
 docs = [
     # for automatic generation of mkdoc documentation
