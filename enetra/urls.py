@@ -24,6 +24,7 @@ from django.urls import path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
+    path("", include("django.contrib.auth.urls")),
     path("ports/", include("ports.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
