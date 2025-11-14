@@ -1,3 +1,15 @@
+## Developer Notes
+The site uses tailwindcss and other npm packages to install run
+```bash
+npm ci
+```
+
+to update tailwind dynamically during development
+```
+npm run build:css
+```
+this watches the input.css files and html files inside a 'templates' folder for changes and updates the output.css
+
 ## Installation
 
 1. Clone this git repository (or [download a specific release](https://github.com/rl-institut/enetra/releases))

@@ -12,8 +12,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+import django_stubs_ext
 import environ
+from django.templatetags.static import static
 
+django_stubs_ext.monkeypatch()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -52,18 +55,26 @@ if env.bool("DJANGO_LOCAL_DEVELOPMENT", default=False):
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",  # before django.contrib.admin
+    "unfold.contrib.guardian",  # optional, if django-guardian package is used
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.gis",
     # custom apps
     "ports",
-    "core",
     "django_oemof",
+    "core",
     # misc
+    "django_cotton.apps.SimpleAppConfig",
+    "template_partials.apps.SimpleAppConfig",
     "django_extensions",
+    "django_browser_reload",
+    "django_watchfiles",
+    "guardian",
 ]
 
 MIDDLEWARE = [
@@ -74,24 +85,56 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
+
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",  # this is default
+    "guardian.backends.ObjectPermissionBackend",
+)
 
 ROOT_URLCONF = "enetra.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
+        "DIRS": [BASE_DIR / "templates"],
         "OPTIONS": {
+            "loaders": [
+                (
+                    "template_partials.loader.Loader",
+                    [
+                        (
+                            "django.template.loaders.cached.Loader",
+                            [
+                                "django_cotton.cotton_loader.Loader",
+                                "django.template.loaders.filesystem.Loader",
+                                "django.template.loaders.app_directories.Loader",
+                            ],
+                        )
+                    ],
+                )
+            ],
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
+            "builtins": [
+                "django_cotton.templatetags.cotton",
+                "template_partials.templatetags.partials",
+            ],
         },
     },
 ]
+
+UNFOLD = {
+    "STYLES": [
+        lambda request: static("unfold.css"),
+    ],
+    "SCRIPTS": [],
+}
+
 
 WSGI_APPLICATION = "enetra.wsgi.application"
 
@@ -126,8 +169,8 @@ if CELERY_TASK_ALWAYS_EAGER:
     CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=True)
     # if set, eager tasks will save results in backend
     CELERY_TASK_STORE_EAGER_RESULT = env.bool("CELERY_TASK_STORE_EAGER_RESULT", default=True)
-CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=None)
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=None)
+CELERY_BROKER_URL = env("REDIS_URL", default=None)
+CELERY_RESULT_BACKEND = env("REDIS_URL", default=None)
 
 
 # Password validation
@@ -170,7 +213,7 @@ LOGGING = {
         "file": {
             "level": "INFO",
             "class": "logging.FileHandler",
-            "filename": "./info.log",
+            "filename": "./logs/info.log",
             "formatter": "simple",
         },
     },
@@ -226,6 +269,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "templates/js",
     BASE_DIR / "templates/css",
     BASE_DIR / "templates/img",
+    BASE_DIR / "templates/html",
     BASE_DIR / UPLOAD_PATH,
 ]
 # Default primary key field type

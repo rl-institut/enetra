@@ -9,53 +9,64 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.db.models.functions import Now
+from django.db.models.signals import post_save
+from django.db.models.signals import pre_delete
+from django.dispatch import Signal
 from django.dispatch import receiver
 
 logger = logging.getLogger("django_ports")
 
 
-# TODO: Discuss maybe gurantee proper id generation by overwriting bulk_create method?
-def generate_id(scenario_id: uuid.UUID, id: int) -> uuid.UUID:
-    """Generate an UUID4 from a given scenario_id and the internal integer id"""
-    return uuid.uuid5(scenario_id, str(id))
-
-
 # Create your models here.
+# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
 class Scenario(models.Model):
-    # Use a uuid as primary key. Scenarios can be created anywhere, without access to db and checking duplicate of id
-    # e.g. a scenario specific id can be used to create the next url in the frontend.
-    # this also means does not have to keep track of the last/max id
-    # composite primary keys would be nice, but are not fully supported currently,
-    # especially in regards to ContentType
-    # https://docs.djangoproject.com/en/5.2/ref/contrib/contenttypes/
-    # https://docs.djangoproject.com/en/5.2/topics/composite-primary-key/
-    # and ForeignKeys
-    # An easier approach is using uuid5 on all child elements.
-    # our scenario id gives us our namespace
-    # the internal id gives us the name
-    # together we generate a uuid5, unique to each table
-    # the uuid therefore simply reflects the scenario -id and internal id
-    # to copy it we only have to exchange each uuid5 by generating(new_scenario_id, id)
-    # changing ids or scenarios ids is not enforced right now but forbidden
-    # if needed it could be enforced on the db level via custom migration
-    # this way we can apply all relation fields on all objects,  and also use ContentTypes
-    id = models.UUIDField(primary_key=True, auto_created=True, default=uuid.uuid4)
+    id = models.BigAutoField(primary_key=True, blank=True)
+    # Scenario specific id, which stays the same over scenarios
+    internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     name = models.TextField(blank=False, null=True)
     # Set to now() on the database side
-    created_at = models.DateTimeField(auto_now_add=True, db_default=Now())
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Aggregator of all scenario items. Used to track changes
+    items_updated_at = models.DateTimeField(db_default=Now(), editable=False)
     # Related name + tells django not to create a reverse relation for user, e.g. user.scenario_set
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
+    class Meta:
+        permissions = (("foo", "Assign foo"),)
+
 
 class ScenarioItem(models.Model):
     """All items which have a scenario as reference inherit some common functionality"""
 
-    id = models.UUIDField(primary_key=True, auto_created=False)
+    scenario_id: int
+    id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
     # Scenario specific id, which stays the same over scenarios
-    internal_id = models.IntegerField()
+    internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
+    name = models.TextField(blank=True, null=True)
+
+    # Set to now() on the database side
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    manager = models.ForeignKey(
+        User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
+    )
+
+    updated_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        default=None,
+        null=True,
+        related_name="+",
+        editable=False,
+    )
+    scenarioitem_pre_delete = Signal()
+    scenarioitem_post_save = Signal()
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table
@@ -65,21 +76,83 @@ class ScenarioItem(models.Model):
                 name="%(class)s_unique_internal_id_per_scenario",
             )
         ]
-        ordering = ["scenario", "internal_id"]  # Optional: share common Meta options
+        ordering = ["scenario", "id"]  # Optional: share common Meta options
+
+    """
+    The scenario contains different types of models, which should share some common functionality.
+    For example the scenario should store information when the last update of a scenario item
+    happened. This means explicitly updating the scenario on each change or let signals handle
+    that. Since we dont want to connect each ModelSignal individually, we create merge scenarioitem
+    signals e.g. scenarioitem_pre_delete
+    this way we can implement functions which only listen to this signal.
+    The connection is done in the appconfig.ready() function automatically for all subclasses of
+    ScenarioItem
+    """
+
+    @classmethod
+    def _connect_signals(cls):
+        pre_delete.connect(cls._send_scenarioitem_pre_delete, sender=cls)
+        post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
+
+    def _send_scenarioitem_pre_delete(sender, instance, **kwargs):
+        ScenarioItem.scenarioitem_pre_delete.send(sender=sender, instance=instance)
+
+    def _send_scenarioitem_post_save(sender, instance, **kwargs):
+        ScenarioItem.scenarioitem_post_save.send(sender=sender, instance=instance)
 
     def save(self, *args, **kwargs):
-        generated_id = generate_id(self.scenario.id, self.internal_id)
-        if not self.id:
-            self.id = generated_id
-        else:
-            assert self.id == generated_id
+        if self.pk is None and self.updated_user is None:
+            self.updated_user = self.manager
         super().save(*args, **kwargs)
 
 
+@receiver(ScenarioItem.scenarioitem_pre_delete)
+def update_scenario_pre_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
+    """Create a DeletedItem"""
+    # NOTE: Be sure to handle bouncing signals which an introduce infinite signal loops
+    # Create a DeletedItem with all Scenario item values
+    if sender == DeletedItem:
+        return
+    deleted_item = DeletedItem(
+        **{f.name: getattr(instance, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
+    )
+    deleted_item.content_type = sender
+    deleted_item.save()
+
+
+@receiver(ScenarioItem.scenarioitem_post_save)
+def update_scenario_post_save(sender, instance, **kwargs):
+    """Update the scenario if a ScenarioItem was created"""
+    scenario = instance.scenario
+    scenario.items_updated_at = instance.updated_at
+    scenario.save()
+
+
+class DeletedItem(ScenarioItem):
+    """Store basic information about deleted item.
+
+    This gives explicit access to updates of items, which are not in the database anymore.
+    Example:
+    User Tom is shown an item Foo of id 123. User Jim deletes Foo 123.
+    The scenario gets an updated with a new timestamp updated at. Toms site polls the scenario
+    for changes.
+    A change is detected. Searching for updates would not show that 123 is deleted. but searching
+    DeletedItem.objects.filter(update_at__gt=last_update) shows a Foo item 123 was deleted.
+    a signal can be passed to Toms frontend 'updateFoo123'. This refetches the instance and shows
+    tom. "This item has been deleted".
+    """
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    pass
+
+
 # Can an Area serve multiple purposes? (yes)
-# Can an Area serve the same, e.g. solar, multiple times? (yes)
+# Can an Area serve the same usage, e.g. solar, multiple times? (yes)
 class Area(ScenarioItem):
     geom = models.PolygonField()
+
+    class Meta(ScenarioItem.Meta):
+        abstract = False
 
 
 class Solar(ScenarioItem):
@@ -90,7 +163,7 @@ class Solar(ScenarioItem):
 
 
 # --------------------------------------------------------------------------------
-class Settings(ScenarioItem):
+class Setting(ScenarioItem):
     settings = models.JSONField(default=dict)
 
 
@@ -109,16 +182,11 @@ class UploadedFile(ScenarioItem):
         >>> uploaded_file_instance.save()
     """
 
-    id = models.UUIDField(primary_key=True, auto_created=False)
-    # Scenario specific id, which stays the same over scenarios
-    internal_id = models.IntegerField()
-    scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
-
     name = models.TextField(blank=False, null=True)
     file = models.FileField(upload_to=settings.UPLOAD_PATH)
-    # This lets us attach a task to any object with a uuid
+    # This lets us attach any object to the uploaded file
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.UUIDField(null=False)
+    object_id = models.CharField()
     # on_delete=CASCADE is the behaviour of GenericForeignKey.
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
@@ -132,9 +200,8 @@ class UploadedFile(ScenarioItem):
         :param kwargs: other arguments
         :return:
         """
-        if instance.task_id is not None:
-            try:
-                shutil.rmtree(Path(settings.UPLOAD_PATH) / str(instance.task_id))
-            except FileNotFoundError:
-                # The Folder does not exist. That is not a problem
-                logger.debug(f"File {instance} does not exists and could not be deleted ")
+        try:
+            shutil.rmtree(Path(settings.UPLOAD_PATH) / str(instance.task_id))
+        except FileNotFoundError:
+            # The Folder does not exist. That is not a problem
+            logger.debug(f"File {instance} does not exists and could not be deleted ")

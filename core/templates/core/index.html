@@ -1,15 +1,9 @@
-<!DOCTYPE html>
-<html lang="de">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Enetra</title>
-		<link href="css/style.css" rel="stylesheet">
-	</head>
-	<body>
-
-		<header>
-			Hello World!
-		</header>
-	</body>
-</html>
+{% extends "core/base.html" %}
+{% block content %}
+<div class="text-3xl p-4">Hello World !!</div>
+<div>
+  <c-button variant="outline">Cancel</c-button>
+  <c-button variant="default">Submit</c-button>
+</div>
+<!-- Alpine.js tag - directly from CDN (not recommended for production) -->
+{% endblock %}

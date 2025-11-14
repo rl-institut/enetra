@@ -25,6 +25,21 @@ dependencies = [
     # specified rev via git
     "django-oemof",
     "psycopg2>=2.9.10",
+    # Module for front end components
+    "django-cotton>=2.3.1",
+    # Automatic browser reload for better developing experience
+    "django-browser-reload>=1.21.0",
+    # Better hot reload with faster response and less cpu usage
+    "django-watchfiles>=1.4.0",
+    "django-stubs-ext>=5.2.2",
+    # Partial blocks for better modular templating
+    "django-template-partials>=25.2",
+    "django-extensions>=4.1",
+    # Object level permission framework
+    "django-guardian>=3.2.0",
+    # Pretty AdminInterface
+    "django-unfold>=0.71.0",
+    "debugpy>=1.8.17",
 ]
 [dependency-groups]
 dev = [
@@ -41,9 +56,6 @@ dev = [
     # to force commits during work in progress use
     # git commit --no-verify -m "commit message"
     "pre-commit>=4.2.0",
-    #  includes the shell_plus which makes the shell experiece better
-    # python manage.py shell_plus
-    "django-extensions>=4.1",
 ]
 docs = [
     # for automatic generation of mkdoc documentation

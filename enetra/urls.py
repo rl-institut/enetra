@@ -25,6 +25,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
     path("ports/", include("ports.urls")),
+    path("__reload__/", include("django_browser_reload.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
     path("oemof/", include("django_oemof.urls")),
