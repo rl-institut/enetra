@@ -23,6 +23,7 @@ services:
     environment:
       CELERY_BROKER_URL: redis://my-docker-redis:6379/0
       DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
+      DJANGO_ADMIN_PASSWORD: admin
       DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
       DJANGO_LOCAL_DEVELOPMENT: True
       DEBUG: True
