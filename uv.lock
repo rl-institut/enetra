@@ -460,6 +460,7 @@ dependencies = [
     { name = "django-template-partials" },
     { name = "django-unfold" },
     { name = "django-watchfiles" },
+    { name = "gunicorn" },
     { name = "oemof-network" },
     { name = "oemof-tabular" },
     { name = "psycopg2" },
@@ -498,6 +499,7 @@ requires-dist = [
     { name = "django-template-partials", specifier = ">=25.2" },
     { name = "django-unfold", specifier = ">=0.71.0" },
     { name = "django-watchfiles", specifier = ">=1.4.0" },
+    { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "oemof-network", specifier = "==0.5.0a1" },
     { name = "oemof-tabular", git = "https://github.com/oemof/oemof-tabular.git?rev=0b17194eedf4940aa3abdbdb53cdcddb81880d12" },
     { name = "psycopg2", specifier = ">=2.9.10" },
@@ -748,6 +750,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a9/3e/5aa9a61f7c3c47b0b52a1d930302992229d191bf4bc76447b324b731510a/griffe-1.7.3.tar.gz", hash = "sha256:52ee893c6a3a968b639ace8015bec9d36594961e156e23315c8e8e51401fa50b", size = 395137 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/58/c6/5c20af38c2a57c15d87f7f38bee77d63c1d2a3689f74fefaf35915dd12b2/griffe-1.7.3-py3-none-any.whl", hash = "sha256:c6b3ee30c2f0f17f30bcdef5068d6ab7a2a4f1b8bf1a3e74b56fffd21e1c5f75", size = 129303 },
+]
+
+[[package]]
+name = "gunicorn"
+version = "23.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/72/9614c465dc206155d93eff0ca20d42e1e35afc533971379482de953521a4/gunicorn-23.0.0.tar.gz", hash = "sha256:f014447a0101dc57e294f6c18ca6b40227a4c90e9bdb586042628030cba004ec", size = 375031 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/7d/6dac2a6e1eba33ee43f318edbed4ff29151a49b5d37f080aad1e6469bca4/gunicorn-23.0.0-py3-none-any.whl", hash = "sha256:ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d", size = 85029 },
 ]
 
 [[package]]

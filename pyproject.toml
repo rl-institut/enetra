@@ -34,12 +34,14 @@ dependencies = [
     "django-stubs-ext>=5.2.2",
     # Partial blocks for better modular templating
     "django-template-partials>=25.2",
+    # For shell plus
     "django-extensions>=4.1",
     # Object level permission framework
     "django-guardian>=3.2.0",
     # Pretty AdminInterface
     "django-unfold>=0.71.0",
     "debugpy>=1.8.17",
+    "gunicorn>=23.0.0",
 ]
 [dependency-groups]
 dev = [

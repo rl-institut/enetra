@@ -155,7 +155,7 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 LOGIN_REDIRECT_URL = "/"  # redirect to landing page after login
-# LOGOUT_REDIRECT_URL = "/"  # don't set: show custom logged out view
+LOGOUT_REDIRECT_URL = "/"  # redirect to landing page after logout as well
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -259,17 +259,12 @@ UPLOAD_PATH = "uploads/"
 MEDIA_ROOT = env.str("DJANGO_MEDIA_ROOT", "media/")
 MEDIA_URL = "media/"
 
-# Optional: maximum allowed file size for uploads.
-# Given in KB, stored in Bytes. Default 64 MB.
-MAX_FILE_SIZE_B = env.int("DJANGO_MAX_FILE_SIZE_KB", 64000) << 10
-
 # while the above line checks all the app folders for static folders the below one can be a list of
 # general static file folders
 STATICFILES_DIRS = [
     BASE_DIR / "templates/js",
     BASE_DIR / "templates/css",
     BASE_DIR / "templates/img",
-    BASE_DIR / "templates/html",
     BASE_DIR / UPLOAD_PATH,
 ]
 # Default primary key field type

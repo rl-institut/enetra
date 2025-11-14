@@ -1,0 +1,16 @@
+# don't push settings
+.env
+
+# Python
+**/__pycache__/
+
+# venv
+.python-version
+.venv/
+venv/
+info.log
+
+# Editor
+.idea/
+.vscode/
+.DS_Store
