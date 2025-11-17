@@ -21,6 +21,9 @@ uvx djlint filepath --reformat
 ```
 to make use of uv tools
 
+enetra uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
+> shadcn_django provides a CLI tool that allows you to initialize and add shadcn-style components to your Django templates.
+
 ## Tech Stack
 ### Django
 This site make use of the django package ecosystem and uses the following packages.
@@ -33,6 +36,7 @@ This site make use of the django package ecosystem and uses the following packag
  - tailwindcss for utility based styling
  - htmx for html driven development
  - alpinejs for basic local scripting
+ - shadcn-django
 
 ### Backend
  - celery as asynchronous worker of heavy tasks

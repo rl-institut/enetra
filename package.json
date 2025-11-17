@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "build:css": "tailwindcss -i ./templates/css/input.css -o ./templates/css/output.css --watch --content './**/templates/**/*.html' "
+        "build:css": "tailwindcss -i ./templates/css/input.css -o ./templates/css/output.css --watch"
     },
     "devDependencies": {
         "tailwindcss": "^4.1.17",
@@ -8,6 +8,7 @@
     },
     "@tailwindcss/cli": "^4.1.17",
     "dependencies": {
+        "@tailwindcss/cli": "^4.1.17",
         "alpinejs": "^3.15.1",
         "htmx.org": "^2.0.8"
     }

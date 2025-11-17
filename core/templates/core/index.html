@@ -1,6 +1,7 @@
 {% extends "core/base.html" %}
 
 {% block content %}
+<!-- This is a placeholder to showcase some django-cotton functionality with shadcn components -->
   <header>
     Hello World!
   </header>
@@ -10,6 +11,28 @@
       <c-button variant="default" type="submit">Logout</c-button>
     </form>
   {% else %}
-    <a href="{% url 'login' %}">Login</a>
+      <c-button variant="default" type="submit">
+    <a href="{% url 'login' %}">Login</a></c-button>
   {% endif %}
+
+<c-button variant="default" type="submit">Im a button</c-button>
+  <!-- accordion/index.html -->
+<c-accordion type='single' collapsible='true'>
+    <c-accordion.item value='item-1'>
+        <c-accordion.trigger value='item-1'>Is it for Django?</c-accordion.trigger>
+        <c-accordion.content value='item-1'>
+            Yes. All components are compatible with Django.
+        </c-accordion.content>
+    </c-accordion.item>
+
+    <c-accordion.item value='item-2'>
+        <c-accordion.trigger value='item-2'>Is it for Django?</c-accordion.trigger>
+        <c-accordion.content value='item-2'>
+        </c-accordion.content>
+    </c-accordion.item>
+</c-accordion>
+
+
+
+
 {% endblock content %}
