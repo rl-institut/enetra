@@ -3,6 +3,45 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Custom css */
+/* Spinner to show something is in progress */
+.loader {
+    width: 28px;
+    height: 28px;
+    border: 5px solid #aaa;
+    border-bottom-color: #FF3D00;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+    }
+
+    @keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+    }
+
+/* When a request is inflight this sets the style of htmx-indicators */
+.htmx-indicator {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* 1. this matches all htmx-indicators which are children of htmx-request */
+/* 2 .this only matches elements with both classes */
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease-in;
+}
+
+
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);

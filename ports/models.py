@@ -22,7 +22,9 @@ logger = logging.getLogger("django_ports")
 class Scenario(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
     # Scenario specific id, which stays the same over scenarios
-    internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
+    internal_id = models.UUIDField(
+        db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
+    )
     name = models.TextField(blank=False, null=True)
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
@@ -116,7 +118,10 @@ def update_scenario_pre_delete(sender: type[ScenarioItem], instance: ScenarioIte
     deleted_item = DeletedItem(
         **{f.name: getattr(instance, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
     )
-    deleted_item.content_type = sender
+    content_type = ContentType.objects.get(
+        app_label=sender._meta.app_label, model=sender._meta.model_name
+    )
+    deleted_item.content_type = content_type
     deleted_item.save()
 
 
@@ -149,7 +154,7 @@ class DeletedItem(ScenarioItem):
 # Can an Area serve multiple purposes? (yes)
 # Can an Area serve the same usage, e.g. solar, multiple times? (yes)
 class Area(ScenarioItem):
-    geom = models.PolygonField()
+    geom = models.PolygonField(null=True, blank=False)
 
     class Meta(ScenarioItem.Meta):
         abstract = False
@@ -160,6 +165,9 @@ class Solar(ScenarioItem):
         Area,
         on_delete=models.CASCADE,
     )
+
+    def __str__(self):
+        return f"Solaranlage {(self.id or '')}"
 
 
 # --------------------------------------------------------------------------------

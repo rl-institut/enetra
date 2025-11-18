@@ -16,10 +16,12 @@
     {% block header %}
     {%endblock %}
 
+        <!-- This makes htmx use outerHTML by default -->
+    <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML"}'>
 </head>
 
-<body>
-    <div class="container-fluid">
+    <body hx-headers='{"X-CSRFTOKEN": "{{csrf_token}}"}'>
+        <div class="container-fluid">
 
         {% include 'core/navbar.html'%}
 

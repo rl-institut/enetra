@@ -75,7 +75,13 @@ INSTALLED_APPS = [
     "django_browser_reload",
     "django_watchfiles",
     "guardian",
+    "crispy_forms",
+    "crispy_tailwind",
+    "widget_tweaks",
 ]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -262,6 +268,7 @@ MEDIA_URL = "media/"
 # while the above line checks all the app folders for static folders the below one can be a list of
 # general static file folders
 STATICFILES_DIRS = [
+    BASE_DIR / "static",
     BASE_DIR / "templates/js",
     BASE_DIR / "templates/css",
     BASE_DIR / "templates/img",

@@ -1,0 +1,44 @@
+{% comment %}
+from https://flowbite.com/docs/components/alerts/ -->
+{% endcomment %}
+{% load static  %}
+
+<c-vars variant="info" icon="true" title></c-vars>
+<div
+    {{attrs}
+    class="{{class}} p-4 mb-4 text-sm rounded-base
+
+{% if variant == 'info' %}bg-blue-50 border-blue-200 text-blue-700
+{% elif variant == 'danger' %}bg-red-50 border-red-200 text-red-700
+{% elif variant == 'success' %}bg-green-50 border-green-200 text-green-700
+{% elif variant == 'warning' %} bg-yellow-50 border-yellow-200 text-yellow-700
+{% else %}text-heading  bg-neutral-secondary-medium
+{% endif %}
+" role="alert">
+  <span class="font-bold flex
+{% if variant == 'info' %} text-blue-800
+{% elif variant == 'danger' %} text-red-800
+{% elif variant == 'success' %} text-green-800
+{% elif variant == 'warning' %} text-yellow-800
+{% else %}
+{% endif %}
+    ">
+    {% if icon == "true" %}
+        <div class="shrink-0 ">
+    {% if variant == 'danger' %}  {% include 'img/danger.svg' %}
+    {% elif variant == 'info' %} {% include 'img/info.svg' %}
+    {% elif variant == 'success' %} {% include 'img/success.svg' %}
+{% else %}
+{% endif %}
+        </div>
+        {% endif %}
+
+    {{title}}</span>
+  {{slot}}
+</div>
+
+
+
+{% comment %}
+asdfklj
+{% endcomment %}

@@ -8,6 +8,7 @@
   {% if user.is_authenticated %}
     <form action="{% url 'logout' %}" method="post">
       {% csrf_token %}
+      <!-- button/index.html -->
       <c-button variant="default" type="submit">Logout</c-button>
     </form>
   {% else %}
@@ -28,9 +29,20 @@
     <c-accordion.item value='item-2'>
         <c-accordion.trigger value='item-2'>Is it for Django?</c-accordion.trigger>
         <c-accordion.content value='item-2'>
+      Some component
         </c-accordion.content>
     </c-accordion.item>
 </c-accordion>
+
+<h1 class="text-2xl font-bold underline">Dynamic Design using HTMX</h1>
+<c-button variant="outline"
+  hx-get="{{scenario.internal_id}}/solar/crud/"
+  hx-target="this"
+  hx-swap="beforebegin"
+
+>Add a solar instance
+</c-button>
+
 
 
 

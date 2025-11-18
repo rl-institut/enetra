@@ -1,7 +1,6 @@
-<c-vars variant="default" size="default"></c-vars>
+<c-vars variant="default" size="default" hx="true"></c-vars>
 <button
-    class="
-    inline-flex
+    class="inline-flex
     items-center
     justify-center
     gap-2
@@ -18,7 +17,7 @@
     [&_svg]:pointer-events-none
     [&_svg]:size-4
     [&_svg]:shrink-0
-
+    active:scale-95 active:transition-all active:duration-75
     {% if variant == 'default' %}bg-primary text-primary-foreground shadow-sm hover:bg-primary/90
     {% elif variant == 'destructive' %}bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90
     {% elif variant == 'outline' %}border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground
@@ -34,11 +33,24 @@
     {% elif size == 'icon' %}size-9
     {% endif %}
 
-    {% if class %}
-    {{ class }}
-    {% endif %}
+    {% if class %} {{ class }} {% endif %}
     "
     {{ attrs }}
+
+    {% if hx == 'true' %}
+    {% comment %}
+
+    :disabled="~$el.closest('.htmx-indicator').classList.contains('htmx-request')"
+    {% endcomment %}
+    hx-disabled-elt="this"
+    {% endif %}
 >
     {{ slot }}
+    {% if hx == 'true' %}
+        {% comment %}
+        A in progress indicator, which is set to visible when htmx adds a hx-request to the element
+        {% endcomment %}
+        <span class="loader htmx-indicator"></span>
+    {% endif %}
+
 </button>

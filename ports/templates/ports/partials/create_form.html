@@ -1,0 +1,57 @@
+{% load tailwind_filters %}
+{% load tailwind_field %}
+<form
+    hx-post='{{scenario.internal_id}}/{{model}}/crud/'
+    hx-target='this'
+    hx-indicator='find .submitbtn'
+    hx-disabled-elt="find .submitbtn"
+>
+    {% if success  %}
+    <c-alert class="animate-in fade-in duration-500" variant="success" title="Erfolg">
+        {{success}}
+    </c-alert>
+
+    {% endif %}
+    {% for error in  errors %}
+    <c-alert variant="danger" title="Fehler">
+    {{error}}
+    </c-alert>
+    {% endfor %}
+    <h3 class="text-1xl font-bold">{{form.instance}}</h3>
+
+    {% if form.instance.updated_at %}
+    <div class="text-xs">
+        Zuletzt gespeichert :{{form.instance.updated_at}}
+    </div>
+    {% endif %}
+    <div class="flex">
+        <div>
+            {% for field in form.visible_fields %}
+            <c-tail-input :field="field">
+            </c-tail-input>
+            {% endfor %}
+
+            {% for field in form.hidden_fields %}
+            <div class="hidden">
+                {{field}}
+            </div>
+            {% endfor %}
+        </div>
+        <!-- class to target the hx-indicator -->
+        <c-button class="submitbtn"
+        >
+            Submit
+        </c-button>
+        {% if form.instance.id is not None  %}
+        <c-button variant="destructive"
+            hx-include="closest .form"
+            hx-delete='{{scenario.internal_id}}/{{model}}/crud/'
+            hx-target='closest form'
+            hx-indicator="this"
+            hx-disabled-elt="this"
+        >
+            Delete
+        </c-button>
+        {% endif %}
+    </div>
+</form>
