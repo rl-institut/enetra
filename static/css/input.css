@@ -40,7 +40,17 @@
     transition: opacity 200ms ease-in;
 }
 
-
+/* Fix for the OSMWidget */
+.dj_map {
+    width: 100% !important;
+    height: 90% !important;
+}
+/**/
+/* .dj_map_wrapper{ */
+/*     color-background: red; */
+/*     width: 600px; */
+/*     height: 400px; */
+/* } */
 
 :root {
     --background: oklch(1 0 0);

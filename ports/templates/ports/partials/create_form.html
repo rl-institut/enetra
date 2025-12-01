@@ -1,11 +1,30 @@
-{% load tailwind_filters %}
-{% load tailwind_field %}
-<form
-    hx-post='{{scenario.internal_id}}/{{model}}/crud/'
-    hx-target='this'
+{% load partials %}
+
+<!-- TODO: Separate crud logic from refresh logic -->
+
+
+<div
+    hx-get='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
+    hx-swap="innerHTML"
+    hx-include="#form_{{form.prefix}}"
+    {% if form.instance.model_name == 'solar' %}
+    hx-trigger="area-changed from:body"
+    {% else %}
+    hx-trigger="none"
+    {% endif %}
+    hx-on::trigger="if (event.target == this) console.log('getting form because of change event')"
+>
+
+{% partialdef crud-form-partial %}
+<form id="form_{{form.prefix}}"
+    hx-post='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
+    hx-select='#form_{{form.prefix}}'
+    hx-target='#form_{{form.prefix}}'
     hx-indicator='find .submitbtn'
     hx-disabled-elt="find .submitbtn"
+    hx-on::after-settle="if (event.target == this){ console.log('element-settled. Dispatching {{form.instance.model_name}}-changed event'); htmx.trigger(this, '{{form.instance.model_name}}-changed', {})}"
 >
+    <!-- NOTE: Make sure to have form.media loaded! -->
     {% if success  %}
     <c-alert class="animate-in fade-in duration-500" variant="success" title="Erfolg">
         {{success}}
@@ -24,11 +43,21 @@
         Zuletzt gespeichert :{{form.instance.updated_at}}
     </div>
     {% endif %}
-    <div class="flex">
+    <div class="block w-1/2"
+
+    >
         <div>
+            <input class="hidden" name="prefix" value={{form.prefix}}>
             {% for field in form.visible_fields %}
+            {% if field.name == "geom" %}
+            <div class="flex h-60 w-50   bg-amber-200" >
+                {{ field }}
+            </div>
+            {% else %}
             <c-tail-input :field="field">
             </c-tail-input>
+            {% endif %}
+
             {% endfor %}
 
             {% for field in form.hidden_fields %}
@@ -37,21 +66,28 @@
             </div>
             {% endfor %}
         </div>
-        <!-- class to target the hx-indicator -->
-        <c-button class="submitbtn"
-        >
-            Submit
-        </c-button>
-        {% if form.instance.id is not None  %}
-        <c-button variant="destructive"
-            hx-include="closest .form"
-            hx-delete='{{scenario.internal_id}}/{{model}}/crud/'
-            hx-target='closest form'
-            hx-indicator="this"
-            hx-disabled-elt="this"
-        >
-            Delete
-        </c-button>
-        {% endif %}
+       <div class="flex">
+                <!-- class to target the hx-indicator -->
+                <c-button class="submitbtn" type='submit'
+                >
+                    Submit
+                </c-button>
+                {% if form.instance.id is not None  %}
+                <c-button variant="destructive"
+                    type='button'
+                    hx-include="closest form"
+                    hx-delete='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
+                    hx-target='closest form'
+                    hx-indicator="this"
+                    hx-disabled-elt="this"
+                >
+                    Delete
+                </c-button>
+                {% endif %}
+
+            </div>
     </div>
 </form>
+{% endpartialdef crud-form-partial %}
+{% partial crud-form-partial %}
+  </div>

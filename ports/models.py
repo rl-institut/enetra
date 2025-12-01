@@ -49,7 +49,8 @@ class ScenarioItem(models.Model):
     # Scenario specific id, which stays the same over scenarios
     internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
-    name = models.TextField(blank=True, null=True)
+    name = models.TextField(blank=True, null=True, max_length=200)
+    description = models.TextField(blank=True, null=True)
 
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
@@ -107,6 +108,9 @@ class ScenarioItem(models.Model):
             self.updated_user = self.manager
         super().save(*args, **kwargs)
 
+    def model_name(self):
+        return self._meta.model_name
+
 
 @receiver(ScenarioItem.scenarioitem_pre_delete)
 def update_scenario_pre_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
@@ -155,9 +159,6 @@ class DeletedItem(ScenarioItem):
 # Can an Area serve the same usage, e.g. solar, multiple times? (yes)
 class Area(ScenarioItem):
     geom = models.PolygonField(null=True, blank=False)
-
-    class Meta(ScenarioItem.Meta):
-        abstract = False
 
 
 class Solar(ScenarioItem):

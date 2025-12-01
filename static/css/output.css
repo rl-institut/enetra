@@ -14,6 +14,7 @@
     --color-red-600: oklch(57.7% 0.245 27.325);
     --color-red-700: oklch(50.5% 0.213 27.518);
     --color-red-800: oklch(44.4% 0.177 26.899);
+    --color-amber-200: oklch(92.4% 0.12 95.746);
     --color-yellow-50: oklch(98.7% 0.026 102.212);
     --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-yellow-700: oklch(55.4% 0.135 66.442);
@@ -34,6 +35,8 @@
     --text-xs--line-height: calc(1 / 0.75);
     --text-sm: 0.875rem;
     --text-sm--line-height: calc(1.25 / 0.875);
+    --text-2xl: 1.5rem;
+    --text-2xl--line-height: calc(2 / 1.5);
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
@@ -319,8 +322,14 @@
   .h-10 {
     height: calc(var(--spacing) * 10);
   }
+  .h-60 {
+    height: calc(var(--spacing) * 60);
+  }
   .w-4 {
     width: calc(var(--spacing) * 4);
+  }
+  .w-50 {
+    width: calc(var(--spacing) * 50);
   }
   .w-full {
     width: 100%;
@@ -441,6 +450,9 @@
   .border-yellow-200 {
     border-color: var(--color-yellow-200);
   }
+  .bg-amber-200 {
+    background-color: var(--color-amber-200);
+  }
   .bg-background {
     background-color: var(--background);
   }
@@ -509,6 +521,10 @@
   }
   .pb-4 {
     padding-bottom: calc(var(--spacing) * 4);
+  }
+  .text-2xl {
+    font-size: var(--text-2xl);
+    line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
   .text-sm {
     font-size: var(--text-sm);
@@ -601,6 +617,9 @@
   }
   .lowercase {
     text-transform: lowercase;
+  }
+  .underline {
+    text-decoration-line: underline;
   }
   .underline-offset-4 {
     text-underline-offset: 4px;
@@ -994,6 +1013,10 @@
   opacity: 1;
   visibility: visible;
   transition: opacity 200ms ease-in;
+}
+.dj_map {
+  width: 100% !important;
+  height: 90% !important;
 }
 :root {
   --background: oklch(1 0 0);

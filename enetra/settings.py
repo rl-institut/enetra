@@ -75,13 +75,9 @@ INSTALLED_APPS = [
     "django_browser_reload",
     "django_watchfiles",
     "guardian",
-    "crispy_forms",
-    "crispy_tailwind",
     "widget_tweaks",
 ]
 
-CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
-CRISPY_TEMPLATE_PACK = "tailwind"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -269,9 +265,9 @@ MEDIA_URL = "media/"
 # general static file folders
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-    BASE_DIR / "templates/js",
-    BASE_DIR / "templates/css",
-    BASE_DIR / "templates/img",
+    BASE_DIR / "static/js",
+    BASE_DIR / "static/css",
+    BASE_DIR / "static/img",
     BASE_DIR / UPLOAD_PATH,
 ]
 # Default primary key field type

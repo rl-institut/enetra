@@ -1,5 +1,12 @@
 <c-vars variant="default" size="default" hx="true"></c-vars>
+{% comment %}
+hx-on='htmx:beforeRequest console.log("postrequest")
+htmx:afterRequest console.log("fter")
+click:console.log("click")'
+
+{% endcomment %}
 <button
+
     class="inline-flex
     items-center
     justify-center
@@ -36,14 +43,6 @@
     {% if class %} {{ class }} {% endif %}
     "
     {{ attrs }}
-
-    {% if hx == 'true' %}
-    {% comment %}
-
-    :disabled="~$el.closest('.htmx-indicator').classList.contains('htmx-request')"
-    {% endcomment %}
-    hx-disabled-elt="this"
-    {% endif %}
 >
     {{ slot }}
     {% if hx == 'true' %}

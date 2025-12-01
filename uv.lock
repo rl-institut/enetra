@@ -298,19 +298,6 @@ wheels = [
 ]
 
 [[package]]
-name = "crispy-tailwind"
-version = "1.0.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-    { name = "django-crispy-forms" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/ac/a307ae5ce869d7151b90d4b8b042a48eb454a936dacc695f6418486e5bd8/crispy-tailwind-1.0.3.tar.gz", hash = "sha256:2bc9f616d406e4b003f25d46fcb0079f1c2522719d97adb107667271d849459a", size = 19172 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/ca/11f65e24f3c182dfaf90fd3710d2dcca0fbc3026923e47b43f52a4a2349b/crispy_tailwind-1.0.3-py3-none-any.whl", hash = "sha256:31427f66b1c4fd0d6fb040f4197cfb97d104cdbe7641ea2dea940c0057c4db4b", size = 25700 },
-]
-
-[[package]]
 name = "cryptography"
 version = "45.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -442,30 +429,16 @@ wheels = [
 ]
 
 [[package]]
-name = "django-crispy-forms"
-version = "2.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/88/a1/ffd7b0e160296121d88e3e173165370000ee4de7328f5c4f4b266638dcd9/django_crispy_forms-2.4.tar.gz", hash = "sha256:915e1ffdeb2987d78b33fabfeff8e5203c8776aa910a3a659a2c514ca125f3bd", size = 278932 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/ec/a25f81e56a674e63cf6c3dd8e36b1b3fecc238fecd6098504adc0cc61402/django_crispy_forms-2.4-py3-none-any.whl", hash = "sha256:5a4b99876cfb1bdd3e47727731b6d4197c51c0da502befbfbec6a93010b02030", size = 31446 },
-]
-
-[[package]]
 name = "django-enetra"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "celery" },
     { name = "charset-normalizer" },
-    { name = "crispy-tailwind" },
     { name = "debugpy" },
     { name = "django" },
     { name = "django-browser-reload" },
     { name = "django-cotton" },
-    { name = "django-crispy-forms" },
     { name = "django-extensions" },
     { name = "django-fast-update" },
     { name = "django-guardian" },
@@ -501,12 +474,10 @@ docs = [
 requires-dist = [
     { name = "celery", specifier = ">=5.1.2" },
     { name = "charset-normalizer", specifier = ">=3.4.2" },
-    { name = "crispy-tailwind", specifier = ">=1.0.3" },
     { name = "debugpy", specifier = ">=1.8.17" },
     { name = "django", specifier = ">=5.2.4" },
     { name = "django-browser-reload", specifier = ">=1.21.0" },
     { name = "django-cotton", specifier = ">=2.3.1" },
-    { name = "django-crispy-forms", specifier = ">=2.4" },
     { name = "django-extensions", specifier = ">=4.1" },
     { name = "django-fast-update", specifier = ">=0.2.4" },
     { name = "django-guardian", specifier = ">=3.2.0" },
