@@ -9,8 +9,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.db.models.functions import Now
+from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
-from django.db.models.signals import pre_delete
 from django.dispatch import Signal
 from django.dispatch import receiver
 
@@ -68,7 +68,7 @@ class ScenarioItem(models.Model):
         related_name="+",
         editable=False,
     )
-    scenarioitem_pre_delete = Signal()
+    scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
 
     class Meta:
@@ -86,7 +86,7 @@ class ScenarioItem(models.Model):
     For example the scenario should store information when the last update of a scenario item
     happened. This means explicitly updating the scenario on each change or let signals handle
     that. Since we dont want to connect each ModelSignal individually, we create merge scenarioitem
-    signals e.g. scenarioitem_pre_delete
+    signals e.g. scenarioitem_post_delete
     this way we can implement functions which only listen to this signal.
     The connection is done in the appconfig.ready() function automatically for all subclasses of
     ScenarioItem
@@ -94,11 +94,11 @@ class ScenarioItem(models.Model):
 
     @classmethod
     def _connect_signals(cls):
-        pre_delete.connect(cls._send_scenarioitem_pre_delete, sender=cls)
+        post_delete.connect(cls._send_scenarioitem_post_delete, sender=cls)
         post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
 
-    def _send_scenarioitem_pre_delete(sender, instance, **kwargs):
-        ScenarioItem.scenarioitem_pre_delete.send(sender=sender, instance=instance)
+    def _send_scenarioitem_post_delete(sender, instance, **kwargs):
+        ScenarioItem.scenarioitem_post_delete.send(sender=sender, instance=instance)
 
     def _send_scenarioitem_post_save(sender, instance, **kwargs):
         ScenarioItem.scenarioitem_post_save.send(sender=sender, instance=instance)
@@ -112,11 +112,13 @@ class ScenarioItem(models.Model):
         return self._meta.model_name
 
 
-@receiver(ScenarioItem.scenarioitem_pre_delete)
-def update_scenario_pre_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
+@receiver(ScenarioItem.scenarioitem_post_delete)
+def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
     """Create a DeletedItem"""
-    # NOTE: Be sure to handle bouncing signals which an introduce infinite signal loops
+    # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
     # Create a DeletedItem with all Scenario item values
+    # We use post_delete to only create these items when the item is really deleted.
+    # using pre_delete leads to errors if deletion fails
     if sender == DeletedItem:
         return
     deleted_item = DeletedItem(
@@ -200,7 +202,7 @@ class UploadedFile(ScenarioItem):
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
 
-    @receiver(models.signals.pre_delete, sender=Scenario)
+    @receiver(models.signals.post_delete, sender=Scenario)
     def auto_delete_results_on_delete(sender, instance, **kwargs):
         """Delete the scenario results folder if the scenario is deleted from the database
 

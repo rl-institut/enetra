@@ -5,7 +5,11 @@ from https://flowbite.com/docs/components/alerts/ -->
 
 <c-vars variant="info" icon="true" title></c-vars>
 <div
-    {{attrs}
+{% comment %}
+Some htmx attributes are inherited. by wrapping htmx inside a hx-disinherit for all (*) attributes.
+The default behaviour is recreated
+{% endcomment %}
+    hx-disinherit="*"
     class="{{class}} p-4 mb-4 text-sm rounded-base
 
 {% if variant == 'info' %}bg-blue-50 border-blue-200 text-blue-700
@@ -15,22 +19,31 @@ from https://flowbite.com/docs/components/alerts/ -->
 {% else %}text-heading  bg-neutral-secondary-medium
 {% endif %}
 " role="alert">
-  <span class="font-bold flex
+  <span
+
+{% comment %}
+Dynamic insertion via htmx allows custom styling of the svg while still caching the svg.
+We can also statically style the svg and use it via img tag or include it as dynamic asset
+through {% include 'templates/success.svw' %} or
+{% endcomment %}
+{% if icon == "true" %}
+    {% if variant == 'danger' %}hx-get="{% static 'danger.svg' %}"
+    {% elif variant == 'info' %}hx-get="{% static 'info.svg' %}"
+    {% elif variant == 'success' %}hx-get="{% static 'success.svg' %}"
+    hx-trigger='load' hx-target='this' hx-include='this' hx-swap='afterbegin'
+    {% else %}
+{% endif %}
+
+class="font-bold flex
 {% if variant == 'info' %} text-blue-800
 {% elif variant == 'danger' %} text-red-800
 {% elif variant == 'success' %} text-green-800
 {% elif variant == 'warning' %} text-yellow-800
 {% else %}
 {% endif %}
-    ">
-    {% if icon == "true" %}
-        <div class="shrink-0 ">
-    {% if variant == 'danger' %}  {% include 'img/danger.svg' %}
-    {% elif variant == 'info' %} {% include 'img/info.svg' %}
-    {% elif variant == 'success' %} {% include 'img/success.svg' %}
-{% else %}
-{% endif %}
-        </div>
+    "
+    {{attrs}}
+    >
         {% endif %}
 
     {{title}}</span>
