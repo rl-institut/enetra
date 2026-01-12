@@ -20,9 +20,7 @@
 <div hx-get='test/'
   hx-on::after-request="console.log('foo');"
 >
-  sadflkj
 </div>
-
 <c-button variant="default" type="submit">Im a button</c-button>
   <!-- accordion/index.html -->
 <c-accordion type='single' collapsible='true'>
@@ -40,16 +38,14 @@
         </c-accordion.content>
     </c-accordion.item>
 </c-accordion>
-
-<h1 class="text-2xl font-bold underline">Dynamic Design using HTMX</h1>
+<h1 class="text-2xl font-bold underline -underline-offset-2">Dynamic Design using HTMX</h1>
 {% for form  in solars %}
   {% include "ports/partials/create_form.html" %}
 {% endfor %}
-
 {% block header %}
 {% for area in  areas %}
 {% if forloop.first %}
-   {{area.media}}
+{{area.media}}
 {% endif %}
 {% endfor %}
 {% endblock header %}
@@ -67,7 +63,6 @@
 {% for form in areas %}
   {% include "ports/partials/create_form.html"%}
 {% endfor %}
-
 
 
 <c-button variant="outline"

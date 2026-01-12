@@ -3,6 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+[x-cloak] { display: none !important; }
 /* Custom css */
 /* Spinner to show something is in progress */
 .loader {
