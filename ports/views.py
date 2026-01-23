@@ -1,17 +1,23 @@
 import json
 import logging
 import time
+from datetime import datetime
+from typing import Literal
 from uuid import uuid4
 
 import numpy as np
 from django import forms
 from django.apps.registry import apps
+from django.contrib.auth.models import User
 from django.contrib.gis.forms import OpenLayersWidget
 from django.forms import modelform_factory
 from django.http import Http404
 from django.http import HttpRequest
+from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
+from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import render  # noqa
+from django.template.loader import render_to_string
 from django.views.generic import FormView
 from django_oemof import models as oemof_models
 from django_oemof import simulation
@@ -22,6 +28,59 @@ from .models import ScenarioItem
 from .models import Solar
 
 logger = logging.getLogger("django-ports")
+
+
+def get_authentification(
+    object: Scenario | ScenarioItem,
+    user: User,
+    crud: Literal["create", "c", "read", "r", "update", "u", "delete", "d"],
+) -> bool:
+    # TODO: Implement
+    if False:  # noqa
+        return False
+    return True
+
+
+def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_uuid)
+    focused_form = request.GET.get("focusedForm", None)
+    if not get_authentification(scenario, request.user, "read"):
+        return HttpResponseForbidden("Not Allowed")
+    first_load = datetime.fromisoformat(first_load_str)
+    context = {"scenario": scenario, "first_load": first_load_str}
+    if scenario.items_updated_at <= first_load:
+        return render(request, "ports/partials/changelog.html", context)
+    else:
+        changed_items: list[ScenarioItem] = []
+        port_models = apps.get_models("ports")
+        scenario_item_models = [model for model in port_models if issubclass(model, ScenarioItem)]
+        for model in scenario_item_models:
+            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load)
+            changed_items = changed_items + list(objs)
+        changed_items.sort(key=lambda x: x.updated_at)
+        context |= {"changed_items": changed_items}
+        change_log = render_to_string("ports/partials/changelog.html", context, request)
+
+    last_update = datetime.fromisoformat(last_update_str)
+    if scenario.items_updated_at <= last_update:
+        return HttpResponse(change_log)
+    else:
+        changed_items: list[ScenarioItem] = []
+        for model in scenario_item_models:
+            objs = model.objects.filter(scenario=scenario, updated_at__gte=last_update)
+            changed_items = changed_items + list(objs)
+        changed_forms: list[forms.Form] = []
+        for item in changed_items:
+            Form = ScenarioItemFormFactory(item._meta.model)
+            prefix = get_pre(item)
+            form = Form(instance=item, prefix=prefix)
+            if focused_form and focused_form == f"form_{prefix}":
+                context |= {"focused_form_changed": focused_form}
+                continue
+            changed_forms.append(form)
+        context |= {"changed_forms": changed_forms}
+        oob_changed_items = render_to_string("ports/partials/oob_form_swap.html", context, request)
+        return HttpResponse(change_log + oob_changed_items)
 
 
 def home(request):

@@ -1,6 +1,8 @@
 {% extends "core/base.html" %}
 
 {% block content %}
+
+<input id='focusedForm' class='bg-red-400' name='focusedForm'></input>
 <!-- This is a placeholder to showcase some django-cotton functionality with shadcn components -->
   <header>
     Hello World!
@@ -16,6 +18,7 @@
     <a href="{% url 'login' %}">Login</a></c-button>
   {% endif %}
 
+{% include 'ports/partials/changelog.html' %}
 
 <c-button variant="default" type="submit">Im a button</c-button>
   <!-- accordion/index.html -->
@@ -69,7 +72,6 @@
 
 >Add a area instance
 </c-button>
-
 
 
 {% endblock content %}

@@ -1,0 +1,12 @@
+{% load partials %}
+{% for form in changed_forms  %}
+<div hx-swap-oob="innerHTML:.form-{{form.instance.internal_id}}">
+  {% include 'ports/partials/create_form.html#crud-form-partial-inner' with external_update=True %}
+</div>
+{% endfor %}
+
+{% if focused_form_changed %}
+<div hx-swap-oob="innerHTML:#{{focused_form_changed}} .blocked-external-update-indicator">
+  Somebody changed this element. You should refresh it
+</div>
+{% endif %}

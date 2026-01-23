@@ -15,8 +15,10 @@
     hx-on::trigger="if (event.target == this) console.log('getting form {{form.instance.model_name}} because of change event')"
 >
 
-{% partialdef crud-form-partial %}
+{% partialdef crud-form-partial inline %}
 <form id="form_{{form.prefix}}"
+    x-data='{}'
+    class ='form-{{form.instance.internal_id}}'
     hx-post='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
     hx-select='#form_{{form.prefix}}'
     hx-target='this'
@@ -24,7 +26,22 @@
     hx-disabled-elt=".submitbtn"
     hx-on::after-settle="if (event.target == this){
         console.log(event); console.log('element-settled. Dispatching {{form.instance.model_name}}-changed event'); htmx.trigger(this, '{{form.instance.model_name}}-changed', {})}"
+    @focusin="document.getElementById('focusedForm').value=$el.id"
 >
+{% partialdef crud-form-partial-inner inline %}
+        {% comment %}
+         The blocked-external-update-indicator is set by htmx when somebody changed the item the user currently focuses.
+        Instead of refreshing the Form with a fresh version from the backend the user only gets a indication he should
+        refresh the data, so his current input is not lost
+        {% endcomment %}
+        <div class="blocked-external-update-indicator"></div>
+
+        {% comment %}
+         The external-update-indicator is set by htmx when somebody changed the item and its not focused
+        {% endcomment %}
+        {% if external_update %}
+        <div x-data="{show:true}" class="external-update-indicator" x-show='show' x-init="setTimeout(()=>show=false,2000)" >This item was just changed at {{form.instance.updated_at}} by User {{form.instance.update_user}}</div>
+        {% endif %}
     <!-- NOTE: Make sure to have form.media loaded! -->
     {% if success  %}
     <c-alert class="animate-in fade-in duration-500" variant="success" title="Erfolg">
@@ -41,7 +58,7 @@
 
     {% if form.instance.updated_at %}
     <div class="text-xs">
-        Zuletzt gespeichert :{{form.instance.updated_at}}
+        Zuletzt gespeichert von {{form.instance.update_user}} um {{form.instance.updated_at}}
     </div>
     {% endif %}
     <div class="block w-1/2"
@@ -89,7 +106,8 @@
 
             </div>
     </div>
+{% endpartialdef crud-form-partial-inner %}
+{% partial crud-form-partial-inner %}
 </form>
 {% endpartialdef crud-form-partial %}
-{% partial crud-form-partial %}
-  </div>
+</div>
