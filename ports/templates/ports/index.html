@@ -39,9 +39,20 @@
 </c-accordion>
 <h1 class="text-2xl font-bold underline ">Dynamic Design using HTMX</h1>
 <p>Try adding a Area below and save it. The Solaranlagen will be refetched automatically and the just created area can be reselected without a full page reload. Deleting an area which is selected on a solaranlage will automatically remove it</p>
+<div class="solar-form-container"
+hx-on::oob-before-swap="console.log(event); console.log('element-settled. Dispatching solar-changed event'); htmx.trigger(this, 'solar-changed', {})"
+>
 {% for form  in solars %}
   {% include "ports/partials/create_form.html" %}
 {% endfor %}
+</div>
+<c-button variant="outline"
+  hx-get="{{scenario.internal_id}}/solar/crud/"
+  hx-target=".solar-form-container"
+  hx-swap="beforeend"
+>Add a solar instance
+</c-button>
+
 {% block header %}
 {% for area in  areas %}
 {% if forloop.first %}
@@ -49,26 +60,19 @@
 {% endif %}
 {% endfor %}
 {% endblock header %}
-
-<c-button variant="outline"
-  hx-get="{{scenario.internal_id}}/solar/crud/"
-  hx-target="this"
-  hx-swap="beforebegin"
-
->Add a solar instance
-</c-button>
-
-
 <h1 class="text-2xl font-bold underline">Areas</h1>
+<div class="area-form-container"
+hx-on::oob-before-swap="console.log(event); console.log('element-settled. Dispatching area-changed event'); htmx.trigger(this, 'area-changed', {})"
+>
 {% for form in areas %}
   {% include "ports/partials/create_form.html"%}
 {% endfor %}
-
+</div>
 
 <c-button variant="outline"
   hx-get="{{scenario.internal_id}}/area/crud/"
-  hx-target="this"
-  hx-swap="beforebegin"
+  hx-target=".area-form-container"
+  hx-swap="beforeend"
 
 >Add a area instance
 </c-button>

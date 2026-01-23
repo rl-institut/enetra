@@ -10,6 +10,7 @@ from django import forms
 from django.apps.registry import apps
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import OpenLayersWidget
+from django.db.models import Value
 from django.forms import modelform_factory
 from django.http import Http404
 from django.http import HttpRequest
@@ -52,27 +53,42 @@ def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_st
         return render(request, "ports/partials/changelog.html", context)
     else:
         changed_items: list[ScenarioItem] = []
+        created_items: list[ScenarioItem] = []
         port_models = apps.get_models("ports")
         scenario_item_models = [model for model in port_models if issubclass(model, ScenarioItem)]
         for model in scenario_item_models:
-            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load)
+            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load).annotate(
+                changed=Value(True)
+            )
             changed_items = changed_items + list(objs)
-        changed_items.sort(key=lambda x: x.updated_at)
-        context |= {"changed_items": changed_items}
+            objs = model.objects.filter(scenario=scenario, created_at__gt=first_load).annotate(
+                changed=Value(False)
+            )
+            created_items = created_items + list(objs)
+        changed_or_created_items = created_items + changed_items
+        changed_or_created_items.sort(key=lambda x: x.updated_at if x.changed else x.created_at)
+        context |= {"changed_or_created_items": changed_or_created_items}
         change_log = render_to_string("ports/partials/changelog.html", context, request)
 
     last_update = datetime.fromisoformat(last_update_str)
     if scenario.items_updated_at <= last_update:
         return HttpResponse(change_log)
     else:
-        changed_items: list[ScenarioItem] = []
+        changed_or_created_items: list[ScenarioItem] = []
         for model in scenario_item_models:
-            objs = model.objects.filter(scenario=scenario, updated_at__gte=last_update)
-            changed_items = changed_items + list(objs)
+            objs = model.objects.filter(
+                scenario=scenario, updated_at__gte=last_update, created_at__lte=last_update
+            ).annotate(changed=Value(True))
+            changed_or_created_items = changed_or_created_items + list(objs)
+            objs = model.objects.filter(scenario=scenario, created_at__gt=last_update).annotate(
+                changed=Value(False)
+            )
+            changed_or_created_items = changed_or_created_items + list(objs)
         changed_forms: list[forms.Form] = []
-        for item in changed_items:
+        for item in changed_or_created_items:
             Form = ScenarioItemFormFactory(item._meta.model)
             prefix = get_pre(item)
+            print(item.changed)
             form = Form(instance=item, prefix=prefix)
             if focused_form and focused_form == f"form_{prefix}":
                 context |= {"focused_form_changed": focused_form}

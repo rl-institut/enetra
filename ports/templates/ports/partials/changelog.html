@@ -13,14 +13,22 @@ last_update is used to fetch data since the last update call
   hx-swap="outerHTML">
 <c-change-log-list>
     <!-- hx-include='#focusedForm' -->
-{% if not changed_items %}
+{% if not changed_or_created_items %}
   <c-change-log-item>
       No updates at {% now "c" %}
   </c-change-log-item>
 {% endif %}
-{% for change in changed_items %}
+{% for change in changed_or_created_items %}
   <c-change-log-item>
-    {{change.verbose_name}} instance {{change.id}} was updated at {{change.updated_at|date:"c"}}
+      {% if change.changed %}
+      {{change.verbose_name}} instance {{change.id}} was updated at {{change.updated_at|date:"c"}}
+      {% else %}
+        {% if change.model_name == "deleteditem" %}
+          {{change.content_type}} instance {{change.id}} was deleted at {{change.created_at|date:"c"}}
+        {% else %}
+          {{change.verbose_name}} instance {{change.id}} was created at {{change.created_at|date:"c"}}
+        {% endif %}
+      {% endif %}
   </c-change-log-item>
 {% endfor %}
 </c-change-log-list>

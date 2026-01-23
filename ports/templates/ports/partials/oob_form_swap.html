@@ -1,12 +1,27 @@
 {% load partials %}
-{% for form in changed_forms  %}
-<div hx-swap-oob="innerHTML:.form-{{form.instance.internal_id}}">
-  {% include 'ports/partials/create_form.html#crud-form-partial-inner' with external_update=True %}
-</div>
-{% endfor %}
+{% for form in changed_forms %}
+  {% if form.instance.changed %}
+    <!-- instance was changed. update all forms with the uuid class tag  -->
+    <div hx-swap-oob="innerHTML:.form-{{ form.instance.internal_id }}">
+      {% include 'ports/partials/create_form.html#crud-form-partial-inner' with external_update=True %}
+    </div>
+  {% else %}
 
+    {% if form.instance.model_name == "deleteditem" %}
+    <div hx-swap-oob="outerHTML:.form-container-{{ form.instance.internal_id }}">
+      this item was deleted
+      </div>
+    {% else %}
+      <!-- instance was created. Append it to the appropriate container -->
+      <div hx-swap-oob="beforeend:.{{ form.instance.model_name }}-form-container"
+    >
+        {% include 'ports/partials/create_form.html' with external_update=True %}
+      </div>
+    {% endif %}
+  {% endif %}
+{% endfor %}
 {% if focused_form_changed %}
-<div hx-swap-oob="innerHTML:#{{focused_form_changed}} .blocked-external-update-indicator">
-  Somebody changed this element. You should refresh it
-</div>
+  <div hx-swap-oob="innerHTML:#{{ focused_form_changed }} .blocked-external-update-indicator">
+    Somebody changed this element. You should refresh it
+  </div>
 {% endif %}

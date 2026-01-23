@@ -158,6 +158,9 @@ class DeletedItem(ScenarioItem):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     pass
 
+    def __repr__(self):
+        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
+
 
 # Can an Area serve multiple purposes? (yes)
 # Can an Area serve the same usage, e.g. solar, multiple times? (yes)
