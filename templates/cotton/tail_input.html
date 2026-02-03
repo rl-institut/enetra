@@ -1,10 +1,11 @@
 {% load widget_tweaks %}
+{% load core_extras %}
 {% comment %}
 helper to return a tailwind input depending on inputtype
 {% endcomment %}
 <c-vars label="" label_position="top" field></c-vars>
 {% with field.field.widget.input_type as input_type %}
-<div class="{% if label_position == 'top' %}block{% else %}flex{% endif %}">
+<div class="{% if label_position == 'top' %}block w-full{% else %}flex{% endif %}">
   <label for="id_num" class="block text-gray-700 text-sm font-bold mb-2">
     {{field.label }}
   </label>
@@ -22,7 +23,7 @@ helper to return a tailwind input depending on inputtype
   {% elif input_type == "radio" %}
   <div class="p-4 mb-4 text-sm text-fg-brand-strong rounded-base bg-brand-softer" role="alert">
  TODO needs more implementation
-    <label for="{{field.auto_id}}" class="block text-gray-700 mr-3">
+    <label for="{{field.auto_id}}" class="block w-full text-gray-700 mr-3">
       <input type="radio" class="" name="{{field.name}}" id="id_input_mode_1" value="">
     </label>
     <label for="id_input_mode_2" class="block text-gray-700 mr-3">
@@ -33,7 +34,10 @@ helper to return a tailwind input depending on inputtype
  For textinputs or all other kinds
 {% endcomment %}
 {% else %}
-{{ field|add_class:"textinput bg-white py-2 text-gray-700 leading-normal rounded-lg px-4 w-full focus:outline-none border-gray-300 border block appearance-none" }}
+  {% with attrs.class as attrs_class %}
+  {{ field|add_class:"textinput py-2 text-gray-700 leading-normal rounded-lg px-4 w-full focus:outline-none border-gray-300 border block appearance-none"|add_class:attrs_class|add_attrs_without_class:attrs}}
+  {% endwith %}
   {% endif %}
+
 </div>
 {% endwith %}

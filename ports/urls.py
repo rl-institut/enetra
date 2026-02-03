@@ -16,6 +16,16 @@ urlpatterns = [
         name="home",
     ),
     path(
+        "leaflet/",
+        views.leaflet,
+        name="leaflet",
+    ),
+    # path(
+    #     "leaflet/",
+    #     views.leaflet,
+    #     name="leaflet",
+    # ),
+    path(
         "<uuid:scenario_internal_id>/<str:model>/crud/",
         views.CrudView.as_view(),
         name="home",
