@@ -21,7 +21,6 @@ logger = logging.getLogger("django_ports")
 # Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
 class Scenario(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
-    # Scenario specific id, which stays the same over scenarios
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
@@ -111,6 +110,9 @@ class ScenarioItem(models.Model):
     def model_name(self):
         return self._meta.model_name
 
+    def verbose_name(self):
+        return self._meta.verbose_name
+
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
 def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
@@ -155,6 +157,9 @@ class DeletedItem(ScenarioItem):
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     pass
+
+    def __repr__(self):
+        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
 
 
 # Can an Area serve multiple purposes? (yes)

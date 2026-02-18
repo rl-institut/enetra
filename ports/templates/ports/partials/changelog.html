@@ -1,0 +1,35 @@
+{% comment %}
+First load is used to determine what to show in the changelog
+last_update is used to fetch data since the last update call
+{% endcomment %}
+{% if not first_load %}
+  {% now "c" as first_load %}
+{% endif %}
+{% now "c" as last_update %}
+<div class="changelog"
+  hx-get="{% url 'ports:get_updates' scenario.internal_id first_load last_update %}"
+  hx-trigger="click"
+  hx-include="#focusedForm"
+  hx-swap="outerHTML">
+<c-change-log-list>
+    <!-- hx-include='#focusedForm' -->
+{% if not changed_or_created_items %}
+  <c-change-log-item>
+      No updates at {% now "c" %}
+  </c-change-log-item>
+{% endif %}
+{% for change in changed_or_created_items %}
+  <c-change-log-item>
+      {% if change.changed %}
+      {{change.verbose_name}} instance {{change.id}} was updated at {{change.updated_at|date:"c"}}
+      {% else %}
+        {% if change.model_name == "deleteditem" %}
+          {{change.content_type}} instance {{change.id}} was deleted at {{change.created_at|date:"c"}}
+        {% else %}
+          {{change.verbose_name}} instance {{change.id}} was created at {{change.created_at|date:"c"}}
+        {% endif %}
+      {% endif %}
+  </c-change-log-item>
+{% endfor %}
+</c-change-log-list>
+</div>

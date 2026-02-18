@@ -1,30 +1,35 @@
 {% load partials %}
 
-<!-- TODO: Separate crud logic from refresh logic -->
-
-
-<div
-    hx-get='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
-    hx-swap="innerHTML"
-    hx-include="#form_{{form.prefix}}"
-    {% if form.instance.model_name == 'solar' %}
-    hx-trigger="area-changed from:body"
-    {% else %}
-    hx-trigger="none"
-    {% endif %}
-    hx-on::trigger="if (event.target == this) console.log('getting form {{form.instance.model_name}} because of change event')"
->
-
-{% partialdef crud-form-partial %}
+{% partialdef crud-form-partial inline %}
 <form id="form_{{form.prefix}}"
-    hx-post='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
+    x-data='{}'
+    class ='form-{{form.instance.internal_id}}'
+    hx-post='/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
     hx-select='#form_{{form.prefix}}'
     hx-target='this'
     hx-indicator='.submitbtn'
     hx-disabled-elt=".submitbtn"
-    hx-on::after-settle="if (event.target == this){
-        console.log(event); console.log('element-settled. Dispatching {{form.instance.model_name}}-changed event'); htmx.trigger(this, '{{form.instance.model_name}}-changed', {})}"
+    hx-on::after-swap="if (event.target == this){
+        console.log(event); console.log('element-swaped. Dispatching {{form.instance.model_name}}-changed event'); htmx.trigger(this, '{{form.instance.model_name}}-changed', {})}"
+    @focusin="document.getElementById('focusedForm').value=$el.id"
 >
+    {% comment %}
+      allow reuse of inner form with different surrounding divs
+    {% endcomment %}
+{% partialdef crud-form-partial-inner inline %}
+        {% comment %}
+         The blocked-external-update-indicator is set by htmx when somebody changed the item the user currently focuses.
+        Instead of refreshing the Form with a fresh version from the backend the user only gets a indication he should
+        refresh the data, so his current input is not lost
+        {% endcomment %}
+        <div class="blocked-external-update-indicator"></div>
+
+        {% comment %}
+         The external-update-indicator is set by htmx when somebody changed the item and its not focused
+        {% endcomment %}
+        {% if external_update %}
+        <div x-data="{show:true}" class="external-update-indicator" x-show='show' x-init="setTimeout(()=>show=false,5000)" >This item was just changed or created at {{form.instance.updated_at}} by User {{form.instance.update_user}}</div>
+        {% endif %}
     <!-- NOTE: Make sure to have form.media loaded! -->
     {% if success  %}
     <c-alert class="animate-in fade-in duration-500" variant="success" title="Erfolg">
@@ -41,23 +46,38 @@
 
     {% if form.instance.updated_at %}
     <div class="text-xs">
-        Zuletzt gespeichert :{{form.instance.updated_at}}
+        Zuletzt gespeichert von {{form.instance.update_user}} um {{form.instance.updated_at}}
     </div>
     {% endif %}
-    <div class="block w-1/2"
-
-    >
+    <div class="block w-1/2" >
         <div>
             <input class="hidden" name="prefix" value={{form.prefix}}>
             {% for field in form.visible_fields %}
-            {% if field.name == "geom" %}
-            <div class="flex h-60 w-50   bg-amber-200" >
-                {{ field }}
-            </div>
-            {% else %}
-            <c-tail-input :field="field">
-            </c-tail-input>
-            {% endif %}
+                {% if field.name == "geom" %}
+                    <div class="flex w-full"
+                    x-data='{isEditable:false}'>
+                    {% comment %}
+                     we use the alpineJs magicfunction nextTick, to dispatch the event after the
+                    class changes below are applied
+
+                    only set focused to false if the click is not on the map.
+                    focousout does not work since editing the map triggers it
+                    {% endcomment %}
+
+                    {% comment %}
+                      Elements which should be drawn should have a value of a geojson, have the class draw-map-element
+                    and the layer in the form of map-layer-NAME
+                    {% endcomment %}
+                    <c-tail-input class='w-full bg-red-200 map-draw-element ' :field="field"
+                    x-bind::class="{ 'map-layer-editable': isEditable, 'map-layer-{{form.instance.model_name}}': !isEditable }"
+                        @change="$dispatch('geom-changed');">
+                    </c-tail-input>
+                    <input @input="$nextTick(() => $dispatch('map-redraw'));" x-model='isEditable' type='checkbox' class='self-end w-14 h-14' name='editable'/>
+                    </div>
+                {% else %}
+                    <c-tail-input :field="field">
+                    </c-tail-input>
+                {% endif %}
 
             {% endfor %}
 
@@ -78,7 +98,7 @@
                     type='button'
                     hx-select="unset"
                     hx-include="closest form"
-                    hx-delete='{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
+                    hx-delete='/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
                     hx-target='closest form'
                     hx-indicator="this"
                     hx-disabled-elt="this"
@@ -89,7 +109,6 @@
 
             </div>
     </div>
+{% endpartialdef crud-form-partial-inner %}
 </form>
 {% endpartialdef crud-form-partial %}
-{% partial crud-form-partial %}
-  </div>
