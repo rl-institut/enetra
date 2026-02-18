@@ -4,29 +4,29 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="None">
         
         
-        <link rel="shortcut icon" href="img/favicon.ico">
-        <title>Enetra</title>
-        <link href="css/bootstrap.min.css" rel="stylesheet">
-        <link href="css/fontawesome.min.css" rel="stylesheet">
-        <link href="css/brands.min.css" rel="stylesheet">
-        <link href="css/solid.min.css" rel="stylesheet">
-        <link href="css/v4-font-face.min.css" rel="stylesheet">
-        <link href="css/base.css" rel="stylesheet">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Django-oemof - Enetra</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
         <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
         <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
-        <link href="assets/_mkdocstrings.css" rel="stylesheet">
-        <link href="css/version-select.css" rel="stylesheet">
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <link href="../css/version-select.css" rel="stylesheet">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
         <script>hljs.highlightAll();</script> 
     </head>
 
-    <body class="homepage">
+    <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href=".">Enetra</a>
+                <a class="navbar-brand" href="..">Enetra</a>
 
                 <!-- Expanded navigation -->
                 <div id="navbar-collapse" class="navbar-collapse collapse">
@@ -55,13 +55,12 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-bs-level="2"><a href="#commands" class="nav-link">Commands</a>
+            <li class="nav-item" data-bs-level="1"><a href="#django-oemof" class="nav-link">Django-oemof</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#optimierungsstatus" class="nav-link">Optimierungsstatus</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            
-            <li class="nav-item" data-bs-level="2"><a href="#project-layout" class="nav-link">Project layout</a>
-              <ul class="nav flex-column">
               </ul>
             </li>
         </ul>
@@ -69,21 +68,22 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<p>For full documentation visit <a href="https://www.mkdocs.org">mkdocs.org</a>.</p>
-<p>Further documentation will follow</p>
-<h2 id="commands">Commands</h2>
-<ul>
-<li><code>mkdocs new [dir-name]</code> - Create a new project.</li>
-<li><code>mkdocs serve</code> - Start the live-reloading docs server.</li>
-<li><code>mkdocs build</code> - Build the documentation site.</li>
-<li><code>mkdocs -h</code> - Print help message and exit.</li>
-</ul>
-<h2 id="project-layout">Project layout</h2>
-<pre><code>mkdocs.yml    # The configuration file.
-docs/
-    index.md  # The documentation homepage.
-    ...       # Other markdown pages, images and other files.
-</code></pre></div>
+<h1 id="django-oemof">Django-oemof</h1>
+<p>django-oemof ist ein wrapper für oemof, basierend auf oemof-tabular.</p>
+<blockquote>
+<p>Das Modellierungsframework oemof (Open Energy Modelling Framework) ist ein Werkzeug zur Modellierung und Analyse von Energiesystemen.</p>
+</blockquote>
+<p>oemof nutzt im hintergrund pyomo als wrapper für verschiedene Linear Programming (LP), Mixed Integer Programming (MIP) Solver, z.b. Gurobi oder den open source [cbc solver]https://github.com/coin-or/Cbc) .</p>
+<h2 id="optimierungsstatus">Optimierungsstatus</h2>
+<p>Die Lösung des aufgestellen Gleichungssystems wird durch einen Solver erreicht. Dieser nutzt dabei unterschiedliche Optimierungenstrategien.
+Der Solver versucht das Optimum zur Minimierung der Zielfunktion, sowie der Einhaltung der Randbedingungen zu finden.
+Dazu wird intern ein <a href="https://en.wikipedia.org/wiki/Dual_linear_program">duales problem </a>  aufgestellt.
+- der Wert der Zielfunktion
+- der Wert der primal infeasiblities
+- der Wert der dual infeasiblities</p>
+<p>Diese Werte verlaufen während der Optimierung nicht streng monoton. Desweiteren kann keine Aussage über den final erreichbaren Wert der Zielfunktion getroffen werden (oder?).
+Hieraus folgt das keine robuste Aussage über den Fortschritt während der Optimierung getroffen werden kann.</p>
+<p>Die Lösung des aufgestellen Gleichungssystems wird durch einen Solver erreicht. Dieser nutzt dabei unterschiedliche Optimierungenstrategien. Bei LP Problemen, werden 3 Ziele verfolgt.</p></div>
             </div>
         </div>
 
@@ -91,14 +91,14 @@ docs/
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="../js/bootstrap.bundle.min.js"></script>
         <script>
-            var base_url = ".",
+            var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="js/base.js"></script>
-        <script src="search/main.js"></script>
-        <script src="js/version-select.js"></script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+        <script src="../js/version-select.js"></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -163,8 +163,3 @@ docs/
 
     </body>
 </html>
-
-<!--
-MkDocs version : 1.6.1
-Build Date UTC : 2026-02-18 09:34:58.205939+00:00
--->
