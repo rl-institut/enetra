@@ -14,8 +14,11 @@ from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Value
-from django.forms import ModelForm, modelform_factory
-from django.http import Http404, HttpRequest, HttpResponseForbidden
+from django.forms import ModelForm
+from django.forms import modelform_factory
+from django.http import Http404
+from django.http import HttpRequest
+from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import render  # noqa
@@ -102,7 +105,10 @@ def render_oob_updates(
 ) -> str:
     """Render ScenarioItems via oob to inject updates into a response"""
     context = {}
-    for key, items in [("created_forms", created_items), ("updated_forms", update_items)]:
+    for key, items in [
+        ("created_forms", created_items),
+        ("updated_forms", update_items),
+    ]:
         forms: list[ModelForm[ScenarioItem]] = []
         for item in items:
             Form = ScenarioItemFormFactory(item._meta.model)
@@ -267,7 +273,8 @@ class CrudView(FormView):
             try:
                 if form.is_valid():
                     instance = self.Model.objects.filter(
-                        scenario=self.scenario, internal_id=form.cleaned_data["internal_id"]
+                        scenario=self.scenario,
+                        internal_id=form.cleaned_data["internal_id"],
                     ).first()
                     if instance:
                         form = self.Form(data=request.POST, instance=instance, prefix=prefix)
