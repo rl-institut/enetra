@@ -130,7 +130,6 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
         app_label=sender._meta.app_label, model=sender._meta.model_name
     )
     deleted_item.content_type = content_type
-    print(f"created a deleted item {str(instance.internal_id)[:5]}")
     deleted_item.save()
 
 

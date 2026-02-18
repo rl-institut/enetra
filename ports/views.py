@@ -14,11 +14,8 @@ from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Value
-from django.forms import ModelForm
-from django.forms import modelform_factory
-from django.http import Http404
-from django.http import HttpRequest
-from django.http import HttpResponseForbidden
+from django.forms import ModelForm, modelform_factory
+from django.http import Http404, HttpRequest, HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import render  # noqa
