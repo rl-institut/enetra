@@ -1,0 +1,23 @@
+{% extends "core/base.html" %}
+{% load partials %}
+{% comment %}
+  Based on
+  https://github.com/bmlancien/enetra-app-prototype/blob/main/app/page.tsx
+{% endcomment %}
+
+{% block header %}
+  <script>console.log('hello from header')</script>
+{% endblock header %}
+{% block sideBar %}
+  hello from Sidebar
+  {% lorem 20 w  %}
+{% endblock sideBar %}
+{% block sideBarFooter %}
+  hello from sideBarFooter
+  {% lorem 20 w  %}
+{% endblock sideBarFooter %}
+{% block mainContent %}
+  hello from mainContent
+
+  {% lorem 202 w  %}
+{% endblock mainContent %}

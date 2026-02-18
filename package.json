@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "build:css": "tailwindcss -i ./templates/css/input.css -o ./templates/css/output.css --watch"
+        "build:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
     },
     "devDependencies": {
         "tailwindcss": "^4.1.17",
