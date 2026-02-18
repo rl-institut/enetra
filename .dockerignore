@@ -7,4 +7,6 @@
 __pycache__
 *.pyc
 uploads/*
-media/
+media/*
+logs/*
+node_modules/*

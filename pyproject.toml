@@ -7,7 +7,7 @@ readme = "README.md"
 # Django omeof is old with some oemof packages depending on <3.12 for distutils
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    # celery is part of omeof tabular
+    # queues, caches and more with redis
     "redis>=6.2.0",
     # for charset detection of files
     "charset-normalizer>=3.4.2",
@@ -15,16 +15,33 @@ dependencies = [
     "django>=5.2.4",
     # improve updating of larger db queries by improving the queries
     "django-fast-update>=0.2.4",
-    # improved forms
-    "django-crispy-forms>=2.4",
     # nice progressbars in the terminal
     "tqdm>=4.67.1",
+    # oemof dependencies
     "oemof-network==0.5.0a1",
     "oemof-tabular",
     "celery>=5.1.2",
     # specified rev via git
     "django-oemof",
     "psycopg2>=2.9.10",
+    # Module for front end components
+    "django-cotton>=2.3.1",
+    # Automatic browser reload for better developing experience
+    "django-browser-reload>=1.21.0",
+    # Better hot reload with faster response and less cpu usage
+    "django-watchfiles>=1.4.0",
+    "django-stubs-ext>=5.2.2",
+    # Partial blocks for better modular templating
+    "django-template-partials>=25.2",
+    # For shell plus
+    "django-extensions>=4.1",
+    # Object level permission framework
+    "django-guardian>=3.2.0",
+    # Pretty AdminInterface
+    "django-unfold>=0.71.0",
+    "debugpy>=1.8.17",
+    "gunicorn>=23.0.0",
+    "django-widget-tweaks>=1.5.0",
 ]
 [dependency-groups]
 dev = [

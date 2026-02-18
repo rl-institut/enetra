@@ -4,7 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-
+# TODO: Replace with gunicorn, collect static etc
 python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000

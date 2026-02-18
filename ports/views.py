@@ -1,16 +1,154 @@
 import json
+import logging
+import time
+from uuid import uuid4
 
 import numpy as np
+from django import forms
+from django.apps.registry import apps
+from django.contrib.gis.forms import OpenLayersWidget
+from django.forms import modelform_factory
+from django.http import Http404
+from django.http import HttpRequest
 from django.http.response import HttpResponse
 from django.shortcuts import render  # noqa
+from django.views.generic import FormView
+from django_oemof import models as oemof_models
+from django_oemof import simulation
+
+from .models import Area
+from .models import Scenario
+from .models import ScenarioItem
+from .models import Solar
+
+logger = logging.getLogger("django-ports")
+
+
+def home(request):
+    s, _ = Scenario.objects.get_or_create(name="Test Scenario")
+    a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
+    a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
+    context = {"scenario": s}
+    Form = ScenarioItemFormFactory(Solar)
+    context["solars"] = [
+        Form(instance=s, prefix=get_pre(s)) for s in Solar.objects.filter(scenario=s)
+    ]
+
+    Form = ScenarioItemFormFactory(Area)
+    context["areas"] = [
+        Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
+    ]
+    return render(request, "ports/index.html", context)
+
+
+def get_pre(instance_or_uuid: "ScenarioItem | uuid4"):
+    # When cruding single instances, there is no need for a prefix
+    # The map widget gets inserted by id, so this is needed
+    if isinstance(instance_or_uuid, ScenarioItem):
+        instance_or_uuid = instance_or_uuid.internal_id
+    return str(instance_or_uuid)[:5]
+
+
+def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
+    exclude = ["manager", "scenario"]
+    if ItemModel == Area:
+        return modelform_factory(
+            ItemModel,
+            exclude=exclude,
+            widgets={
+                "internal_id": forms.HiddenInput(),
+                "geom": OpenLayersWidget(attrs={}),
+                "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+            },
+        )
+    return modelform_factory(
+        ItemModel,
+        exclude=exclude,
+        widgets={
+            "internal_id": forms.HiddenInput(),
+            "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+            "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+        },
+    )
+
+
+class CrudView(FormView):
+    template = "ports/partials/create_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        # TODO: Add authorization
+        time.sleep(0.1)
+        self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
+        model = kwargs["model"]
+        self.Model = apps.get_model("ports", model)
+        self.Form = ScenarioItemFormFactory(self.Model)
+        assert ScenarioItem in self.Model.mro()
+        self.context = {"scenario": self.scenario}
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        time.sleep(0.1)
+
+        if self.Model == Solar or self.Model == Area:
+            prefix = request.GET.get("prefix")
+            if prefix:
+                form = self.Form(data=request.GET, prefix=prefix)
+            else:
+                _id = uuid4()
+                form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
+            self.context["form"] = form
+            return render(self.request, self.template, self.context)
+        raise Http404("This model does not exist")
+
+    def delete(self, request, *args, **kwargs):
+        time.sleep(0.1)
+        # NOTE: data is send as hx-include, so not part of POST
+        prefix = request.GET["prefix"]
+        form = self.Form(data=request.GET, prefix=prefix)
+        form.is_valid()
+        out = self.Model.objects.filter(
+            scenario=self.scenario, internal_id=form.cleaned_data["internal_id"]
+        ).delete()
+        # TODO: Style a response which shows deletion
+        return HttpResponse(out)
+
+    def post(self, request, *args, **kwargs):
+        time.sleep(0.1)
+        prefix = request.POST["prefix"]
+        if self.Model == Solar or self.Model == Area:
+            form = self.Form(data=request.POST, prefix=prefix)
+            if form.is_valid():
+                instance = self.Model.objects.filter(
+                    scenario=self.scenario, internal_id=form.cleaned_data["internal_id"]
+                ).first()
+                if instance:
+                    form = self.Form(data=request.POST, instance=instance, prefix=prefix)
+                    form.save()
+                else:
+                    # Patch in data which was not part of the form but is part of the model
+                    obj = form.save(commit=False)
+                    obj.scenario = self.scenario
+                    obj.save()
+                self.context["success"] = "Erfolgreich gespeichert"
+            else:
+                self.context["errors"] = ["An error occured"]
+
+            self.context["form"] = form
+            return render(self.request, self.template, self.context)
+        raise Http404("This model does not exist")
 
 
 # Create your views here.
-def testview(request):
+def testview(request: HttpRequest):
     # Example with some hooks
-    from django_oemof import simulation
+    logger.info(request.GET.get("scenario"))
 
-    OEMOF_DATAPACKAGE = "dispatch"
+    OEMOF_DATAPACKAGE = request.GET.get("scenario") if request.GET.get("scenario") else "dispatch"
+    # working scenarios
+    # dispatch
+    # invest
+    # emission_constraint
 
     # Hook functions must be defined beforehand
     # ph = hooks.Hook(OEMOF_DATAPACKAGE, test_parameter_hook)
@@ -22,16 +160,15 @@ def testview(request):
     # hooks.register_hook(hook_type=hooks.HookType.MODEL, hook=mh)
     #
     parameters = {}
+    oemof_models.Simulation.objects.filter(scenario=OEMOF_DATAPACKAGE).delete()
     simulation_id = simulation.simulate_scenario(
-        scenario=OEMOF_DATAPACKAGE,
-        parameters=parameters,
+        scenario=OEMOF_DATAPACKAGE, parameters=parameters, lp_file="lastCBCModel.lp"
     )
-    print("Simulation ID:", simulation_id)
+    logger.info("Simulation ID:", simulation_id)
 
     # Restore oemof results from DB
-    from django_oemof import models
 
-    sim = models.Simulation.objects.get(id=1)
+    sim = oemof_models.Simulation.objects.get(id=simulation_id)
     inputs, outputs = sim.dataset.restore_results()
     data = {
         "result": {

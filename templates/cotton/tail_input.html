@@ -1,0 +1,39 @@
+{% load widget_tweaks %}
+{% comment %}
+helper to return a tailwind input depending on inputtype
+{% endcomment %}
+<c-vars label="" label_position="top" field></c-vars>
+{% with field.field.widget.input_type as input_type %}
+<div class="{% if label_position == 'top' %}block{% else %}flex{% endif %}">
+  <label for="id_num" class="block text-gray-700 text-sm font-bold mb-2">
+    {{field.label }}
+  </label>
+  {% if input_type == "number" %}
+{{ field|add_class:"numberinput border border-gray-300 appearance-none rounded-lg block text-gray-700 py-2 bg-white w-full focus:outline-none leading-normal px-4" }}
+{% elif input_type == "select" %}
+  <div class="mb-3">
+    <div class="relative">
+      {{field |add_class:"bg-white focus:outline-none border border-gray-300 rounded-lg py-2 px-4 block w-full appearance-none leading-normal text-gray-700" }}
+      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"></path></svg>
+      </div>
+    </div>
+  </div>
+  {% elif input_type == "radio" %}
+  <div class="p-4 mb-4 text-sm text-fg-brand-strong rounded-base bg-brand-softer" role="alert">
+ TODO needs more implementation
+    <label for="{{field.auto_id}}" class="block text-gray-700 mr-3">
+      <input type="radio" class="" name="{{field.name}}" id="id_input_mode_1" value="">
+    </label>
+    <label for="id_input_mode_2" class="block text-gray-700 mr-3">
+      <input type="radio" class="" name="{{field.name}}" id="id_input_mode_2" value="">
+    </label>
+  </div>
+{% comment %}
+ For textinputs or all other kinds
+{% endcomment %}
+{% else %}
+{{ field|add_class:"textinput bg-white py-2 text-gray-700 leading-normal rounded-lg px-4 w-full focus:outline-none border-gray-300 border block appearance-none" }}
+  {% endif %}
+</div>
+{% endwith %}

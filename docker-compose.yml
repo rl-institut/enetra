@@ -12,10 +12,10 @@ services:
       dockerfile: local.Dockerfile
     image: django-web:latest
     command:
-      /start
+      /start_dev
     volumes:
-      - /app/.venv
-      - .:/app:z
+      # - /app/.venv
+      - .:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -23,6 +23,7 @@ services:
     environment:
       CELERY_BROKER_URL: redis://my-docker-redis:6379/0
       DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
+      DJANGO_ADMIN_PASSWORD: admin
       DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
       DJANGO_LOCAL_DEVELOPMENT: True
       DEBUG: True
@@ -34,15 +35,15 @@ services:
     command:
       /start_celery
     volumes:
-      - /app/.venv
-      - .:/app:z
+      # - /app/.venv
+      - .:/app
     depends_on:
       - my-docker-postgres
       - my-docker-redis
       - web
     environment:
       CELERY_BROKER_URL: redis://my-docker-redis:6379/0
-      DATABASE_URL: post:is://myprojectuser:1234@my-docker-postgres:5432/mydb
+      DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
       DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
       DJANGO_LOCAL_DEVELOPMENT: True
       DEBUG: True
@@ -61,7 +62,7 @@ services:
     # DATABASE_URL=postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
     image: postgis/postgis:16-3.5-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - enetra_compose_data:/var/lib/postgresql/data/
     environment:
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: mydb
@@ -70,4 +71,4 @@ services:
 # Note that after creating a volume, the above info cannot be changed. The volume has to be deleted, or a different volume
 # name has to be used
 volumes:
-  postgres_data:
+  enetra_compose_data:

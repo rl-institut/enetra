@@ -1,0 +1,75 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<!-- This is a placeholder to showcase some django-cotton functionality with shadcn components -->
+  <header>
+    Hello World!
+  </header>
+  {% if user.is_authenticated %}
+    <form action="{% url 'logout' %}" method="post">
+      {% csrf_token %}
+      <!-- button/index.html -->
+      <c-button variant="default" type="submit">Logout</c-button>
+    </form>
+  {% else %}
+      <c-button variant="default" type="submit">
+    <a href="{% url 'login' %}">Login</a></c-button>
+  {% endif %}
+
+
+<c-button variant="default" type="submit">Im a button</c-button>
+  <!-- accordion/index.html -->
+<c-accordion type='single' collapsible='true'>
+    <c-accordion.item value='item-1'>
+        <c-accordion.trigger value='item-1'>Is it for Django?</c-accordion.trigger>
+        <c-accordion.content value='item-1'>
+            Yes. All components are compatible with Django.
+        </c-accordion.content>
+    </c-accordion.item>
+
+    <c-accordion.item value='item-2'>
+        <c-accordion.trigger value='item-2'>Is it for Django?</c-accordion.trigger>
+        <c-accordion.content value='item-2'>
+      Some component
+        </c-accordion.content>
+    </c-accordion.item>
+</c-accordion>
+<h1 class="text-2xl font-bold underline ">Dynamic Design using HTMX</h1>
+<p>Try adding a Area below and save it. The Solaranlagen will be refetched automatically and the just created area can be reselected without a full page reload. Deleting an area which is selected on a solaranlage will automatically remove it</p>
+{% for form  in solars %}
+  {% include "ports/partials/create_form.html" %}
+{% endfor %}
+{% block header %}
+{% for area in  areas %}
+{% if forloop.first %}
+{{area.media}}
+{% endif %}
+{% endfor %}
+{% endblock header %}
+
+<c-button variant="outline"
+  hx-get="{{scenario.internal_id}}/solar/crud/"
+  hx-target="this"
+  hx-swap="beforebegin"
+
+>Add a solar instance
+</c-button>
+
+
+<h1 class="text-2xl font-bold underline">Areas</h1>
+{% for form in areas %}
+  {% include "ports/partials/create_form.html"%}
+{% endfor %}
+
+
+<c-button variant="outline"
+  hx-get="{{scenario.internal_id}}/area/crud/"
+  hx-target="this"
+  hx-swap="beforebegin"
+
+>Add a area instance
+</c-button>
+
+
+
+{% endblock content %}

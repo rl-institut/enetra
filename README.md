@@ -1,3 +1,55 @@
+## Developer Notes
+The site uses tailwindcss and other npm packages to install run
+```bash
+npm ci
+```
+
+to update tailwind dynamically during development
+```
+npm run build:css
+```
+this watches the input.css files and html files inside a 'templates' folder for changes and updates the output.css
+
+html can be linted using djlint. djlint is automatically installed with uv. The format settings are defined in the pyproject.toml
+To reformat a file run
+```
+uv run djlint filepath --reformat
+```
+Because of some dependencies issues the djlint version is not up to date. To use a current version run
+```
+uvx djlint filepath --reformat
+```
+to make use of uv tools
+
+enetra uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
+> shadcn_django provides a CLI tool that allows you to initialize and add shadcn-style components to your Django templates.
+
+## Tech Stack
+### Django
+This site make use of the django package ecosystem and uses the following packages.
+ - django-unfold for a modern django-admin
+ - django-guardian for instance based permissions
+ - django-template-partials for partial rendering in combination with htmx
+ - django-cotton for component driven development
+
+### Frontend
+ - tailwindcss for utility based styling
+ - htmx for html driven development
+ - alpinejs for basic local scripting
+ - shadcn-django
+
+### Backend
+ - celery as asynchronous worker of heavy tasks
+ - redis as backend for caches, celery and possibly pubsub
+ - gunicorn as wsgi
+ - docker and docker-compose for easy setup of local development or local hosting
+
+### Linting
+
+### Documentation
+ - mike and mkdocs for documentation
+
+
 ## Installation
 
 1. Clone this git repository (or [download a specific release](https://github.com/rl-institut/enetra/releases))
@@ -71,7 +123,8 @@
         as linter
         `ruff check`
         as formatter (check flag to disable auto formatting)
-        ruff format --check
+        `ruff format --check`
+        if the commmands are not recognized remember to activate the .venv or run with 'uv run'
 
     7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
