@@ -1,0 +1,86 @@
+{% load i18n %}
+{% load static %}
+
+<div x-data='{scenarioState: "status-quo",
+  isStatusQuo: "scenarioState" === "status-quo"}'>
+<div class='border-[#e2e8f0] border-b border-r border-solid content-stretch flex flex-col gap-[16px] items-start px-[16px] py-[24px] relative shrink-0 w-full {{bg_color}}'>
+      <div class="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="Port Selection">
+        <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
+          <div class="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <p class="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative shrink-0 text-[#0e7490] text-[16px]">
+            {{project_name|default:"Westhafen"}}
+            </p>
+            <div class="overflow-clip relative shrink-0 size-[16px]" data-name="Info Icon">
+              <div class="absolute contents inset-0" data-name="Group">
+                <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage}} />
+              </div>
+              <div class="absolute contents inset-[41.68%_44.87%_26.99%_44.93%]" data-name="Group">
+                <div class="absolute inset-[41.68%_44.87%_26.99%_44.93%]" data-name="Group">
+                <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage1}} />
+                </div>
+              </div>
+              <div class="absolute contents inset-[26.21%_44.67%_64.38%_44.6%]" data-name="Group">
+                <div class="absolute inset-[26.21%_44.67%_64.38%_44.6%]" data-name="Group">
+                  <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage2}} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            command="show-modal" commandfor="scenario-create-modal"
+            onClick="console.log('Clicking/Callback handleScenarioToggle not implemented yet')"
+          class='{{buttonBgColor}} content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 border-0 cursor-pointer transition-colors'
+          >
+            <p class="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] text-right">
+            {% translate '+ Szenario' %}
+            </p>
+          </button>
+
+      {% include 'ports/partials/create_scenario_modal.html' with id="scenario-create-modal" %}
+        </div>
+        <div
+        x-data='{show:false,
+        selected: `{{selectedScenario|default:"status_quo"}}`
+        }'
+        class="relative w-full">
+        <div x-text='selected'></div>
+          <button
+            @click='show=!show'
+            @click.outside='show=false'
+            class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px] relative rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors"
+          >
+            <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
+            {{dropdownLabel|default:"Ist-Zustand"}}
+            </p>
+            <div
+            :class="show && 'rotate-180'"
+            class='relative shrink-0 size-[16px] transition-transform'>
+          <img alt="" class="block max-w-none size-full" src={{scenarioImgFrame}} />
+            </div>
+          </button>
+            <div x-show="show" class="absolute top-full left-0 right-0 mt-[4px] bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50">
+        {% comment %}
+          loop over scenarios
+        {% endcomment %}
+              <button
+                onClick='console.log("handleSelectOption`status-quo` not implemented")'
+            class='w-full text-left px-[16px] py-[12px] text-[14px] hover:bg-[#f8fafc] transition-colors border-b border-[#e2e8f0] last:border-b-0'
+            :class="selected=='{{scenario.id|default:"status_quo"}}' ? 'bg-[#eaf2fe] font-semibold' : 'text-[#1e293b]'"
+              >
+                Ist-Zustand
+              </button>
+              <button
+                onClick='console.log("{() => handleSelectOption(\"scenario\")}")'
+            :class="selected=='{{scenario.id|default:"scenario"}}' ? 'bg-[#eaf2fe] font-semibold' : 'text-[#1e293b] '"
+                class='w-full text-left px-[16px] py-[12px] text-[14px]
+                transition-colors hover:bg-[#f8fafc]'
+              >
+                Szenario 1
+              </button>
+            </div>
+        </div>
+      </div>
+    <div class='{{borderLeftColor}} absolute h-[134px] left-0 top-0 w-[4px]'>
+    </div>
+    </div>
+    </div>

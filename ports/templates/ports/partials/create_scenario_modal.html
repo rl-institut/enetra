@@ -1,0 +1,89 @@
+{% load i18n %}
+{% comment %}
+Changed implementation to using html native modal. This automatically disables the whole page
+and allows easy interaction. For now the Modal does not delete input when the modal is canceled
+{% endcomment %}
+<dialog id="{{id}}"
+        closedby='any'
+        class="
+  {% comment %}
+    to center the dialog
+  {% endcomment %}
+  fixed inset-0
+  bg-transparent
+  p-0
+  m-auto
+  {% comment %}
+  to style the backdrop
+  {% endcomment %}
+  backdrop:bg-black/80
+  ">
+
+    <div class="bg-white overflow-hiddden  content-stretch items-start p-[24px] relative rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] w-full max-w-[500px]">
+      <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
+        <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[20px]">
+          {% translate 'Szenario erstellen' %}
+        </p>
+      <button  commandfor="{{id}}" command="close"
+                class="text-[16px] relative shrink-0 size-[24px] hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
+          <img alt="close"
+               class="block max-w-none size-full"
+               src="{{ imgMaterialSymbolsClose }}">
+        </button>
+      </div>
+
+    <div class="bg-[#f8fafc] content-stretch flex items-start p-[16px] relative shrink-0 w-full rounded-[8px]">
+      <div class="flex-[1_0_0] font-['Inter:Regular',sans-serif] font-normal leading-[0] min-h-px min-w-px not-italic relative text-[#1e293b] text-[14px] ">
+        <p class="leading-[23px] mb-0">{% translate 'Erstellen Sie ein Szenario, um Ihre Energiezukunft zu planen:' %}</p>
+        <ul class="list-disc mt-[8px]">
+          <li class="mb-0 ms-[21px]">
+            <span class="leading-[23px]">{% translate 'Neue Technologien hinzufügen (PV, Wärmepumpen, etc.)' %}</span>
+          </li>
+          <li class="mb-0 ms-[21px]">
+            <span class="leading-[23px]">{% translate 'Verschiedene Varianten vergleichen' %}</span>
+          </li>
+          <li class="ms-[21px]">
+            <span class="leading-[23px]">{% translate 'Der IST-Zustand bleibt dabei unverändert' %}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <!-- {/* Name Field */} -->
+    <div class="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] w-full ">
+        {% translate 'Name' %}
+      </p>
+      <input type="text" value='{{scenarioName|default:"Szenario"}}' onChange='console.log("{(e) => setScenarioName(e.target.value)} not implemented")' class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center px-[16px] py-[12px] relative rounded-[3px] shrink-0 w-full text-[#1e293b] text-[14px] font-['Inter:Regular',sans-serif] outline-none" />
+    </div>
+    <!-- {/* Description Field */} -->
+    <div class="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] w-full ">
+        Beschreibung
+      </p>
+      <textarea value='{{scenarioDescription}}' onChange='console.log("{(e) => setScenarioDescription(e.target.value)} not implemented")' placeholder="Sie können das Szenario beschreiben" class="bg-white border border-[#94a3b8] border-solid content-stretch flex h-[88px] items-start px-[16px] py-[12px] relative rounded-[3px] shrink-0 w-full text-[#1e293b] text-[14px] font-['Inter:Regular',sans-serif] outline-none resize-none placeholder-[#9dacc5]"></textarea>
+    </div>
+    <!-- {/* Buttons */} -->
+    <div class="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+      <button onClick='console.log("{handleConfirm} not implemented")'
+              class="bg-[#0e7490] content-stretch flex items-center justify-center px-[16px] py-[12px] relative rounded-[100px] shrink-0 w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors">
+        <p class="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[16px] text-white">
+          <!-- TODO: Handle Creation -->
+          {% translate 'Szenario erstellen' %}
+        </p>
+      </button>
+      <button commandfor="{{id}}" command="close" class="bg-white content-stretch flex gap-[8px] items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 w-full border border-[#cbd5e1] border-solid cursor-pointer hover:bg-[#f8fafc] transition-colors">
+        <svg class="w-[16px] h-[16px]"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="5">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
+          {% translate 'Abbrechen' %}
+        </p>
+      </button>
+
+    </div>
+    </div>
+</dialog>

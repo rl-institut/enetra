@@ -9,15 +9,19 @@
   <script>console.log('hello from header')</script>
 {% endblock header %}
 {% block sideBar %}
+  <div>
+    {% include "ports/partials/scenario_select.html" %}
+    <div>
   hello from sideBar
-  {% lorem 20 w  %}
+  </div>
+  </div>
+  {% lorem 2 w  %}
 {% endblock sideBar %}
 {% block sideBarFooter %}
   hello from sideBarFooter
-  {% lorem 20 w  %}
+  {% lorem 2 w  %}
 {% endblock sideBarFooter %}
-{% block mainContent %}
+{% block mainContent %}jj
   hello from mainContent
-
-  {% lorem 202 w  %}
+  {% lorem 5 w  %}
 {% endblock mainContent %}

@@ -48,7 +48,7 @@ def get_authentification(
 
 def home(request):
     context = {}
-    return render(request, "ports/partials/tool_base.html", context)
+    return render(request, "ports/tool_base.html", context)
 
 
 def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):

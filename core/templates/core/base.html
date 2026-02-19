@@ -17,10 +17,10 @@
     <!-- This makes htmx use outerHTML by default -->
     <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML"}'>
   </head>
-  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' >
+  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="font-sans antialiased">
     <div class="bg-white flex flex-col h-screen overflow-hidden">
       {% comment %}
-            {/* Top Navigation Bar */}
+      {/* Top Navigation Bar */}
       {% endcomment %}
       {% block navbar %}
       {% include 'core/navbar.html' %}
