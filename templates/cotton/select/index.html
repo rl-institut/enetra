@@ -1,4 +1,4 @@
-<c-vars image debug=True></c-vars>
+<c-vars image debugWidget=False></c-vars>
 <div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
      class="relative w-full">
   <button @click='show=!show'
@@ -20,7 +20,7 @@
     {% endcomment %}
     {{ slot }}
   </div>
-   <input class="border {% if not debug %}hidden{% endif %}"
+   <input class="border {% if not debugWidget == True%}hidden{% endif %}"
          x-effect='selectedValue; console.log("selectedValue changed. We should dispatch an event here"); $dispatch("onchange")'
          name='{{inputName}}'
          value='{{selectedValue}}'
