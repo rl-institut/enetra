@@ -1,0 +1,9 @@
+<div class="tab-panel" :id="$id('tab-panel')"
+    role="tabpanel"
+    :aria-labelledby="await $nextTick(); return 'tab-' + $el.id"}
+    x-show="$el == activeTab"
+    x-cloak
+    >
+    {{slot}}
+    <span class="tab-label hidden">{{ label|default:"Use a slot 'label' to pass a label to the tab" }}</span>
+  </div>

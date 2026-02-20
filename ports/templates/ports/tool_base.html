@@ -11,6 +11,18 @@
 {% block sideBar %}
   <div>
     {% include "ports/partials/scenario_select.html" %}
+    <div class="flex-1 overflow-auto p-[16px]">
+     <c-tabs.index variant='lined'>
+        <c-tabs.tab>
+          <c-slot name='label'>Foobar </c-slot>
+          Im the content
+        </c-tabs.tab>
+        <c-tabs.tab>
+          <c-slot name='label'>basdfg </c-slot>
+          Im the bonasdflkjg
+        </c-tabs.tab>
+      </c-tabs.index>
+      </div
     <div>
   hello from sideBar
   </div>

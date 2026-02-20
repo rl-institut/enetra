@@ -58,9 +58,11 @@
         {% endcomment %}
         <div class="flex-1 bg-[#f8fafc] overflow-y-auto">
             {% for message in messages %}{{ message }}{% endfor %}
-          <div id="content" class="bg-red-500">
-            {% block mainContent %} This is the mainContent {% lorem 500 w %} {# this will be replaced #}{% endblock %}
+            {% block mainContent %}
+          <div id="content" class="bg-red-200">
+            This is the mainContent {% lorem 500 w %} {# this will be replaced #}
           </div>
+            {% endblock %}
         </div>
       </div>
     </div>

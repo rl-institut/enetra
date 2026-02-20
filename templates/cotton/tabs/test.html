@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+
+{% load static %}
+
+{% block header %}
+{% endblock header %}
+{% block sideBar %}
+{% endblock sideBar %}
+{% block sideBarFooter %}
+{% endblock sideBarFooter %}
+{% block mainContent %}
+     <c-tabs.index>
+        <c-tabs.tab>
+          <c-slot name='label'>Foobar </c-slot>
+          Im the content
+        </c-tabs.tab>
+        <c-tabs.tab>
+          <c-slot name='label'>basdfg </c-slot>
+          Im the bonasdflkjg
+        </c-tabs.tab>
+      </c-tabs.index>
+{% endblock mainContent %}
