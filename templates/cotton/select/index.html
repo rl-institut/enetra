@@ -1,0 +1,28 @@
+<c-vars image debug=True></c-vars>
+<div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
+     class="relative w-full">
+  <button @click='show=!show'
+          @click.outside='show=false'
+          class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px] relative rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors">
+    <p x-html="selectedElement.innerHTML"
+       class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
+    </p>
+    <div :class="show && 'rotate-180'"
+         class='relative shrink-0 size-[16px] transition-transform'>
+      <img alt="" class="block max-w-none size-full" src={{ image }} />
+    </div>
+  </button>
+  <div x-show="show"
+       x-cloak
+       class="absolute top-full left-0 right-0 mt-[4px] bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50">
+    {% comment %}
+     insert multiple select/button  here
+    {% endcomment %}
+    {{ slot }}
+  </div>
+   <input class="border {% if not debug %}hidden{% endif %}"
+         x-effect='selectedValue; console.log("selectedValue changed. We should dispatch an event here"); $dispatch("onchange")'
+         name='{{inputName}}'
+         value='{{selectedValue}}'
+         x-model='selectedValue'>
+</div>

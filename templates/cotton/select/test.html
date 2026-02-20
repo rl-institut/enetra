@@ -1,0 +1,33 @@
+{% extends "core/base.html" %}
+
+{% load static %}
+
+{% block header %}
+{% endblock header %}
+{% block sideBar %}
+{% endblock sideBar %}
+{% block sideBarFooter %}
+{% endblock sideBarFooter %}
+{% block mainContent %}
+  <div class="bg-white">
+    <c-select selectedValue='foo' inputName="myInput" debug=True>
+    This is a debugging helper
+    <div x-text='show + " is the state of the dropdown"'></div>
+    <div x-text='selectedValue + " is selected"'></div>
+    <div x-text='selectedElement+ " is the element"'></div>
+    <c-select.button selectValue='foo'>
+    im the foo label
+    </c-select.button>
+    <c-select.button selectValue='bar'>
+    im the bar label i can even include svgs
+    <img src="{% static 'success.svg' %}" alt="" class="inline w-12 h-12">
+    <div class='bg-red-200'>
+      or nested divs
+      <div></div>
+    </div>
+    </c-select.button>
+    </c-select>
+  </div>
+  <!-- NOTE: select/index.html uses x-html which doesnt escape HTML -->
+  <!-- If unsafe content is passed to the select using x-text would not help, since the unsafe content is already inside the button -->
+{% endblock mainContent %}
