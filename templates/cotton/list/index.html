@@ -1,0 +1,24 @@
+<c-vars count title description></c-vars>
+  <div class="bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full"
+      x-data='{isBulkMode: false}'
+>
+        <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
+          <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[0] not-italic relative shrink-0 text-[#1e293b] text-[0px]" >
+      <span class="leading-[normal] text-[14px]">{{title}}</span>
+      <span class="leading-[normal] text-[13px]">&nbsp</span>
+      <span class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[13px]">({{count}})</span>
+          </p>
+          <button
+      @click='isBulkMode = !isBulkMode'
+            class="bg-[#f8fafc] content-stretch flex items-center justify-center px-[12px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[#e2e8f0] transition-colors"
+          >
+            <p class="font-['Inter:Medium',sans-serif] font-medium leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[12px] text-right"
+          x-text=" isBulkMode ? 'Fertig' : 'Mehrauswahl'" >
+            </p>
+          </button>
+        </div>
+        <div class="border-[#cbd5e1] border-b border-solid content-stretch flex flex-col items-start pb-px relative rounded-[8px] shrink-0 w-full">
+
+    {{slot}}
+      </div>
+      </div>
