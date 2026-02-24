@@ -42,13 +42,13 @@
   <div>hello sideBarFooter from tool_base</div>
 {% endblock sideBarFooter %}
 {% block mainContent %}
-  <div>
+  <c-detail-sidebar open class=''>
+  {% include "ports/partials/detail_sidebar_main.html" %}
+
 Here are some icons to use
-  <div class="w-5 h-5 text-blue-500 bg-yellow-400">
-    <c-icon.template />
-  </div>
-  <div class="w-5 h-5 text-red-400">
-  <c-icon.info />
-  </div>
+    <c-icon.template class="w-5 h-5 text-blue-500 bg-yellow-400"/>
+  <c-icon.info class="w-5 h-5 text-red-400"/>
+  </c-detail-sidebar>
+  <div>
   </div>
 {% endblock mainContent %}

@@ -1,9 +1,9 @@
-<c-vars image debugWidget=False></c-vars>
+<c-vars image debugWidget=False classButton></c-vars>
 <div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
      class="relative w-full">
   <button @click='show=!show'
           @click.outside='show=false'
-          class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px] relative rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors">
+      class="{{classButton}} bg-white border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px] relative rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors">
     <p x-html="selectedElement.innerHTML"
        class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
     </p>
