@@ -1,7 +1,7 @@
 <c-vars variant debugWidget=False></c-vars>
 <div x-data=' {
   activeTab: $el.querySelector("{{ activeTabSelector|default:".tab-panel" }}"),
-  tabs: $el.querySelectorAll(".tab-panel"),
+  tabs: $el.querySelectorAll(":scope > .tab-panel"),
   }'
      class='w-full'>
   <div class=" flex gap-[8px] items-end mb-[24px] justify-between {% if variant == 'lined' %}border-b border-[#e2e8f0]{% endif %} ">
