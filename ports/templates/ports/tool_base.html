@@ -20,14 +20,16 @@
     </div>
     <div class="flex-1 overflow-auto p-[16px]">
       <c-tabs.index variant='lined'>
+
+      <c-tabs.tab>
+      <c-slot name='label'>Komponenten </c-slot>
+          {% include 'ports/partials/komponenten_tab_panel.html' %}
+      </c-tabs.tab>
       <c-tabs.tab>
       <c-slot name='label'>Flächen </c-slot>
       {% include 'ports/partials/flaechen_tab_panel.html' %}
       </c-tabs.tab>
-      <c-tabs.tab>
-      <c-slot name='label'>Komponenten </c-slot>
-      Im the Komponente
-      </c-tabs.tab>
+
       <c-tabs.tab>
       <c-slot name='label'>Allg.Rand-bedingungen</c-slot>
           Im the allg Randbedin
