@@ -1,27 +1,32 @@
 <!-- Sidebar in the mainContent block -->
-      <!-- {/* Header */} TODO: make component-->
-      <div class="sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px]">
-        <div class="flex items-center justify-between gap-[8px] mb-[8px]">
-          <div class="flex items-center gap-[8px] flex-1">
-          <div class="flex-shrink-0 text-[#a78bfa] w-12 h-12"><c-icon.building /></div>
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">
-                Gebäudefläche oder Freifläche oder ItemName
-            </h2>
-            <button class="flex-shrink-0 hover:opacity-60 transition-opacity">
-            <c-icon.three-dots />
-            </button>
-          </div>
-          <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
-          <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
-            <svg class="w-[24px] h-[24px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-       Show if itemid is Lagerhalle Gebaude or Freifläche
-          <div class="mt-[12px]">
-            <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
-              {% comment %}
+<!-- {/* Header */} TODO: make component-->
+<details-sidebar-main-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+  <div class="flex items-center justify-between gap-[8px] mb-[8px]">
+    <div class="flex items-center gap-[8px] flex-1">
+      <div class="flex-shrink-0 text-[#a78bfa] w-12 h-12">
+        <c-icon.building />
+      </div>
+      <h2 class="font-semibold text-[20px] text-[#1e293b]">Gebäudefläche oder Freifläche oder ItemName</h2>
+      <button class="flex-shrink-0 hover:opacity-60 transition-opacity">
+        <c-icon.three-dots />
+      </button>
+    </div>
+    <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
+    <button @click="isOpen=false"
+            class="flex-shrink-0 hover:opacity-60 transition-opacity">
+      <svg class="w-[24px] h-[24px]"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           strokeWidth="2">
+        <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+      </svg>
+    </button>
+  </div>
+  Show if itemid is Lagerhalle Gebaude or Freifläche
+  <div class="mt-[12px]">
+    <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
+    {% comment %}
               @Bryan what is the logic for readonly?
 
 readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('freiflache-custom-')}
@@ -29,256 +34,125 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
             does the list have to update simultaneous?
             ScenarioItems can communicate via events. by making the events model attributes, we can ensure communication works as intended
             do we need save events?
-              {% endcomment %}
-            <input
-              x-data
-              type="text"
-              value='{{item.value|default:"MISSING VALUE"}}'
-              @input.debounce.100ms="$dispatch(`{{itemchange_event|default:'itemChanged'}}`, {value: $el.value}); console.log('value change event emitted')"
-              class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-              placeholder="Name eingeben"
-            />
-          </div>
-          Show if the item has no Fläche in the map yet
-
-          <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
-            <p class="text-[13px] text-[#64748b] flex-1">
-                 'Es wurde noch keine Freifläche auf der Karte gezeichnet.'
+    {% endcomment %}
+    <input x-data
+           type="text"
+           value='{{ item.value|default:"MISSING VALUE" }}'
+           @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value}); console.log('value change event emitted')"
+           class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
+           placeholder="Name eingeben" />
+  </div>
+  Show if the item has no Fläche in the map yet
+  <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
+    <p class="text-[13px] text-[#64748b] flex-1">
+      'Es wurde noch keine Freifläche auf der Karte gezeichnet.'
       oder
-                 'Es wurde noch keine Gebäudefläche auf der Karte gezeichnet.'}
-            </p>
-            <button class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
-            <c-icon.location-marker class="w-[16px] h-[16px]" />
-                 'Freifläche zeichnen'
-      oder
-                 'Gebäudefläche zeichnen'
-            </button>
-          </div>
-
+      'Es wurde noch keine Gebäudefläche auf der Karte gezeichnet.'}
+    </p>
+    <button class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
+      <c-icon.location-marker class="w-[16px] h-[16px]" />
+      Freifläche/Gebäudefläche zeichnen
+    </button>
+  </div>
   <!-- {/* Building/Area Type Dropdown */} -->
-        <div class="flex flex-col gap-[8px]">
-          <label class="font-semibold text-[16px] text-[#1e293b]">
-             'Freiflächetyp' oder 'Gebäudetyp'}
+  <div class="flex flex-col gap-[8px]">
+    <label class="font-semibold text-[16px] text-[#1e293b]">
+      'Freiflächetyp' oder 'Gebäudetyp'}
       Options should be based on item
-          </label>
+    </label>
     <c-select.index classButton='border-[#cbd5e1]!' selectedValue='pv'>
     <c-select.button selectValue='pv'>
-        Photovoltaik
+    Photovoltaik
     </c-select.button>
     <c-select.button selectValue='park'>
-        parkfäche
+    parkfäche
     </c-select.button>
     <c-select.button selectValue='grün'>
-        grünfläche
+    grünfläche
     </c-select.button>
-
     </c-select.index>
-      {% comment %}
+    {% comment %}
       for gebäude
                 <option value="Büro">Büro</option>
                 <option value="Lager">Lager</option>
                 <option value="Produktion">Produktion</option>
                 <option value="Wohnen">Wohnen</option>
             )}
-      {% endcomment %}
+    {% endcomment %}
+  </div>
 
-          </div>
+</details-sidebar-main-header>
+  <!-- {/* Content */} -->
+  <div class="px-[21px] py-[16px]">
+    <!-- {/* Question */} -->
+    <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
 
-      <!-- {/* Content */} -->
-      <div class="px-[21px] py-[16px]">
-        <!-- {/* Question */} -->
-        <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
+    <!-- {/* Configuration Sections */} -->
+    <div class="flex flex-col gap-[16px]">
 
-        <!-- {/* Configuration Sections */} -->
-        <div class="flex flex-col gap-[16px]">
-          <!-- {/* LASTEN Section */} -->
-          <div class="flex flex-col gap-[8px]">
-<c-expand.index expanded>
-<c-slot name="title">
-            <div
-              onClick="console.log('toggle lasten not implemented')"
-              class="flex items-center justify-between w-full text-left border-b-2 border-[#e5ebf3] pb-[8px] hover:opacity-80 transition-opacity"
-            >
-              <div class="flex items-center gap-[8px]">
-                <span class="flex-shrink-0 w-[16px] h-[16px]">
-          <c-icon.lasten open foo='bar' />
-                </span>
-                <h3 class="font-normal text-[16px] text-[#1e293b] uppercase">LASTEN</h3>
-        <div class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]"><c-icon.info /></div>
-              </div>
-            </div>
+      <!-- {/* LASTEN Section */} -->
+    <c-detail-sidebar-section title=Lasten :items='["foo","bar"]'>
+    <c-slot name='icon'>
+          <c-icon.lasten class='flex-shrink-0 w-[16px] h-[16px]'/>
       </c-slot>
-              <div class="flex flex-col gap-[8px] pt-[8px] w-full">
-            {% comment %}
-            TODO: some logic
-            {/* Lasten Standard - not shown for Lagerhalle 4 and Freifläche 1 */}
-            {(itemName !== 'Lagerhalle 4' && itemName !== 'Freifläche 1') ? (
+    </c-detail-sidebar-section>
 
-            {% endcomment %}
-                  <button
-                    onClick='console.log("transition to lasten view not implemented")'
-                    class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer"
-                  >
-                    <div class="flex items-center gap-[8px] flex-1">
-                      <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
-                  <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45" ></div>
-                      </div>
-                      <span class="font-semibold text-[14px] text-[#64748b]">Lasten Standard</span>
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick='console.log(`{(e) => e.stopPropagation()}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
-                      class="flex-shrink-0 hover:opacity-60 transition-opacity"`)
-                    >
-                <c-icon.three_dots />
+    <c-detail-sidebar-section title=Energietechnik >
+    <c-slot name='icon'>
+          <c-icon.bolt class='flex-shrink-0 w-[16px] h-[16px]'/>
+      </c-slot>
+    </c-detail-sidebar-section>
 
-                    </div>
-                  </button>
-            oder
-                  <p class="text-[14px] text-[#64748b]">Keine Komponente hinzugefügt</p>
+    <c-detail-sidebar-section title=MOBILITÄT >
+    <c-slot name='icon'>
+          <c-icon.logistic class='flex-shrink-0 w-[16px] h-[16px]'/>
+      </c-slot>
+    </c-detail-sidebar-section>
 
-                <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
-                  + Hinzufügen
-                </button>
-              </div>
+
+    <netzanschluss class='block'>
+          <div class="flex flex-col gap-[16px] pt-[8px]">
+            <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
+              <span class="w-[16px] h-[16px]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </span>
+              NETZANSCHLÜSSE
+              <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
+            </h3>
+
+            <div class="flex flex-col gap-[8px]">
+              <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
+          <c-select.index selectedValue="HV" inputName="AnschlussType" >
+            <c-select.button selectValue="HV">Hochspannung</c-select.button>
+            <c-select.button selectValue="MV">Mittelspannung</c-select.button>
+            <c-select.button selectValue="LV">Niederspannung</c-select.button>
+          </c-select.index>
+
           </div>
-    </c-expand.index>
+              <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+                + Anschluss
+              </button>
 
-      </div>
-      </div>
-      </div>
-      </div>
+              <label class="flex items-center gap-[8px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  defaultChecked={itemName !== 'Lagerhalle 2'}
+                  class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer"
+                />
+                <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
+              </label>
+            </div>
+          </div>
+
+      </netzanschluss>
+
+  </div> <!--Configurations -->
 {% comment %}
 
 
 
-          {/* ENERGIETECHNIK Section */}
-          <div class="flex flex-col gap-[8px]">
-            <button
-              onClick={() => toggleSection('energie')}
-              class="flex items-center justify-between w-full text-left border-b-2 border-[#e5ebf3] pb-[8px] hover:opacity-80 transition-opacity"
-            >
-              <div class="flex items-center gap-[8px]">
-                <span class="flex-shrink-0 w-[16px] h-[16px]">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </span>
-                <h3 class="font-normal text-[16px] text-[#1e293b] uppercase">ENERGIETECHNIK</h3>
-                <div class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]">{infoIcon}</div>
-              </div>
-              <svg
-                class={`w-[16px] h-[16px] transform transition-transform ${
-                  expandedSections.includes('energie') ? '' : 'rotate-180'
-                }`}
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 10L8 6L4 10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {expandedSections.includes('energie') && (
-              <div class="flex flex-col gap-[8px] pt-[8px]">
-                {/* Dieselgenerator - not shown for Lagerhalle 2 and Freifläche 1 */}
-                {(itemName !== 'Lagerhalle 2' && itemName !== 'Freifläche 1') && (
-                  <button
-                    onClick={() => handleViewChange('component')}
-                    class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer"
-                  >
-                    <div class="flex items-center gap-[8px] flex-1">
-                      <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
-                        <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45" />
-                      </div>
-                      <span class="font-semibold text-[14px] text-[#64748b]">Dieselgenerator</span>
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
-                      class="flex-shrink-0 hover:opacity-60 transition-opacity"
-                    >
-                      <svg class="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
-                        <circle cx="8" cy="3" r="1" />
-                        <circle cx="8" cy="8" r="1" />
-                        <circle cx="8" cy="13" r="1" />
-                      </svg>
-                    </div>
-                  </button>
-                )}
-                {/* Show "Keine Komponente" for Lagerhalle 2 and Freifläche 1 */}
-                {(itemName === 'Lagerhalle 2' || itemName === 'Freifläche 1') && (
-                  <p class="text-[14px] text-[#64748b]">Keine Komponente hinzugefügt</p>
-                )}
-                {/* Energietechnik 2 and 3 - only for Lagerhalle 1 */}
-                {itemName === 'Lagerhalle 1' && (
-                  <>
-                    <button
-                      onClick={() => handleViewChange('component')}
-                      class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer"
-                    >
-                      <div class="flex items-center gap-[8px] flex-1">
-                        <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
-                          <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45" />
-                        </div>
-                        <div class="flex items-center gap-[4px]">
-                          <span class="font-semibold text-[14px] text-[#64748b]">Wärmepumpe</span>
-                          {scenarioState === 'scenario' && <div class="w-[6px] h-[6px] rounded-full bg-[#ff9500]" />}
-                        </div>
-                      </div>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
-                        class="flex-shrink-0 hover:opacity-60 transition-opacity"
-                      >
-                        <svg class="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
-                          <circle cx="8" cy="3" r="1" />
-                          <circle cx="8" cy="8" r="1" />
-                          <circle cx="8" cy="13" r="1" />
-                        </svg>
-                      </div>
-                    </button>
-                  </>
-                )}
-                {/* Dieselgenerator 2 - only for Lagerhalle 4 */}
-                {itemName === 'Lagerhalle 4' && (
-                  <button
-                    onClick={() => handleViewChange('component')}
-                    class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer"
-                  >
-                    <div class="flex items-center gap-[8px] flex-1">
-                      <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
-                        <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45" />
-                      </div>
-                      <span class="font-semibold text-[14px] text-[#64748b]">Dieselgenerator 2</span>
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
-                      class="flex-shrink-0 hover:opacity-60 transition-opacity"
-                    >
-                      <svg class="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="currentColor">
-                        <circle cx="8" cy="3" r="1" />
-                        <circle cx="8" cy="8" r="1" />
-                        <circle cx="8" cy="13" r="1" />
-                      </svg>
-                    </div>
-                  </button>
-                )}
-                <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
-                  + Hinzufügen
-                </button>
-              </div>
-            )}
-          </div>
 
           {/* MOBILITÄT / LOGISTIK Section */}
           <div class="flex flex-col gap-[8px]">
