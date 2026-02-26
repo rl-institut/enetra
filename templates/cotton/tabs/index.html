@@ -4,7 +4,7 @@
   tabs: $el.querySelectorAll(":scope > .tab-panel"),
   }'
      class='w-full'>
-  <div class=" flex gap-[8px] items-end mb-[24px] justify-between {% if variant == 'lined' %}border-b border-[#e2e8f0]{% endif %} ">
+  <div class=" flex gap-[8px] items-end mb-[24px] justify-between font-semibold{% if variant == 'lined' %} border-b border-[#e2e8f0]{% endif %} ">
     <template x-for="tab in tabs">
       <button
         role="tab"
@@ -20,7 +20,7 @@
           :class='tab==activeTab ? "bg-[#E2E8F0] text-[#1E293B]" : "bg-white text-[#64748B]" '
         {% endif %}
         >
-        <div x-html='tab.querySelector(".tab-label").innerHTML'></div>
+        <div x-html='tab.querySelector(":scope > .tab-label").innerHTML'></div>
       </button>
     </template>
   </div>
