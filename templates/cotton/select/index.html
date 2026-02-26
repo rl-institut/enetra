@@ -1,9 +1,19 @@
-<c-vars image debugWidget=False classButton></c-vars>
+<c-vars image debugWidget=False classButton random=></c-vars>
+
+{% comment %}
+NOTE: and @Bryan
+I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
+The implementation can be fouind inside the custom css tailwind brackets
+{% endcomment %}
 <div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
-     class="relative w-full">
+   class="w-full" >
   <button @click='show=!show'
           @click.outside='show=false'
-      class="{{classButton}} bg-white border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px] relative rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors">
+      class="
+      relative
+      {{classButton}} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors
+      [anchor-name:--select-dropdown]"
+   >
     <p x-html="selectedElement.innerHTML"
        class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
     </p>
@@ -14,8 +24,10 @@
   </button>
   <div x-show="show"
        x-cloak
-       class="absolute top-full left-0 right-0 mt-[4px] bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50">
+       class="absolute margin-0 inset-auto bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50 [position-anchor:--select-dropdown] [position-area:bottom] [position-try-fallbacks:top] [width:anchor-size(width)]"
+     >
     {% comment %}
+      right: anchor(right);
      insert multiple select/button  here
     {% endcomment %}
     {{ slot }}
