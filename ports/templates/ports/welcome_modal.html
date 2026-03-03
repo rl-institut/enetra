@@ -1,0 +1,49 @@
+<div
+  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+  onClick="onClose()"
+>
+  <div
+    className="bg-white content-stretch flex flex-col gap-[24px] items-center p-[24px] relative rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] w-full max-w-[500px] mx-[24px]"
+    onClick="(e) => e.stopPropagation()"
+  >
+    <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[20px]">
+        Westhafen - IST-Zustand
+      </p>
+      <button
+        onClick="onClose()"
+        className="relative shrink-0 size-[24px] hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0"
+      >
+        <img alt="close" className="block max-w-none size-full" src={imgMaterialSymbolsClose} />
+      </button>
+    </div>
+
+    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[23px] min-w-full not-italic relative shrink-0 text-[#1e293b] text-[14px] w-[min-content] whitespace-pre-wrap">
+      Dies ist Ihr IST-Zustand - die aktuelle Energiesituation des Hafens.
+    </p>
+
+    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
+      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[23px] not-italic relative shrink-0 text-[#1e293b] text-[14px] w-full whitespace-pre-wrap">
+        Klicken Sie auf ein Gebäude auf der Karte oder in der Liste, um Details zu sehen und ggf. zu editieren.
+      </p>
+    </div>
+
+    <p className="font-['Inter:Regular',sans-serif] font-normal leading-[23px] min-w-full not-italic relative shrink-0 text-[#1e293b] text-[14px] w-[min-content] whitespace-pre-wrap">
+      Danach können Sie Szenarien erstellen, um Änderungen zu planen.
+    </p>
+
+    <button
+      onClick="onClose()"
+      className="bg-[#0e7490] content-stretch flex items-center justify-center px-[16px] py-[12px] relative rounded-[100px] shrink-0 w-[356px] border-0 cursor-pointer hover:bg-[#0c647a] transition-colors"
+    >
+      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[14px] text-white">
+        Los geht's!
+      </p>
+    </button>
+  </div>
+</div>
+<script>
+  function onClose() {
+    console.log("close");
+  }
+</script>

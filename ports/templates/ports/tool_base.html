@@ -43,7 +43,15 @@
 {% endblock sideBarFooter %}
 {% block mainContent %}
   <c-detail-sidebar open class=''>
-  {% include "ports/partials/detail_sidebar_main.html" %}
+    <custom-tag id="detail-sidebar-main" class="detail-sidebar">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_main.html" %}
+    </custom-tag>
+    <custom-tag id="detail-sidebar-component" class="detail-sidebar">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_component.html" %}
+    </custom-tag>
+    <custom-tag id="detail-sidebar-template" class="detail-sidebar">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_template.html" %}
+    </custom-tag>
   </c-detail-sidebar>
   <div>
   Here are some icons to use

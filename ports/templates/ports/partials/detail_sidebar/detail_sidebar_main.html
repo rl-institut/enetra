@@ -1,6 +1,6 @@
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-<details-sidebar-main-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px] mb-[8px]">
     <div class="flex items-center gap-[8px] flex-1">
       <div class="flex-shrink-0 text-[#a78bfa] w-12 h-12">
@@ -81,8 +81,9 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
     {% endcomment %}
   </div>
 
-</details-sidebar-main-header>
-  <!-- {/* Content */} -->
+</details-sidebar-header>
+
+<details-sidebar-content>
   <div class="px-[21px] py-[16px]">
     <!-- {/* Question */} -->
     <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
@@ -191,7 +192,7 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
                   >
                     <div class="flex items-center gap-[8px] flex-1">
                       <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
-                        <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45" />
+                        <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45"></div>
                       </div>
                       <span class="font-semibold text-[14px] text-[#64748b]">E-Ladestation</span>
                     </div>
@@ -264,3 +265,4 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
         </div>
       </div>
 {% endcomment %}
+</details-sidebar-content>

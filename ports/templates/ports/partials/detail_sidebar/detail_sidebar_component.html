@@ -1,0 +1,102 @@
+<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+    <div class="flex items-center justify-between gap-[8px]">
+      <button
+        onClick="() => handleViewChange('main')"
+        class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
+      >
+        <svg class="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span class="font-semibold text-[14px] text-[#1e293b]">Zu {{itemName}}</span>
+      </button>
+      <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
+        <svg class="w-[24px] h-[24px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</details-sidebar-header>
+
+<details-sidebar-content>
+  <div class="px-4 py-4">
+    <h2 class="font-bold text-[20px] text-[#1e293b] mb-[24px]">ENERGIETECHNIK</h2>
+
+    <div class="flex flex-col gap-[16px]">
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Komponente aus Vorlage</label>
+        <select class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] cursor-pointer py-2">
+          <option value="Dieselgenerator">Dieselgenerator</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Typ</label>
+        <input
+          type="text"
+          defaultValue="Heizkessel"
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#64748b] py-2"
+          disabled
+        />
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Energieträger</label>
+        <input
+          type="text"
+          defaultValue="Gas"
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#64748b] py-2"
+          disabled
+        />
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Kapazität
+          {{infoIcon}}
+        </label>
+        <div class="relative">
+          <input
+            type="text"
+            defaultValue="3.000"
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[60px] pb-2"
+          />
+          <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">kW</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Effizienz
+          {{infoIcon}}
+        </label>
+        <div class="relative">
+          <input
+            type="text"
+            defaultValue="50"
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[60px] pb-2"
+          />
+          <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">%</span>
+        </div>
+      </div>
+
+      <p class="text-[14px] text-[#64748b] text-center">
+        Die Werte werden nur für diese Fläche übernommen.
+      </p>
+
+      <button class="w-full bg-[#0e7490] text-white font-semibold text-[14px] hover:bg-[#0c647a] transition-colors py-1.5 border-[0] rounded-full">
+        Hinzufügen
+      </button>
+
+      <button
+        onClick="() => handleViewChange('main')"
+        class="w-full text-[#64748b] font-semibold text-[14px] py-[8px] hover:opacity-80 transition-opacity flex items-center justify-center gap-[8px]"
+      >
+        <svg class="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 4L4 12M4 4l8 8" strokeLinecap="round" />
+        </svg>
+        Abbrechen
+      </button>
+    </div>
+  </div>
+</details-sidebar-content>

@@ -1,0 +1,115 @@
+<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+    <div class="flex items-center justify-between gap-[8px]">
+      <div class="flex items-center gap-[8px] flex-1">
+        <div class="w-[8px] h-[8px] border border-[#1e293b] rotate-45"></div>
+        <h2 class="font-semibold text-[18px] text-[#1e293b] name-elem">{{name}}</h2>
+        <button class="hover:opacity-60 transition-opacity">
+          <svg class="w-[20px] h-[20px]" viewBox="0 0 20 20" fill="currentColor">
+            <circle cx="10" cy="4" r="1.5" />
+            <circle cx="10" cy="10" r="1.5" />
+            <circle cx="10" cy="16" r="1.5" />
+          </svg>
+        </button>
+      </div>
+      <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
+        <svg class="w-[24px] h-[24px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</details-sidebar-header>
+
+<details-sidebar-content>
+  <div class="px-4 py-4">
+    <div class="flex flex-col gap-[16px]">
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">
+          Fläche{{ multiSelect|pluralize:'n' }}
+        </label>
+        <select class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] cursor-pointer py-2">
+          <option value="Hauptbüros">{{ location }}</option>
+          <option value="Büros">Büros</option>
+          <option value="Lagerhalle 1">Lagerhalle 1</option>
+          <option value="Lagerhalle 2">Lagerhalle 2</option>
+        </select>
+      </div>
+
+      <div class="flex items-center justify-between py-2 pb-0">
+        <div class="flex items-center gap-[8px]">
+          <h3 class="font-semibold text-[14px] text-[#1e293b] uppercase">PARAMETER</h3>
+          {{infoIcon}}
+        </div>
+        <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">
+          Aus Vorlage übernehmen
+        </button>
+      </div>
+
+      <p class="text-[12px] text-[#64748b] -mt-2 text-right">
+        Überschreibt alle ausgewählten Komponenten
+      </p>
+
+      {% if type == "Gasheizung" %}
+        <div class="flex flex-col gap-[8px]">
+          <label class="font-semibold text-[14px] text-[#1e293b]">Brennstoff</label>
+          <select class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] cursor-pointer py-2">
+            <option value="Gasheizung">Gasheizung</option>
+            <option value="Ölheizung">Ölheizung</option>
+            <option value="Pellets">Pellets</option>
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Wirkungsgrad
+          {{infoIcon}}
+        </label>
+        <div class="relative">
+          <input
+            type="text"
+            value="30"
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[60px] pb-2"
+          />
+          <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">%</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Investitionskosten
+          {{infoIcon}}
+        </label>
+        <div class="relative">
+          <input
+            type="text"
+            value="30"
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
+          />
+          <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">€/kW</span>
+        </div>
+      </div>
+
+      <button class="w-full bg-[#0e7490] text-white font-semibold text-[14px] hover:bg-[#0c647a] transition-colors py-2 rounded-full mt-4">
+        Speichern
+      </button>
+
+      <button
+        onClick="() => handleViewChange('vorlage-create')}"
+        class="w-full bg-[#e2e8f0] text-[#1e293b] font-semibold text-[14px] hover:bg-[#cbd5e1] transition-colors py-2 rounded-full"
+      >
+        Als Vorlage hinterlegen...
+      </button>
+
+      <button
+        onClick="() => handleViewChange('main')"
+        class="w-full text-[#1e293b] font-semibold text-[14px] py-[8px] hover:opacity-80 transition-opacity flex items-center justify-center gap-[8px]"
+      >
+        <svg class="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 4L4 12M4 4l8 8" strokeLinecap="round" />
+        </svg>
+        Abbrechen
+      </button>
+    </div>
+  </div>
+</details-sidebar-content>
