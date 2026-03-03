@@ -46,6 +46,11 @@ def get_authentification(
     return True
 
 
+def test(request):
+    context = {}
+    return render(request, "ports/test.html", context)
+
+
 def home(request):
     context = {}
     return render(request, "ports/tool_base.html", context)

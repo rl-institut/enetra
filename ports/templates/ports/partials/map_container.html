@@ -1,0 +1,200 @@
+{% load core_extras %}
+
+{% comment %}
+the map container needs leaflet.js leaflet.css leaflet.draw and the interface to interact with the page via events
+{% endcomment %}
+<div class="w-full h-full relative isolate min-h-[400px]">
+  <div id='mapElement' class="w-full h-full"></div>
+  <!-- {/* Map Controls Container - Bottom Right */} -->
+  <div class="absolute bottom-[20px] right-[20px] flex flex-col gap-[12px] z-[1000] pointer-events-auto">
+    <!-- {/* dBasemap Selector */} -->
+    <div class="">
+      <img src="/basemaps.svg" alt="Basemap Selector" class="w-[146px] h-[54px]">
+    </div>
+    <!-- {/* Map Legend */} -->
+    <div class="bg-white rounded-[8px] shadow-[0px_4px_8px_rgba(0,0,0,0.15)] p-[16px] min-w-[140px]">
+      <!-- {/* Gebäudeflächen Section */} -->
+      <div class="temporary bg-orange-100 border-2 border-black p-2">
+        Map elements can have popups. They react to clicks without modifiers.
+        <br>
+        Map elements can be selected. This works by clicking their input below, or clicking them on the map with SHIFT modifier
+        Popups are directly implemented through &lt c-map-popup &gt inside &lt c-map-element &gt
+      </div>
+      <div class="mb-[8px]">
+        <div class="flex items-center gap-[12px] mb-[4px]">
+          <div class="bg-[#a78bfa] rounded-[4px] w-4 h-4"></div>
+          <span class="text-[#1e293b] text-sm font-normal">Gebäudeflächen</span>
+          <button class="ml-auto rounded-full border-2 border-[#64748b] flex items-center justify-center text-[#64748b] text-[12px] font-bold w-4 h-4">
+            i
+          </button>
+        </div>
+        <div class="ml-[24px]">
+          <button class="text-[#0e7490] text-[14px] font-bold">+ Gebäudefläche</button>
+        </div>
+      </div>
+      <!-- {/* Freiflächen Section */} -->
+      <div>
+        <div class="flex items-center gap-[12px] mb-[4px]">
+          <div class="bg-[#c6e474] rounded-[4px] w-4 h-4"></div>
+          <span class="text-[#1e293b] text-sm font-normal">Freiflächen</span>
+          <button class="ml-auto rounded-full border-2 border-[#64748b] flex items-center justify-center text-[#64748b] text-[12px] font-bold w-4 h-4">
+            i
+          </button>
+        </div>
+        <div class="ml-[24px]">
+          <button class="text-[#0e7490] text-[14px] font-bold">+ Freifläche</button>
+          <c-map-element layer='map-layer-area'>
+          <textarea rows='3'
+                    id='bar'
+                    type='text'
+                    class='border-black border-2 bg-gray-200'
+                    name='geom' />{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.571493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
+          <c-map-element.popup>
+          Im the content of the popup</c-map-element.popup>
+          <foobar class="hidden contents">
+          <c-map-element.marker name='Mein Gebäude'>
+          <div style="display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      gap: 4px;
+                      margin-top: 4px;
+                      pointer-events: auto"
+               class=''>
+            <div x-data='{onIcon:false, onPopup: false}'
+                 class="icon-wrapper"
+                 style="position: relative;
+                        display: inline-block;
+                        margin: 0 2px">
+              <c-icon.technical-building x-on:mouseenter='onIcon=true' x-on:mouseleave='setTimeout(()=>onIcon=false, 50);' />
+              <div style="position: absolute;
+                          top: -2px;
+                          right: -2px;
+                          width: 8px;
+                          height: 8px;
+                          background-color: #FDBA74;
+                          border: 1px solid #BD7B36;
+                          border-radius: 50%;
+                          pointer-events: none"></div>
+              <div class="icon-popover"
+                   x-on:mouseenter='onPopup=true;console.log(`pop`) '
+                   x-on:mouseleave='setTimeout(()=>onPopup=false, 50)'
+                   x-show='onIcon || onPopup'
+                   style="position: absolute;
+                          bottom: 28px;
+                          left: 50%;
+                          transform: translateX(-50%);
+                          background: white;
+                          border-radius: 12px;
+                          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                          padding: 16px;
+                          min-width: 280px;
+                          transition: opacity 0.2s;
+                          z-index: 10000">
+                <div style="display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 8px">
+                  <c-icon.technical-building />
+                  <div>
+                    <div style="font-family: 'Inter', sans-serif;
+                                font-weight: 600;
+                                font-size: 14px;
+                                color: #1e293b">Fobar</div>
+                    <div style="font-family: 'Inter', sans-serif;
+                                font-size: 12px;
+                                color: #64748b">${name}</div>
+                  </div>
+                  <div style="margin-left: auto;
+                              font-family: 'Inter', sans-serif;
+                              font-weight: 600;
+                              font-size: 12px;
+                              color: #0891b2">Öffnen</div>
+                </div>
+                <div style="height: 1px; background: #e2e8f0; margin: 12px 0;"></div>
+                <div style="font-family: 'Inter', sans-serif;
+                            font-size: 12px;
+                            color: #64748b;
+                            line-height: 1.6">
+                  <div style="display: flex;
+                              justify-content: space-between;
+                              margin-bottom: 4px">
+                    <span>Vorlage:</span>
+                    <span style="color: #1e293b; font-weight: 500;">Dieselgenerator</span>
+                  </div>
+                  <div style="display: flex;
+                              justify-content: space-between;
+                              margin-bottom: 4px">
+                    <span>Typ:</span>
+                    <span style="color: #1e293b; font-weight: 500;">Heizkessel</span>
+                  </div>
+                  <div style="display: flex;
+                              justify-content: space-between;
+                              margin-bottom: 4px">
+                    <span>Energieträger:</span>
+                    <span style="color: #1e293b; font-weight: 500;">Gas</span>
+                  </div>
+                  <div style="display: flex;
+                              justify-content: space-between;
+                              margin-bottom: 4px">
+                    <span>Kapazität:</span>
+                    <span style="color: #1e293b; font-weight: 500;">3.000 kW</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>Effizienz:</span>
+                    <span style="color: #1e293b; font-weight: 500;">50 %</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            `
+            {% comment %}
+            <div x-data='{}'>
+              <div id="myanch" x-on:mouseenter="$refs.popup.showPopover();console.log('fo')">
+                <c-icon.technical-building />
+                <div id="bib" x-ref="popup" class=" [inset:unset] " popover>Hello from popover</div>
+              </div>
+            </div>
+
+            {% endcomment %}
+            <c-icon.load-building />
+          </div>
+          </c-map-element.marker>
+          </foobar>
+          </c-map-element>
+          <c-map-element layer='map-layer-area'>
+          <textarea id='foo'
+                    rows='3'
+                    class='border-black border-2 bg-gray-200'
+                    name='geom'>{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.581493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
+          </c-map-element>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% load static %}
+
+<script src='{% static "js/create_map.js" %}'></script>
+<script>
+  const myMap = new MyMap('#mapElement', {
+    getMaxZoom: () => 18,
+    getMinZoom: () => 8,
+    getZoom: () => 11,
+    getBounds: () => ({
+      lat_min: 48.0,
+      lng_min: 10.0,
+      lat_max: 55.0,
+      lng_max: 14.0
+    }),
+    getCenter: () => ({
+      lat: 52.5388,
+      lng: 13.3397
+    }),
+    getLayerNames: getLayerNames,
+    getEditLayerName: getEditLayerName,
+    getGeoJsons: getGeoJsons,
+    getPopUps: getPopUps,
+    getMarkers: getMarkers,
+  });
+  myMap.drawElements()
+</script>

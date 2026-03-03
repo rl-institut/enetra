@@ -32,14 +32,42 @@ function getStyle(name, id) {
   return { 'fillColor': 'blue', 'fillOpacity': 0.8 }
 }
 
+function getPopUps() {
+  const mapDrawElements = document.querySelectorAll('.map-draw-element');
+  var popups = {};
+  mapDrawElements.forEach((el) => {
+    const popup = el.querySelector('.map-popup-content');
+    if (!popup) return
+    const input = el.querySelector('textarea,input');
+    // For now we want to draw at max on popup per element
+    const id = input.id;
+    popups[id] = popup.innerHTML;
+  });
+  return popups;
+}
+
+function getMarkers() {
+  const mapDrawElements = document.querySelectorAll('.map-draw-element');
+  var markers = {};
+  mapDrawElements.forEach((el) => {
+    const found_markers = el.querySelectorAll('.map-marker');
+    if (found_markers.length < 1) return
+    const input = el.querySelector('textarea,input');
+    // For now we want to draw at max on popup per element
+    const id = input.id;
+    markers[id] = [...found_markers].map((x) => x.innerHTML);
+  });
+  return markers;
+}
+
 function getGeoJsons() {
   geojsons = []
   getLayerNames().forEach((name) => {
     // Get the values as GeoJSON from the inputs
     // input mus be inside a container with a class of draw-map-element layername as class.
     // Can be anything with a value of geosjon
-    const inputs = document.querySelectorAll('.map-draw-element.' + name);
-    if (inputs.length ==0) {
+    const inputs = document.querySelectorAll('.map-draw-element.' + name + ' > textarea, .map-draw-element.' + name + ' > input');
+    if (inputs.length == 0) {
       console.log(`No inputs found for layer ${name}`)
     }
 

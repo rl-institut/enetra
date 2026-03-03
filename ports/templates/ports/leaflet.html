@@ -23,7 +23,7 @@
   {% if forloop.first %}{{ area.media }}{% endif %}
 {% endfor %}
 {% endblock header %}
-{% block content %}
+{% block mainContent %}
   <!-- NOTE: GOAL keep logic for map minimal and local -->
   <!-- DELETE/CHANGE/CREATE Events are broadcasted and listend to by forms/elements-->
   <!-- map is hydrated by html -->
@@ -186,4 +186,4 @@
 </script>
 
 <script  src='{% static "map-events-interface.js" %}'></script>
-{% endblock content %}
+{% endblock mainContent %}

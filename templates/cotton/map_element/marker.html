@@ -1,0 +1,32 @@
+
+<!-- https://leafletjs.com/reference.html#popup -->
+<c-vars class lat lng :selected=False maxWidth=300></c-vars>
+<div  class='map-marker ' >
+<div style="
+                  display: inline-block;
+                  pointer-events: none;
+                  transform: translate(-50%, -50%);
+                ">
+                  <div style="
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 500;
+                    font-size: 14px;
+                    color: ${textColor};
+                    text-align: center;
+                    white-space: nowrap;
+                    text-shadow:
+                      -1px -1px 0 #FFFFFF,
+                      1px -1px 0 #FFFFFF,
+                      -1px 1px 0 #FFFFFF,
+                      1px 1px 0 #FFFFFF;
+                        {% comment %}
+                    opacity: ${variant === 'view-only' ? '0.6' : '1'};
+
+                        {% endcomment %}
+                    ">{{name}}</div>
+                        {{slot}}
+                </div>
+
+
+
+</div>
