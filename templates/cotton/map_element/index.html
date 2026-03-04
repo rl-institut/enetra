@@ -1,0 +1,30 @@
+<c-vars key layer :selected=False ></c-vars>
+{% comment %}
+NOTE: Inserted inputs and textareas need a unique id
+
+
+Native html element which is used as state for the leaflet map
+@input is mostly for debugging and allows changing the map based on input
+
+class 'contents' makes the div "inivisble" for display
+Add data-storage for allowed interaction?
+Add data-storage for allowed interaction?
+{% endcomment %}
+<div
+    x-data='{selected: {{selected|lower}}}'
+    @click='selected =!selected;$dispatch("map-redraw")'
+    @map-layer-shift-clicked='selected =!selected; console.log("map-layer-shift-clicked caught. toggled the selection of the element");'
+    @input="$dispatch('geom-changed');console.log('geom changed')"
+    @keyup.escape.window='console.log("esc"); selected=false; $dispatch("map-redraw")'
+    class='
+    {% comment %}
+    contents
+    <!-- flex flex-row -->
+    {% endcomment %}
+    map-draw-element
+    inline-block
+    '
+    :class='selected ? "border-6 border-orange-500 map-layer-editable" : "{{layer}}"'
+>
+{{slot}}
+</div>

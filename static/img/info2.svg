@@ -1,0 +1,5 @@
+<!-- from detailsidebar -->
+    <svg className="w-[16px] h-[16px]" viewBox="0 0 16 16" fill="none" stroke="currentColor">
+      <circle cx="8" cy="8" r="7" />
+      <path d="M8 5v6M8 11h0" strokeLinecap="round" />
+    </svg>

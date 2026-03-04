@@ -1,10 +1,14 @@
+<c-vars :border=True ></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
 {% comment %}
   isSelected is populated by the input
 {% endcomment %}
-<div class='border border-[#cbd5e1] border-solid content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors {{ bgColorClass }} first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] '
+<div class='
+  cotton-list-item
+  {% if border %}border border-[#cbd5e1] border-solid {% endif %}
+  content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors {{ bgColorClass }} first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] '
      :class="isSelected ? 'bg-[#ECFEFF]' : 'bg-white hover:bg-[#f8fafc]'"
      x-data='{isSelected: null}'
      @click='if (isBulkMode) isSelected = !isSelected'>

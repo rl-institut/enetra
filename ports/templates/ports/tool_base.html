@@ -1,32 +1,44 @@
 {% extends "core/base.html" %}
 
 {% load partials %}
+{% load static %}
 
 {% comment %}
   Based on
   https://github.com/bmlancien/enetra-app-prototype/blob/main/app/page.tsx
 {% endcomment %}
 {% block header %}
-  <script>
-    console.log('hello from header')
-  </script>
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src='{% static "map-interface-enetra.js" %}'></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css">
+  <script src='{% static "leaflet.draw.js" %}'></script>
+  <script defer src='{% static "map-events-interface.js" %}'></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 {% endblock header %}
 {% block sideBar %}
   <div>
     <div class='bg-blue-50'>
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
-    {% include "ports/partials/scenario_select.html" %}
+      {% include "ports/partials/scenario_select.html" %}
     </div>
     <div class="flex-1 overflow-auto p-[16px]">
       <c-tabs.index variant='lined'>
+
+      <c-tabs.tab>
+      <c-slot name='label'>Komponenten </c-slot>
+      {% include 'ports/partials/komponenten_tab_panel.html' %}
+      </c-tabs.tab>
       <c-tabs.tab>
       <c-slot name='label'>Flächen </c-slot>
       {% include 'ports/partials/flaechen_tab_panel.html' %}
-      </c-tabs.tab>
-      <c-tabs.tab>
-      <c-slot name='label'>Komponenten </c-slot>
-      Im the Komponente
       </c-tabs.tab>
       <c-tabs.tab>
       <c-slot name='label'>Allg.Rand-bedingungen</c-slot>
@@ -40,13 +52,13 @@
   <div>hello sideBarFooter from tool_base</div>
 {% endblock sideBarFooter %}
 {% block mainContent %}
+  {% include 'ports/partials/map_container.html' %}
+  <c-detail-sidebar class=''>
+  {% include "ports/partials/detail_sidebar_main.html" %}
+  </c-detail-sidebar>
   <div>
-Here are some icons to use
-  <div class="w-5 h-5 text-blue-500 bg-yellow-400">
-    <c-icon.template />
-  </div>
-  <div class="w-5 h-5 text-red-400">
-  <c-icon.info />
-  </div>
+    Here are some icons to use
+    <c-icon.template class="w-5 h-5 text-blue-500 bg-yellow-400" />
+    <c-icon.info class="w-5 h-5 text-red-400" />
   </div>
 {% endblock mainContent %}

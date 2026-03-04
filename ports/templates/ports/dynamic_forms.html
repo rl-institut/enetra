@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% load partials %}
 
-{% block content %}
+{% block mainContent %}
 
 <input id='focusedForm' class='bg-red-400' name='focusedForm'></input>
 <!-- This is a placeholder to showcase some django-cotton functionality with shadcn components -->
@@ -23,7 +23,7 @@
 
 <c-button variant="default" type="submit">Im a button</c-button>
   <!-- accordion/index.html -->
-<c-accordion type='single' collapsible='true'>
+<c-accordion type='single' open='{"item-1":true}' collapsible='true'>
     <c-accordion.item value='item-1'>
         <c-accordion.trigger value='item-1'>Is it for Django?</c-accordion.trigger>
         <c-accordion.content value='item-1'>
@@ -104,4 +104,4 @@ hx-on::oob-before-swap="console.log(event); console.log('element-settled. Dispat
 </c-button>
 
 
-{% endblock content %}
+{% endblock mainContent %}

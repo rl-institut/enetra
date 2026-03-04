@@ -1,0 +1,31 @@
+<!-- NOTE: This is an example how to use a map element -->
+<c-map-element layer='map-layer-area'>
+  <textarea rows='3'
+            id='bar'
+            type='text'
+            class='border-black border-2 bg-gray-200'
+            name='geom' />{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.571493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
+  <c-map-element.popup>
+    Im the content of the popup
+    Im not sure we will use this? maybe
+  </c-map-element.popup>
+  <div class="hidden">
+    <!-- Put a label on the map. works inside a c-map-element -->
+    <c-map-element.marker name='Mein Gebäude'>
+      <!-- Put a marker icon on the map -->
+      <c-map-element.marker-icon>
+        <c-icon.technical-building />
+        <!-- Give the icon a popup -->
+        <c-slot name='popup'>
+          <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
+          <c-map-element-popup>
+            <c-slot name='icon'>
+              <c-icon.technical-building />
+            </c-slot>
+          </c-map-element-popup>
+        </c-slot>
+      </c-map-element.marker-icon>
+      <c-icon.load-building />
+    </c-map-element.marker>
+  </div>
+</c-map-element>
