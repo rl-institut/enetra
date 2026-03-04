@@ -44,128 +44,40 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
         <div class="ml-[24px]">
           <button class="text-[#0e7490] text-[14px] font-bold">+ Freifläche</button>
           <c-map-element layer='map-layer-area'>
-          <textarea rows='3'
-                    id='bar'
-                    type='text'
-                    class='border-black border-2 bg-gray-200'
-                    name='geom' />{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.571493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
-          <c-map-element.popup>
-          Im the content of the popup</c-map-element.popup>
-          <foobar class="hidden contents">
-          <c-map-element.marker name='Mein Gebäude'>
-          <div style="display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      gap: 4px;
-                      margin-top: 4px;
-                      pointer-events: auto"
-               class=''>
-            <div x-data='{onIcon:false, onPopup: false}'
-                 class="icon-wrapper"
-                 style="position: relative;
-                        display: inline-block;
-                        margin: 0 2px">
-              <c-icon.technical-building x-on:mouseenter='onIcon=true' x-on:mouseleave='setTimeout(()=>onIcon=false, 50);' />
-              <div style="position: absolute;
-                          top: -2px;
-                          right: -2px;
-                          width: 8px;
-                          height: 8px;
-                          background-color: #FDBA74;
-                          border: 1px solid #BD7B36;
-                          border-radius: 50%;
-                          pointer-events: none"></div>
-              <div class="icon-popover"
-                   x-on:mouseenter='onPopup=true;console.log(`pop`) '
-                   x-on:mouseleave='setTimeout(()=>onPopup=false, 50)'
-                   x-show='onIcon || onPopup'
-                   style="position: absolute;
-                          bottom: 28px;
-                          left: 50%;
-                          transform: translateX(-50%);
-                          background: white;
-                          border-radius: 12px;
-                          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-                          padding: 16px;
-                          min-width: 280px;
-                          transition: opacity 0.2s;
-                          z-index: 10000">
-                <div style="display: flex;
-                            align-items: center;
-                            gap: 8px;
-                            margin-bottom: 8px">
+            <textarea rows='3'
+                      id='bar'
+                      type='text'
+                      class='border-black border-2 bg-gray-200'
+                      name='geom' />{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.571493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
+            <c-map-element.popup>
+              Im the content of the popup
+              Im not sure we will use this? maybe
+            </c-map-element.popup>
+            <div class="hidden">
+              <!-- Put a label on the map. works inside a c-map-element -->
+              <c-map-element.marker name='Mein Gebäude'>
+                <!-- Put a marker icon on the map -->
+                <c-map-element.marker-icon>
                   <c-icon.technical-building />
-                  <div>
-                    <div style="font-family: 'Inter', sans-serif;
-                                font-weight: 600;
-                                font-size: 14px;
-                                color: #1e293b">Fobar</div>
-                    <div style="font-family: 'Inter', sans-serif;
-                                font-size: 12px;
-                                color: #64748b">${name}</div>
-                  </div>
-                  <div style="margin-left: auto;
-                              font-family: 'Inter', sans-serif;
-                              font-weight: 600;
-                              font-size: 12px;
-                              color: #0891b2">Öffnen</div>
-                </div>
-                <div style="height: 1px; background: #e2e8f0; margin: 12px 0;"></div>
-                <div style="font-family: 'Inter', sans-serif;
-                            font-size: 12px;
-                            color: #64748b;
-                            line-height: 1.6">
-                  <div style="display: flex;
-                              justify-content: space-between;
-                              margin-bottom: 4px">
-                    <span>Vorlage:</span>
-                    <span style="color: #1e293b; font-weight: 500;">Dieselgenerator</span>
-                  </div>
-                  <div style="display: flex;
-                              justify-content: space-between;
-                              margin-bottom: 4px">
-                    <span>Typ:</span>
-                    <span style="color: #1e293b; font-weight: 500;">Heizkessel</span>
-                  </div>
-                  <div style="display: flex;
-                              justify-content: space-between;
-                              margin-bottom: 4px">
-                    <span>Energieträger:</span>
-                    <span style="color: #1e293b; font-weight: 500;">Gas</span>
-                  </div>
-                  <div style="display: flex;
-                              justify-content: space-between;
-                              margin-bottom: 4px">
-                    <span>Kapazität:</span>
-                    <span style="color: #1e293b; font-weight: 500;">3.000 kW</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span>Effizienz:</span>
-                    <span style="color: #1e293b; font-weight: 500;">50 %</span>
-                  </div>
-                </div>
-              </div>
+                  <!-- Give the icon a popup -->
+                  <c-slot name='popup'>
+                    <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
+                    <c-map-element-popup>
+                      <c-slot name='icon'>
+                        <c-icon.technical-building />
+                      </c-slot>
+                    </c-map-element-popup>
+                  </c-slot>
+                </c-map-element.marker-icon>
+                <c-icon.load-building />
+              </c-map-element.marker>
             </div>
-            `
-            {% comment %}
-            <div x-data='{}'>
-              <div id="myanch" x-on:mouseenter="$refs.popup.showPopover();console.log('fo')">
-                <c-icon.technical-building />
-                <div id="bib" x-ref="popup" class=" [inset:unset] " popover>Hello from popover</div>
-              </div>
-            </div>
-
-            {% endcomment %}
-            <c-icon.load-building />
-          </div>
-          </c-map-element.marker>
-          </foobar>
           </c-map-element>
           <c-map-element layer='map-layer-area'>
-          <textarea id='foo'
-                    rows='3'
-                    class='border-black border-2 bg-gray-200'
-                    name='geom'>{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.581493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
+            <textarea id='foo'
+                      rows='3'
+                      class='border-black border-2 bg-gray-200'
+                      name='geom'>{"type":"Polygon","coordinates":[[[13.222174,52.57144],[13.222174,52.57144],[13.232045,52.56497],[13.232045,52.56497],[13.243289,52.571493],[13.243289,52.581493],[13.230242,52.574808],[13.230242,52.574808],[13.222174,52.57144]]]}</textarea>
           </c-map-element>
         </div>
       </div>
