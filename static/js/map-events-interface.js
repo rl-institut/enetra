@@ -4,8 +4,9 @@
 //
 //
 //
-mapdiv = document.getElementById('map');
+mapdiv = document.getElementById('mapElement');
 mapdiv.addEventListener('map-elements-edited', (event) => {
+  console.log('map-elements-edited')
   targets = [];
   event.detail.layers.forEach((layer) => {
     target = document.getElementById(layer.id);
@@ -19,7 +20,7 @@ mapdiv.addEventListener('map-elements-edited', (event) => {
 
 mapdiv.addEventListener('map-element-created', (event) => {
   console.log(event.detail.layer.id);
-  target_form =document.getElementById(document.getElementById('focusedForm').value)
+  target_form = document.getElementById(document.getElementById('focusedForm').value)
   target = target_form.querySelector('[name*="geom"]');
   target.value = JSON.stringify(event.detail.layer.toGeoJSON().geometry);
   target.dispatchEvent(new Event('change'));

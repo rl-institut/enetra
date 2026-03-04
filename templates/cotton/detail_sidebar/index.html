@@ -15,14 +15,15 @@
   function handleViewChange(template, type, name) {
     // change detail sidebar content
     // show sidebar if hidden
+    console.log('viewchange')
     window.dispatchEvent(new CustomEvent('show-detail-sidebar'));
     // change detail sidebar content
     for (let elem of document.getElementsByClassName('detail-sidebar')) {
-      elem.style.display='none';
+      elem.classList.add('hidden');
     }
     let targetElem = document.getElementById('detail-sidebar-' + template);
     if (targetElem)
-      targetElem.style.display = '';
+      targetElem.classList.remove('hidden');
     else
       console.error('handleViewChange: template "' + template + '" not found');
     if (name)
