@@ -28,6 +28,10 @@
     if (name)
       for (let elem of document.getElementsByClassName('name-elem'))
         elem.textContent = name;
+    for (let elem of document.getElementsByClassName('opt-heating')) {
+      // only show certain elements for Gasheizung
+      elem.style.display = type == 'Gasheizung'? '' : 'none';
+    }
   }
   // initial call: show main
   handleViewChange('main');

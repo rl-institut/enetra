@@ -11,8 +11,8 @@
   content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors {{ bgColorClass }} first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] '
      :class="isSelected ? 'bg-[#ECFEFF]' : 'bg-white hover:bg-[#f8fafc]'"
      x-data='{isSelected: null}'
-     data-value='{type: "{{type}}", name: "{{ title }}"}'
-     @click='if (isBulkMode) isSelected = !isSelected; console.log("{{title}} clicked", $el.dataset.value); handleViewChange("template", "{{type}}", "{{ title }}");'
+     @click='if (isBulkMode) isSelected = !isSelected; console.log("{{title}} clicked"); {{callback}}'
+     {{ attrs }}
   >
   <template x-if='isBulkMode'>
     <div class="relative shrink-0 size-[16px] flex items-center justify-center">

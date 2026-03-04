@@ -43,27 +43,27 @@
 {% endblock sideBarFooter %}
 {% block mainContent %}
   <c-detail-sidebar open class=''>
-    <div id="detail-sidebar-main" class="detail-sidebar">
+    <c-detail-sidebar.component template="main">
       {% include "ports/partials/detail_sidebar/detail_sidebar_main.html" %}
-    </div>
-    <div id="detail-sidebar-component" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="component">
       {% include "ports/partials/detail_sidebar/detail_sidebar_component.html" %}
-    </div>
-    <div id="detail-sidebar-template" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template.html" %}
-    </div>
-    <div id="detail-sidebar-template-create" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template-create">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template_create.html" %}
-    </div>
-    <div id="detail-sidebar-template-detail" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template-detail">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template_detail.html" %}
-    </div>
-    <div id="detail-sidebar-load-detail" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="load-detail">
       {% include "ports/partials/detail_sidebar/detail_sidebar_load_detail.html" %}
-    </div>
-    <div id="detail-sidebar-changes" class="detail-sidebar">
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="changes">
       {% include "ports/partials/detail_sidebar/detail_sidebar_changes.html" %}
-    </div>
+    </c-detail-sidebar.component>
   </c-detail-sidebar>
   <div>
   Here are some icons to use
