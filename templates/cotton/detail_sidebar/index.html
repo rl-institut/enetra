@@ -1,0 +1,39 @@
+<c-vars class :open=False></c-vars>
+<!-- left: isOpen ? '400px' : '-400px', -->
+<div x-data='{isOpen:{{open|lower}}}'
+     @show-detail-sidebar.window='isOpen = true'
+     onClick='console.log("the detail_sidebar was clicked")'
+    class="{{class}} fixed top-[54px] bottom-0 w-[400px]  shadow-[2px_0px_4px_0px_rgba(0,0,0,0.1)] border-l border-[#e2e8f0] overflow-y-auto transition-all duration-300 ease-in-out z-[9999]"
+     x-show='isOpen'
+     x-cloak
+    {{attrs}}
+>
+	{{slot}}
+</div>
+
+<script>
+  function handleViewChange(template, type, name) {
+    // change detail sidebar content
+    // show sidebar if hidden
+    console.log('viewchange')
+    window.dispatchEvent(new CustomEvent('show-detail-sidebar'));
+    // change detail sidebar content
+    for (let elem of document.getElementsByClassName('detail-sidebar')) {
+      elem.classList.add('hidden');
+    }
+    let targetElem = document.getElementById('detail-sidebar-' + template);
+    if (targetElem)
+      targetElem.classList.remove('hidden');
+    else
+      console.error('handleViewChange: template "' + template + '" not found');
+    if (name)
+      for (let elem of document.getElementsByClassName('name-elem'))
+        elem.textContent = name;
+    for (let elem of document.getElementsByClassName('opt-heating')) {
+      // only show certain elements for Gasheizung
+      elem.style.display = type == 'Gasheizung'? '' : 'none';
+    }
+  }
+  // initial call: show main
+  handleViewChange('main');
+</script>

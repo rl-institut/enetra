@@ -53,8 +53,28 @@
 {% endblock sideBarFooter %}
 {% block mainContent %}
   {% include 'ports/partials/map_container.html' %}
-  <c-detail-sidebar class=''>
-  {% include "ports/partials/detail_sidebar_main.html" %}
+  <c-detail-sidebar open class='bg-white'>
+    <c-detail-sidebar.component template="main">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_main.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="component">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_component.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_template.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template-create">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_template_create.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="template-detail">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_template_detail.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="load-detail">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_load_detail.html" %}
+    </c-detail-sidebar.component>
+    <c-detail-sidebar.component template="changes">
+      {% include "ports/partials/detail_sidebar/detail_sidebar_changes.html" %}
+    </c-detail-sidebar.component>
   </c-detail-sidebar>
   <div>
     Here are some icons to use

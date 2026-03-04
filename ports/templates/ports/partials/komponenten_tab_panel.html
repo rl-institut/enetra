@@ -21,17 +21,17 @@
       <div class="border-b border-[#cbd5e1] bg-white">
         <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
           <c-list :border=False title="Generator">
-          <c-list.item :border=False :selected=False title="Generator Lagerhalle 1" :indicated=False />
+          <c-list.item :border=False :selected=False title="Generator Lagerhalle 1" :indicated=False callback="handleViewChange('template', 'Generator', 'Generator Lagerhalle 1')" />
           </c-list>
         </div>
         <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
           <c-list :border=False title="Heizsystem konventionell">
-          <c-list.item :border=False :selected=False title="Gasheizung Lagerhalle 2" :indicated=False />
+          <c-list.item :border=False :selected=False title="Gasheizung Lagerhalle 2" :indicated=False callback="handleViewChange('template', 'Gasheizung', 'Gasheizung Lagerhalle 2')"/>
           </c-list>
         </div>
         <div class="flex flex-col items-center justify-between p-[12px] py-2">
-          <c-list :border=False title="Photovolatik">
-          <c-list.item :border=False :selected=False title="Lagerhalle 2" :indicated=False />
+          <c-list :border=False title="Photovoltaik">
+          <c-list.item :border=False :selected=False title="Lagerhalle 2" :indicated=False callback="handleViewChange('template', 'Photovoltaik', 'Lagerhalle 2')" />
           </c-list>
         </div>
       </div>
@@ -41,7 +41,7 @@
   <c-expand.index expanded>
   <c-slot name="title">
   <div class="flex items-center gap-[8px]">
-    <h3 class="text-[16px] text-[#1e293b] font-semibold">Vorlagen Bibliothekt</h3>
+    <h3 class="text-[16px] text-[#1e293b] font-semibold">Vorlagen Bibliothek</h3>
     <div class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]">
       <c-icon.info />
     </div>
@@ -59,7 +59,7 @@
               <c-list.button/>
       </div>
           </c-slot>
-      <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False />
+      <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False callback="handleViewChange('template-detail', 'Generator', 'Generator')"/>
       </c-list>
     </div>
   </div>

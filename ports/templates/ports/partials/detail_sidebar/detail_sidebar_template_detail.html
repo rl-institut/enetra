@@ -1,0 +1,129 @@
+<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+  <div class="flex items-center justify-between gap-[8px]">
+    <div class="flex items-center gap-[8px] flex-1">
+      <div class="w-[8px] h-[8px] border border-[#1e293b] rotate-45"></div>
+      <h2 class="font-bold text-[16px] text-[#1e293b] name-elem">{{name}}</h2>
+      <div class="hover:opacity-60 transition-opacity cursor-pointer">
+        <c-icon.three_dots class='w-[20px] h-[20px]'/>
+      </div>
+    </div>
+    <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
+      <c-icon.close/>
+    </button>
+  </div>
+</details-sidebar-header>
+
+<details-sidebar-content>
+  <div class="px-[24px] py-[24px]">
+    <div class="flex flex-col gap-[16px]">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-[8px]">
+          <h3 class="font-semibold text-[14px] text-[#1e293b] uppercase">Parameter</h3>
+          <c-icon.info class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]"/>
+        </div>
+        <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">
+          Aus Vorlage übernehmen
+        </button>
+      </div>
+
+      <p class="text-[12px] text-[#64748b] -mt-2 text-right">
+        Überschreibt alle ausgewählten Komponenten
+      </p>
+
+      <div class="flex flex-col gap-[8px] opt-heating">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Brennstoff</label>
+        <c-select.index classButton='border-[#94a3b8]!' selectedValue='1'>
+          <c-select.button selectValue='1'>
+            Gasheizung
+          </c-select.button>
+          <c-select.button selectValue='2'>
+            Ölheizung
+          </c-select.button>
+          <c-select.button selectValue='3'>
+            Pellets
+          </c-select.button>
+        </c-select.index>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Wirkungsgrad
+          <c-icon.info class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]"/>
+        </label>
+        <div class="bg-white border border-[#94a3b8] rounded-[3px] flex items-center justify-between">
+          <input
+            type="text"
+            value="30"
+            class="bg-white flex-1 px-[16px] py-[12px] text-[14px] text-[#1e293b] outline-none"
+          />
+          <div class="bg-[#f8fafc] px-[12px] py-[12px] text-[14px] text-[#1e293b]">%</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b] flex items-center gap-[8px]">
+          Investitionskosten
+          <c-icon.info class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]"/>
+        </label>
+        <div class="bg-white border border-[#94a3b8] rounded-[3px] flex items-center justify-between">
+          <input
+            type="text"
+            value="30"
+            class="bg-white flex-1 px-[16px] py-[12px] text-[14px] text-[#1e293b] outline-none"
+          />
+          <div class="bg-[#f8fafc] px-[12px] py-[12px] text-[14px] text-[#1e293b]">€/kW</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-[8px] border-t-2 border-[#cbd5e1] pt-[24px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">
+          Auf folgenden Flächen übertragen
+        </label>
+        <div class="flex flex-wrap gap-[8px]">
+          <div class="bg-[#e2e8f0] flex gap-[4px] items-center px-[8px] py-[4px] rounded-[4px]">
+            <span class="text-[13px] text-[#1e293b]">Lagerhalle 2</span>
+            <c-icon.close class='w-[16px] h-[16px]'/>
+          </div>
+          <div class="bg-[#e2e8f0] flex gap-[4px] items-center px-[8px] py-[4px] rounded-[4px]">
+            <span class="text-[13px] text-[#1e293b]">Lagerhalle 3</span>
+            <c-icon.close class='w-[16px] h-[16px]'/>
+          </div>
+          <div class="bg-[#e2e8f0] flex gap-[4px] items-center px-[8px] py-[4px] rounded-[4px]">
+            <span class="text-[13px] text-[#1e293b]">Lagerhalle 4</span>
+            <c-icon.close class='w-[16px] h-[16px]'/>
+          </div>
+        </div>
+        <c-select.index classButton='border-[#94a3b8]!' selectedValue='0'>
+          <c-select.button selectValue='0'>
+            -- Auswählen --
+          </c-select.button>
+          <c-select.button selectValue='1'>
+            Lagerhalle 1
+          </c-select.button>
+          <c-select.button selectValue='2'>
+            Lagerhalle 2
+          </c-select.button>
+        </c-select.index>
+      </div>
+
+      <div class="flex flex-col gap-[8px] pt-[12px]">
+        <button class="w-full bg-[#0e7490] text-white font-bold text-[14px] hover:bg-[#0c647a] transition-colors py-[8px] rounded-full">
+          Speichern
+        </button>
+        <button
+          onClick="handleViewChange('template-create')"
+          class="w-full bg-[#e2e8f0] text-[#1e293b] font-bold text-[14px] hover:bg-[#cbd5e1] transition-colors py-[8px] rounded-full"
+        >
+          Als neue Vorlage hinterlegen...
+        </button>
+        <button
+          @click="isOpen=false"
+          class="w-full bg-white border border-[#cbd5e1] flex items-center justify-center gap-[8px] text-[#51637c] font-normal text-[14px] hover:bg-[#f8fafc] transition-colors py-[8px] rounded-full"
+        >
+          <c-icon.close class='w-[16px] h-[16px]'/>
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  </div>
+</details-sidebar-content>
