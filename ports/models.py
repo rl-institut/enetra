@@ -168,14 +168,132 @@ class Area(ScenarioItem):
     geom = models.PolygonField(null=True, blank=False)
 
 
-class Solar(ScenarioItem):
-    area = models.ForeignKey(
-        Area,
-        on_delete=models.CASCADE,
+class LoadTemplate(ScenarioItem):
+    timeseries = models.JSONField()
+    spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
+        default=None
     )
 
-    def __str__(self):
-        return f"Solaranlage {(self.id or '')}"
+
+class Load(ScenarioItem):
+    area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    template = models.ForeignKey(LoadTemplate, on_delete=models.CASCADE)
+    factor = models.FloatField(default=1.0)  # scale template values
+
+
+class Grid(ScenarioItem):
+    class CarrierChoices(models.TextChoices):
+        ELECTRICITY = "electricity", "Strom"
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+        GAS = "gas", "Gas"
+        HEAT = "heat", "Wärme"
+        H2 = "h2", "H2"
+
+    carrier = models.CharField(choices=CarrierChoices)
+    feed_in = models.BooleanField(default=False)  # does this grid support feed-in?
+    connected_to = models.ForeignKey(
+        "Grid", on_delete=models.SET_NULL, default=None, null=True, blank=True
+    )
+    timeseries = models.ForeignKey(
+        "Load", on_delete=models.SET_NULL, default=None, null=True, blank=True
+    )
+    areas = models.ManyToManyField("Area")
+
+
+class ElectricComponent(ScenarioItem):
+    area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    power_kw = models.FloatField(default=None, null=True, blank=True)
+    efficiency = models.FloatField(default=1.0)
+    power_installed = models.FloatField(default=None, null=True, blank=True)
+    power_min = models.FloatField(default=None, null=True, blank=True)
+    power_max = models.FloatField(default=None, null=True, blank=True)
+    capex = models.FloatField(default=None, null=True, blank=True)
+    opex = models.FloatField(default=None, null=True, blank=True)
+
+    class Meta:
+        abstract = True  # abstract table
+
+
+class Generator(ElectricComponent):
+    class CarrierChoices(models.TextChoices):
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+
+    carrier = models.CharField(choices=CarrierChoices)
+
+
+class Heating(ElectricComponent):
+    class CarrierChoices(models.TextChoices):
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+        ELECTRICITY = "electricity", "Strom"
+
+    carrier = models.CharField(choices=CarrierChoices)
+
+
+class CHP(ElectricComponent):
+    # Blockheizkraftwerk
+    class CarrierChoices(models.TextChoices):
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+        GAS = "gas", "Gas"
+
+    carrier = models.CharField(choices=CarrierChoices)
+    efficiency_thermal = models.FloatField(default=1.0)
+
+
+class FuelCell(ElectricComponent):
+    # carrier is always hydrogen
+    efficiency_thermal = models.FloatField(default=1.0)
+
+
+class Electrolyzer(ElectricComponent):
+    # carrier is always electricity
+    efficiency_thermal = models.FloatField(default=1.0)
+
+
+class Heatpump(ElectricComponent):
+    # carrier is always electricity
+    class HeatChoices(models.TextChoices):
+        AIR = "air", "Luft"
+        water = "water", "Wasser"
+        waste_air = "waste_air", "Abwärme"
+
+    class ModeChoices(models.IntegerChoices):
+        MONOVALENT = 1
+        BIVALENT = 2
+
+    heatsource = models.CharField(choices=HeatChoices)
+    mode = models.IntegerField(choices=ModeChoices)
+
+
+class Solar(ElectricComponent):
+    profile = models.ForeignKey(
+        Load, on_delete=models.SET_NULL, default=None, null=True, blank=True
+    )
+    azimut = models.FloatField(default=None, null=True, blank=True)  # 0-360
+    angle = models.FloatField(default=None, null=True, blank=True)  # 0-90
+    spec_power = models.FloatField(default=None, null=True, blank=True)  # kW/m^2
+    surface_area_installed = models.FloatField(default=None, null=True, blank=True)
+    surface_area_min = models.FloatField(default=None, null=True, blank=True)
+    surface_area_max = models.FloatField(default=None, null=True, blank=True)
+
+
+class Storage(ScenarioItem):
+    class CarrierChoices(models.TextChoices):
+        ELECTRICITY = "electricity", "Strom"
+        HEAT = "heat", "Wärme"
+        H2 = "h2", "H2"
+
+    area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    carrier = models.CharField(choices=CarrierChoices)
+    efficiency_load = models.FloatField(default=1.0)
+    efficiency_store = models.FloatField(default=1.0)
+    capacity_installed = models.FloatField(default=None, null=True, blank=True)
+    capacity_min = models.FloatField(default=None, null=True, blank=True)
+    capacity_max = models.FloatField(default=None, null=True, blank=True)
+    capex = models.FloatField(default=None, null=True, blank=True)  # €/kWh, €/l
 
 
 # --------------------------------------------------------------------------------

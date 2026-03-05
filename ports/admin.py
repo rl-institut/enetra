@@ -2,6 +2,7 @@ from django.contrib import admin
 from guardian.admin import GuardedModelAdmin
 from unfold.admin import ModelAdmin
 
+from .models import ElectricComponent
 from .models import Scenario
 from .models import ScenarioItem
 
@@ -37,5 +38,10 @@ methods = {
 }
 # Add all scenario items to the admin panel
 for subclass in ScenarioItem.__subclasses__():
+    if subclass == ElectricComponent:
+        continue  # abstract subclass
+    DynamicClass = type(str(subclass) + "Admin", (ModelAdmin,), methods)
+    admin.site.register(subclass, DynamicClass)
+for subclass in ElectricComponent.__subclasses__():
     DynamicClass = type(str(subclass) + "Admin", (ModelAdmin,), methods)
     admin.site.register(subclass, DynamicClass)
