@@ -13,22 +13,21 @@ and allows easy interaction. For now the Modal does not delete input when the mo
   bg-transparent
   p-0
   m-auto
+  overflow-visible
   {% comment %}
   to style the backdrop
   {% endcomment %}
   backdrop:bg-black/80
   ">
 
-    <div class="bg-white overflow-hiddden  content-stretch items-start p-[24px] relative rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] w-full max-w-[500px]">
+    <div class="bg-white   content-stretch items-start p-[24px] relative rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.95)] w-full max-w-[500px]">
       <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
         <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[20px]">
           {% translate 'Szenario erstellen' %}
         </p>
       <button  commandfor="{{id}}" command="close"
                 class="text-[16px] relative shrink-0 size-[24px] hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
-          <img alt="close"
-               class="block max-w-none size-full"
-               src="{{ imgMaterialSymbolsClose }}">
+        <c-icon.close />
         </button>
       </div>
 

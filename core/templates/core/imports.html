@@ -13,3 +13,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Calligraffitti&family=Geist:wght@100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+{% load constants %}
+{% events_data as EVENTS %}
+<script>
+const EVENTS = {{ EVENTS|safe }};
+console.log("The following EVENTS exists globally")
+console.log(EVENTS)
+</script>
