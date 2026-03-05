@@ -1,0 +1,82 @@
+<dialog id="{{ id }}"
+        closedby="any"
+        class="fixed inset-0 m-auto overflow-visible bg-transparent p-0 backdrop:bg-black/80">
+  <div class="relative w-full max-w-[500px] content-stretch items-start rounded-[16px] bg-white p-[24px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.95)]">
+    <!-- {/* Header */} -->
+    <div class="relative flex w-full shrink-0 content-stretch items-center justify-between">
+      <p class="relative shrink-0 font-['Inter:Regular',sans-serif] text-[20px] leading-[normal] font-normal text-[#1e293b] not-italic">
+        Szenario berechnen
+      </p>
+      <button commandfor="{{ id }}"
+              command="close"
+              class="relative size-[24px] shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-opacity hover:opacity-60">
+        <c-icon.close />
+      </button>
+    </div>
+    <!-- {/* Content */} -->
+    <div class="relative flex w-full shrink-0 flex-col content-stretch items-start gap-[24px] py-[24px]">
+      <!-- {/* Changes Section */} -->
+      <div class="relative flex w-full shrink-0 flex-col content-stretch items-start gap-[8px] rounded-[8px] bg-[#f8fafc] p-[16px] text-[14px] not-italic">
+        <p class="relative w-full shrink-0 font-['Inter:Semi_Bold',sans-serif] leading-[normal] font-semibold whitespace-pre-wrap text-[#1e293b]">
+          Ihre Änderungen
+        </p>
+        <div class="relative w-[min-content] min-w-full shrink-0 font-['Inter:Regular',sans-serif] leading-[0] font-normal whitespace-pre-wrap text-[#64748b]">
+          <p class="mb-0 leading-[24px]">Hinzugefügt:</p>
+          <ul class="mt-[8px] list-disc">
+            <li class="ms-[21px] mb-0">
+              <span class="leading-[24px]">3 Potentialflächen</span>
+            </li>
+            <li class="ms-[21px] mb-0">
+              <span class="leading-[24px]">2 PV-Anlagen (60 kWp gesamt)</span>
+            </li>
+            <li class="ms-[21px]">
+              <span class="leading-[24px]">1 Wärmepumpe (20 kW)</span>
+            </li>
+          </ul>
+        </div>
+        <div class="relative mt-[16px] w-[min-content] min-w-full shrink-0 font-['Inter:Regular',sans-serif] leading-[0] font-normal text-[#64748b]">
+          <p class="mb-0 leading-[24px] whitespace-pre-wrap">Entfernt:</p>
+          <ul class="mt-[8px] list-disc">
+            <li class="ms-[21px] whitespace-pre-wrap">
+              <span class="leading-[24px]">1 Gaskessel (50 kW)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <!-- {/* Hints Section */} -->
+      <div class="relative flex w-full shrink-0 flex-col content-stretch items-start">
+        <div class="relative w-full shrink-0 font-['Inter:Regular',sans-serif] text-[14px] leading-[0] font-normal whitespace-pre-wrap text-[#64748b] not-italic">
+          <p class="mb-0 leading-[24px]">Hinweise:</p>
+          <ul class="mt-[8px] list-disc">
+            <li class="ms-[21px] mb-0">
+              <span class="leading-[24px]">Geschätzte Berechnungsdauer: ~30 Sekunden</span>
+            </li>
+            <li class="ms-[21px] mb-0">
+              <span class="leading-[24px]">Stellen Sie sicher, dass alle Daten vollständig sind</span>
+            </li>
+            <li class="ms-[21px]">
+              <span class="leading-[24px]">Die Berechnung kann nicht abgebrochen werden</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <!-- {/* Buttons */} -->
+    <div class="relative flex w-full shrink-0 flex-col content-stretch items-start gap-[16px]">
+      <button onClick="{() => setIsSuccessModalOpen(true)}"
+              class="relative flex w-full shrink-0 cursor-pointer content-stretch items-center justify-center rounded-[100px] border-0 bg-[#0e7490] px-[16px] py-[12px] transition-colors hover:bg-[#0c647a]">
+        <p class="relative shrink-0 font-['Inter:Bold',sans-serif] text-[16px] leading-[normal] font-bold text-white not-italic">
+          Szenario berechnen
+        </p>
+      </button>
+      <button commandfor="{{ id }}"
+              command="close"
+              class="relative flex w-full shrink-0 cursor-pointer content-stretch items-center justify-center gap-[8px] rounded-[100px] border border-solid border-[#cbd5e1] bg-white px-[16px] py-[8px] transition-colors hover:bg-[#f8fafc]">
+        <c-icon.close />
+        <p class="relative shrink-0 font-['Inter:Regular',sans-serif] text-[14px] leading-[normal] font-normal text-[#1e293b] not-italic">
+          Abbrechen
+        </p>
+      </button>
+    </div>
+  </div>
+</dialog>

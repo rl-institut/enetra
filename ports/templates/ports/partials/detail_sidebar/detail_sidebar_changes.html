@@ -1,0 +1,107 @@
+<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+  <div class="flex items-center justify-between gap-[8px]">
+    <button
+      @click="isOpen=false"
+      class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
+    >
+      <c-icon.arrow_left/>
+      <span class="font-semibold text-[14px] text-[#1e293b]">Schließen</span>
+    </button>
+    <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
+      <c-icon.close/>
+    </button>
+  </div>
+</details-sidebar-header>
+
+<details-sidebar-content>
+  <div class="px-[20px] py-[24px] flex flex-col gap-[24px]">
+    <div class="flex gap-[8px] items-center">
+      <div class="w-[24px] h-[24px]">
+        <span class="w-full h-full">🔄️</span>
+      </div>
+      <p class="font-normal text-[16px] text-[#1e293b] uppercase">Änderungsverlauf</p>
+    </div>
+
+    <div class="flex flex-col gap-[8px]">
+      <p class="font-semibold text-[14px] text-[#1e293b]">Zeitraum</p>
+      <c-select.index classButton='border-[#94a3b8]!' selectedValue='1'>
+        <c-select.button selectValue='1'>
+          Letzte 90 Tage
+        </c-select.button>
+        <c-select.button selectValue='2'>
+          Letzte 30 Tage
+        </c-select.button>
+        <c-select.button selectValue='3'>
+          Letzte 7 Tage
+        </c-select.button>
+      </c-select.index>
+    </div>
+
+    <div class="flex gap-[4px]">
+      <button class="bg-[#0e7490] text-white font-semibold text-[14px] px-[12px] py-[4px] rounded-full hover:bg-[#0c647a] transition-colors">
+        Ich (3)
+      </button>
+      <button class="bg-[#f8fafc] text-[#64748b] font-semibold text-[14px] px-[12px] py-[4px] rounded-full hover:bg-[#e2e8f0] transition-colors">
+        Andere Beteiligte (11)
+      </button>
+    </div>
+
+    <div class="flex flex-col gap-[0px]">
+      <div class="border-t-2 border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
+        <div class="flex gap-[8px] items-center">
+          <c-icon.plus/>
+          <p class="font-semibold text-[14px] text-[#1e293b]">
+            <span class="font-bold text-[#0e7490]">Wärmepumpe</span>
+            <span> in </span>
+            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
+            <span> überschrieben</span>
+          </p>
+        </div>
+        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
+          <c-icon.circle_full/>
+          <span>6.11.2025 15:51</span>
+          <span>•</span>
+          <span>Ich</span>
+        </div>
+        <div class="bg-[#f8fafc] rounded-[8px] p-[12px] mt-[4px]">
+          <p class="text-[14px] text-[#1e293b]">Leistung 20 kW → 25 kW</p>
+        </div>
+      </div>
+
+      <div class="border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
+        <div class="flex gap-[8px] items-center">
+          <c-icon.plus/>
+          <p class="font-semibold text-[14px] text-[#1e293b]">
+            <span class="font-bold text-[#0e7490]">Wärmepumpe</span>
+            <span> zu </span>
+            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
+            <span> hinzugefügt</span>
+          </p>
+        </div>
+        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
+          <c-icon.circle_full/>
+          <span>5.11.2025 08:45</span>
+          <span>•</span>
+          <span>Ich</span>
+        </div>
+      </div>
+
+      <div class="border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
+        <div class="flex gap-[8px] items-center">
+          <c-icon.close class='w-[16px] h-[16px]'/>
+          <p class="font-semibold text-[14px] text-[#1e293b]">
+            <span>Diesel-Generator von </span>
+            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
+            <span> entfernt</span>
+          </p>
+        </div>
+        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
+          <c-icon.circle_full/>
+          <span>4.11.2025 16:23</span>
+          <span>•</span>
+          <span>Ich</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</details-sidebar-content>

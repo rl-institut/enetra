@@ -1,0 +1,36 @@
+<div x-data='{onIcon:false, onPopup: false, onIconTimerId: null, onPopupTimerId: null, resetTimers(){ if (this.onIconTimerId) clearTimeout(this.onIconTimerId); if (this.onPopupTimerId) clearTimeout(this.onPopupTimerId); } }'
+     class="icon-wrapper"
+     style="position: relative;
+            display: inline-block;
+            margin: 0 2px">
+  <div x-on:mouseenter='onIcon=true; clearTimeout(onIconTimerId)'
+       x-on:mouseleave='onIconTimerId=setTimeout(()=>onIcon=false, 500);'>{{ slot }}</div>
+  {% if badge %}
+    <div style="position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 8px;
+                background-color: #FDBA74;
+                height: 8px;
+                border: 1px solid #BD7B36;
+                border-radius: 50%;
+                pointer-events: none"></div>
+  {% endif %}
+  {% if popup %}
+    <div class="icon-popover"
+         x-on:mouseenter='onPopup=true;clearTimeout(onPopupTimerId)'
+         x-on:mouseleave='onPopupTimerId=setTimeout(()=>onPopup=false, 500)'
+         x-show='onIcon || onPopup'
+         style="position: absolute;
+                bottom: 28px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                padding: 16px;
+                min-width: 280px;
+                transition: opacity 0.2s;
+                z-index: 10000">{{ popup }}</div>
+  {% endif %}
+</div>

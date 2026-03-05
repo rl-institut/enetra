@@ -1,0 +1,36 @@
+<c-vars expanded title :border=False variant></c-vars>
+{% comment %}
+NOTE:
+The following variants exist
+default-> based on a "weaker looking expand like "andereBeteiligte"
+strong
+
+{% endcomment %}
+<details class="flex flex-col group size-full " {% if expanded %}open{% endif %} >
+  {% if variant == 'custom'%}
+  <summary>
+    {{title}}
+  </summary>
+    {% elif variant == 'strong' %}
+  <summary  class="flex items-center justify-between w-full text-left border-b-2 border-[#e5ebf3] pb-[8px] hover:opacity-80 transition-opacity">
+      {{title}}
+
+  </summary>
+    {% else %}
+
+    <summary
+          class="flex items-center justify-between w-full text-left hover:opacity-80 transition-opacity cursor-pointer border-b-0 pt-0 pb-0">
+    <div class="flex items-center w-full">
+      <p class="font-['Inter:Semi_Bold',sans-serif] text-[#1e293b] text-[14px] font-normal">
+                {{title|default:"Use a slot 'title' to pass a title to the expand" }}
+      </p>
+    </div>
+    <c-expand.icon class="w-[16px] h-[16px]" />
+  </summary>
+    {% endif %}
+  <!-- {/* Expanded Content */} -->
+  <div
+    class="{% if border %}border-[#cbd5e1] border-b border-solid{% endif %} flex flex-col items-start pb-px rounded-[8px] w-full ">
+        {{slot}}
+  </div>
+</details>

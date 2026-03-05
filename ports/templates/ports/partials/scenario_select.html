@@ -1,0 +1,60 @@
+{% load i18n %}
+{% load static %}
+
+<div x-data='{scenarioState: "status-quo",
+  isStatusQuo: "scenarioState" === "status-quo"}'>
+<div class='border-[#e2e8f0] border-b border-r border-solid content-stretch flex flex-col gap-[16px] items-start px-[16px] py-[24px] relative shrink-0 w-full {{bg_color}}'>
+      <div class="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="Port Selection">
+        <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
+          <div class="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <p class="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative shrink-0 text-[#0e7490] text-[16px]">
+            {{project_name|default:"Westhafen"}}
+            </p>
+            <div class="overflow-clip relative shrink-0 size-[16px]" data-name="Info Icon">
+              <div class="absolute contents inset-0" data-name="Group">
+                <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage}} />
+              </div>
+              <div class="absolute contents inset-[41.68%_44.87%_26.99%_44.93%]" data-name="Group">
+                <div class="absolute inset-[41.68%_44.87%_26.99%_44.93%]" data-name="Group">
+                <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage1}} />
+                </div>
+              </div>
+              <div class="absolute contents inset-[26.21%_44.67%_64.38%_44.6%]" data-name="Group">
+                <div class="absolute inset-[26.21%_44.67%_64.38%_44.6%]" data-name="Group">
+                  <img alt="" class="block max-w-none size-full" src={{scenarioGroupImage2}} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            command="show-modal" commandfor="scenario-create-modal"
+            onClick="console.log('Clicking/Callback handleScenarioToggle not implemented yet')"
+          class='{{buttonBgColor}} content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 border-0 cursor-pointer transition-colors'
+          >
+            <p class="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] text-right">
+            {% translate '+ Szenario' %}
+            </p>
+          </button>
+
+      {% include 'ports/partials/create_scenario_modal.html' with id="scenario-create-modal" %}
+        </div>
+
+        <c-select.index
+        selectedValue='{{selectedScenario|default:"status_quo"}}'
+        inputName='selectedScenario'
+        image="noImageYet"
+      >
+       <c-select.button
+          selectValue='status_quo'
+        >
+         Ist-Zustand
+        </c-select.button>
+       <c-select.button selectValue='scenario'>
+         Szenario
+        </c-select.button>
+      </c-select.index>
+      </div>
+    <div class='{{borderLeftColor}} absolute h-[134px] left-0 top-0 w-[4px]'>
+    </div>
+    </div>
+    </div>

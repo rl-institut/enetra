@@ -1,0 +1,51 @@
+<c-vars :border=True ></c-vars>
+{% comment %}
+  Should the selection stay when BulkSelect is deactived
+{% endcomment %}
+{% comment %}
+  isSelected is populated by the input
+{% endcomment %}
+<div class='
+  cotton-list-item
+  {% if border %}border border-[#cbd5e1] border-solid {% endif %}
+  content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors {{ bgColorClass }} first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] '
+     :class="isSelected ? 'bg-[#ECFEFF]' : 'bg-white hover:bg-[#f8fafc]'"
+     x-data='{isSelected: null}'
+     @click='if (isBulkMode) isSelected = !isSelected; console.log("{{title}} clicked"); {{callback}}'
+     {{ attrs }}
+  >
+  <template x-if='isBulkMode'>
+    <div class="relative shrink-0 size-[16px] flex items-center justify-center">
+      <input type="checkbox"
+             x-model.fill='isSelected'
+             {% if selected == True %}checked{% endif %}
+             class="size-[14px] cursor-pointer accent-[#0E7490]" />
+    </div>
+  </template>
+  {% comment %}
+    Should the image be shown even without bulkselection?
+  {% endcomment %}
+  <div class="relative shrink-0 size-[12px]">
+    <img alt=""
+         class="block max-w-none size-full"
+         :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
+         :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`' />
+  </div>
+  <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
+    <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px]"
+       :class="isSelected ? 'text-[#0E7490]' : 'text-[#64748b]'">{{ title }}</p>
+    {% comment %}
+    NOTE: Smth is supposed to toggle this indicator here? What is it?
+    {item.name === 'Lagerhalle 1' && scenarioState === 'scenario' && (
+    {% endcomment %}
+    {% if indicated %}<div class="w-[6px] h-[6px] rounded-full bg-[#ff9500] flex-shrink-0"></div>{% endif %}
+  </div>
+  <div class="overflow-clip relative shrink-0 size-[12px]">
+    <div class="absolute inset-[0.37%_0.1%_-0.27%_0.28%]">
+      <img alt=""
+           class="block max-w-none size-full"
+           :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
+           :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`'>
+    </div>
+  </div>
+</div>

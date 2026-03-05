@@ -1,0 +1,5 @@
+<!-- https://leafletjs.com/reference.html#popup -->
+<c-vars class lat lng :selected=False maxWidth=300></c-vars>
+<div data-lat={{lat}} data-long={{lng}} data-maxWidth={{maxWidth}} class='map-popup-content hidden' >
+    {{slot}}
+</div>

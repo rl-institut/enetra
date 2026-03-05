@@ -1,46 +1,72 @@
 {% load static %}
 <!DOCTYPE html>
 <html class="no-js" lang="en">
-
-<head>
+  <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% load static %}
-    <link rel="icon" href="{% static 'core/favicon.png'%}" type="image/png">
-    <title>{% block title %}ENETRA{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'output.css'%}">
-    {% include 'core/imports.html'%}
-
-    {% block header %}
-    {%endblock %}
-
-        <!-- This makes htmx use outerHTML by default -->
+    <link rel="icon" href="{% static 'core/favicon.png' %}" type="image/png">
+    <title>
+      {% block title %}ENETRA{% endblock %}
+    </title>
+    {% include 'core/imports.html' %}
+    <!-- Use stlyesheet after imports so the geist font is availabe -->
+    <link rel="stylesheet" href="{% static 'output.css' %}">
+    {% block header %}{% endblock %}
+    <!-- This makes htmx use outerHTML by default -->
     <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML"}'>
-</head>
+  </head>
+  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="font-sans antialiased">
+    <div class="bg-white flex flex-col h-screen overflow-hidden">
+      {% comment %}
+      {/* Top Navigation Bar */}
+      {% endcomment %}
+      {% block navbar %}
+      {% include 'core/navbar.html' %}
+      {% endblock navbar %}
+      {% comment %}
+      {/* Main Container: Sidebar + Content */}
+      {% endcomment %}
+      <div class="flex flex-1 overflow-hidden">
+        {% comment %}
+        {/* Left Sidebar */}
+        {% endcomment %}
 
-    <body hx-headers='{"X-CSRFTOKEN": "{{csrf_token}}"}'>
-        <div class="container-fluid">
+        <!-- templates/cotton/left_sidebar.html -->
+        <c-left-sidebar >
 
-        {% include 'core/navbar.html'%}
+          {% comment %}
+          {/* Scrollable Content */}
+          The sidebar is allowed to take up as much width as it wants since left-sidebar is the left-sidebar takes
+          all the available space
+          {% endcomment %}
+          <div class="flex-1 overflow-y-auto">
+            {% block sideBar %}This is the left sideBar with scrollable content <br> {% lorem 20 w %} {# this will be replaced #}{% endblock %}
+          </div>
+          {% comment %}
+          {/* Fixed Footer */}
 
-
-        <!--
-        {% for message in messages %}
-          {{ message }}
-        {% endfor %}
-        -->
-
-        <div id="content">
-            {% block content %}
-            {# this will be replaced #}
-            {%endblock %}
+          {% endcomment %}
+          <div class="shrink-0 border-t border-[#e2e8f0]">
+            {% block sideBarFooter %}
+            This is the sideBarFooter
+            {% endblock %}
+          </div>
+        </c-left-sidebar>
+        {% comment %}
+        {/* Main Content Area */}
+        {% endcomment %}
+        <div class="flex-1 bg-[#f8fafc] overflow-y-auto">
+            {% for message in messages %}{{ message }}{% endfor %}
+            {% block mainContent %}
+          <div id="content" class="bg-red-200">
+            This is the mainContent {% lorem 500 w %} {# this will be replaced #}
+          </div>
+            {% endblock %}
         </div>
+      </div>
     </div>
-        <div id="null"></div>
-
-    {% include 'core/footer.html'%}
-</body>
-
+  </body>
 </html>

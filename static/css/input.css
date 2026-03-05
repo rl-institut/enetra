@@ -3,7 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-[x-cloak] { display: none !important; }
+[x-cloak] {
+    display: none !important;
+}
+
 /* Custom css */
 /* Spinner to show something is in progress */
 .loader {
@@ -15,16 +18,17 @@
     display: inline-block;
     box-sizing: border-box;
     animation: rotation 1s linear infinite;
-    }
+}
 
-    @keyframes rotation {
+@keyframes rotation {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }
-    }
+}
 
 /* When a request is inflight this sets the style of htmx-indicators */
 .htmx-indicator {
@@ -46,6 +50,7 @@
     width: 100% !important;
     height: 90% !important;
 }
+
 /**/
 /* .dj_map_wrapper{ */
 /*     color-background: red; */
@@ -69,7 +74,7 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.985 0 0);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -125,6 +130,8 @@
 }
 
 @theme inline {
+    --font-sans: 'Geist', 'Geist Fallback';
+    --font-mono: 'Geist Mono', 'Geist Mono Fallback';
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -167,6 +174,7 @@
     * {
         @apply border-border outline-ring/50;
     }
+
     body {
         @apply bg-background text-foreground;
     }

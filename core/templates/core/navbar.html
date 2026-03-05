@@ -1,0 +1,31 @@
+{% load static %}
+<nav class='bg-white content-stretch flex items-center justify-between h-[54px]
+  px-[24px] py-[16px] flex-shrink-0
+  {% if showBorder %}border-b border-[#e2e8f0]{% endif %}'>
+  {% comment %}
+  {/* Logo Section */}
+  {% endcomment %}
+  <div class="flex items-center">
+    <img src={% static "img/enetra_logo.svg" %} alt="logo" class="h-[19px] w-[136px]" />
+  </div>
+  {% comment %}
+  {/* Nav Menu Items */}
+  {% endcomment %}
+  <div class="flex gap-[24px] items-center">
+      {% for i in "123" %}
+    <button
+      onClick="console.log('{{i}}')"
+      class="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#1e293b] hover:text-[#0e7490] transition-colors"
+    >I am {{i}}</button>
+    {% endfor %}
+  </div>
+  {% comment %}
+  {/* User Menu */}
+  {% endcomment %}
+  <div class="flex gap-[8px] items-center cursor-pointer hover:opacity-80 transition-opacity">
+    <div class="flex items-center justify-center">
+  <img src={% static "img/user_icon.svg" %} alt="User Icon" class="w-[16px] h-[16px]">
+    </div>
+    <p class="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#1e293b]">{{userMenuLabel|default:"MyAccount"}}</p>
+  </div>
+</nav>

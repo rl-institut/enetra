@@ -1,0 +1,62 @@
+<div class="flex flex-col gap-[16px]">
+  <div>
+    <div class="flex items-center gap-[8px] mb-[8px]">
+        <div class="w-[12px] h-[12px] bg-[#a78bfa] rounded-[2px]"></div>
+      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
+        GEBÄUDEFLÄCHEN
+
+    </div>
+<c-list count=5 title="Meine Gebaüde" >
+      {% comment %}
+        Note all the different ways selected and non selected can be passed to cotton
+      {% endcomment %}
+     <c-list.item :selected=False title="Großes Gebäude" :indicated=False />
+     <c-list.item selected title="Kleines Gebaüde" indicated />
+     <c-list.item  title="Schloss" indicated >list Item has no slot yet</c-list.item>
+     <c-list.item :selected=True title="Schloss" indicated ></c-list.item>
+     <c-list.item :selected=True title="Haus" indicated ></c-list.item>
+     <c-list.item :selected=True title="Rathaus" indicated ></c-list.item>
+     <c-list.item :selected=True title="Hütte" indicated ></c-list.item>
+     <c-list.item :selected=True title="Burg" indicated ></c-list.item>
+
+</c-list>
+      </p>
+    <button onClick='console.log("{handleAddBuilding} not implemented")'
+      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+      >+ Gebäudefläche</button>
+  </div>
+  <div>
+    {% include "ports/partials/andere_beteiligte.html" %}
+  </div>
+  <div>
+    <div class="flex items-center gap-[8px] mb-[8px] pb-0 pt-4 border-t">
+      <div class="w-[12px] h-[12px] bg-[#C6E474] rounded-[2px]"></div>
+      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
+        FREIFLÄCHEN
+      </p>
+    </div>
+<c-list count=5 title="Meine Flächen" >
+      {% comment %}
+        Note all the different ways selected and non selected can be passed to cotton
+      {% endcomment %}
+     <c-list.item :selected=False title="Großer Rasen" :indicated=False />
+     <c-list.item selected title="Kleiner Rasen" indicated />
+     <c-list.item selected title="Gelber Rasen" indicated />
+     <c-list.item  title="Wasser" indicated >list Item has no slot yet</c-list.item>
+     <c-list.item :selected=True title="Parkplatz" indicated >list Item has no slot yet</c-list.item>
+
+</c-list>
+    <button onClick='console.log("{handleAddFreiflache} not implemented")'
+      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+      >+ Freifläche</button>
+  </div>
+  <div class="pt-0">
+    <p class="font-['Inter:Semi_Bold',sans-serif] text-[14px] text-[#64748b]">Andere Beteiligte (0)</p>
+  </div>
+</div>
+
+    {% comment %}
+    <List variant="list" items={lagerhalleItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
+      <AndereBeteiligte />
+    <List variant="list" items={freiflacheItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
+    {% endcomment %}

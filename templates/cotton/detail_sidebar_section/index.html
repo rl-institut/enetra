@@ -1,0 +1,41 @@
+      <div class="flex flex-col gap-[8px]">
+        <c-expand.index variant="strong" expanded >
+        <c-slot name="title">
+          <div class="flex items-center gap-[8px]">
+              {{icon}}
+              <h3 class="font-normal text-[16px] text-[#1e293b] uppercase">{{title}}</h3>
+              <c-icon.info class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]" />
+          </div>
+            <c-expand.icon class='w-[19px] h-[19px]' />
+        </c-slot>
+        <div class="flex flex-col gap-[8px] pt-[8px] w-full">
+           {% for item in items %}
+
+          <button onClick='console.log("transition to lasten view not implemented")'
+                  class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer">
+            <div class="flex items-center gap-[8px] flex-1">
+              <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
+                <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45"></div>
+              </div>
+                          <span class="font-semibold text-[14px] text-[#64748b]">{{item}}</span>
+            </div>
+            <div
+              role="button"
+              onClick='console.log(`{(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); } }}
+              class="flex-shrink-0 hover:opacity-60 transition-opacity"`)
+              >
+              <c-icon.three_dots />
+            </div>
+          </button>
+          {% endfor %}
+            {% if not items %}
+            <p class="text-[14px] text-[#64748b]">Keine Komponente hinzugefügt</p>
+            {% endif %}
+
+          <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+            + Hinzufügen
+          </button>
+        </div>
+      </c-expand.index>
+      </div>

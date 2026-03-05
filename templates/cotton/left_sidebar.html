@@ -1,0 +1,11 @@
+        <div
+            {% comment %}
+          onClick={(e) => e.stopPropagation()}
+            {% endcomment %}
+        class='w-[400px] bg-white flex flex-col flex-shrink-0 relative z-20
+          {% if showBorder %}border-r border-[#e2e8f0]{% endif %}
+          {% if class %} {{ class }} {% endif %}
+          '
+          >
+          {{slot}}
+        </div>

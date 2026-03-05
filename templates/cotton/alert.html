@@ -24,7 +24,7 @@ The default behaviour is recreated
 {% comment %}
 Dynamic insertion via htmx allows custom styling of the svg while still caching the svg.
 We can also statically style the svg and use it via img tag or include it as dynamic asset
-through {% include 'templates/success.svw' %} or
+through {% include 'templates/success.svg' %} or
 {% endcomment %}
 {% if icon == "true" %}
     {% if variant == 'danger' %}hx-get="{% static 'danger.svg' %}"

@@ -6,9 +6,9 @@ app_name = "ports"
 
 urlpatterns = [
     path(
-        "simulate/",
-        views.testview,
-        name="test",
+        "map/",
+        views.test,
+        name="map",
     ),
     path(
         "",
@@ -16,14 +16,24 @@ urlpatterns = [
         name="home",
     ),
     path(
-        "leaflet/",
+        "simulate/",
+        views.testview,
+        name="test",
+    ),
+    path(
+        "dynamic_forms_example/",
+        views.dynamic_forms,
+        name="dynamic_forms_example",
+    ),
+    path(
+        "leaflet_example/",
         views.leaflet,
         name="leaflet",
     ),
     path(
         "<uuid:scenario_internal_id>/<str:model>/crud/",
         views.CrudView.as_view(),
-        name="home",
+        name="crud_model",
     ),
     path(
         "<uuid:scenario_uuid>/<str:first_load_str>/<str:last_update_str>/get_updates/",

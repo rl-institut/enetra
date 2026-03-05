@@ -1,0 +1,27 @@
+{% load constants %}
+{% events as EVENTS %}
+{% with "calculate-scenario-modal" as id %}
+<div x-data
+     class="bg-[#f8fafc] content-stretch flex flex-col gap-[16px] items-center p-[16px]">
+  <!-- {/* Szenario berechnen Button */} -->
+  <button
+        command="show-modal"
+        commandfor="{{ id }}"
+          class="w-full bg-[#0e7490] text-white font-bold text-[16px] hover:bg-[#0c647a] transition-colors py-[12px] rounded-full">
+    Szenario berechnen
+  </button>
+  <!-- {/* Changes Indicator */} -->
+  {% comment %}
+  I would like this better with an listener for this event fetching the
+  data from the server and inserting it in the sidebar component
+  @click='$dispatch("{{EVENTS.openChangesSidebar}}")'
+  {% endcomment %}
+  <button @click='handleViewChange("changes")'
+          class="flex items-center gap-[8px] px-[8px] py-[4px] hover:opacity-80 transition-opacity cursor-pointer">
+        <span class="w-full h-full">🔄️</span>
+    <p class="font-bold text-[13px] text-[#b45309] text-nowrap">2 Änderungen</p>
+  </button>
+  <!-- {/* Calculation Modal */} -->
+        {% include 'ports/partials/scenario_calculation_modal.html' with id=id%}
+</div>
+{% endwith %}

@@ -46,6 +46,16 @@ def get_authentification(
     return True
 
 
+def test(request):
+    context = {}
+    return render(request, "ports/test.html", context)
+
+
+def home(request):
+    context = {}
+    return render(request, "ports/tool_base.html", context)
+
+
 def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_uuid)
     focused_form = request.GET.get("focusedForm", None)
@@ -157,7 +167,7 @@ def leaflet(request):
     return render(request, "ports/leaflet.html", context)
 
 
-def home(request):
+def dynamic_forms(request):
     s, _ = Scenario.objects.get_or_create(name="Test Scenario")
     a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
     a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
@@ -171,7 +181,7 @@ def home(request):
     context["areas"] = [
         Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
     ]
-    return render(request, "ports/index.html", context)
+    return render(request, "ports/dynamic_forms.html", context)
 
 
 def get_pre(instance_or_uuid: "ScenarioItem | uuid4"):
@@ -245,9 +255,9 @@ class CrudView(FormView):
                 form.instance.internal_id = _id
             self.context["form"] = form
             if self.Model == Solar:
-                template = "ports/index.html#crud-solar-htmx-partial"
+                template = "ports/dynamic_forms.html#crud-solar-htmx-partial"
             elif self.Model == Area:
-                template = "ports/index.html#crud-area-htmx-partial"
+                template = "ports/dynamic_forms.html#crud-area-htmx-partial"
             else:
                 raise NotImplementedError()
             return render(self.request, template, self.context)

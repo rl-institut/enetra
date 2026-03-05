@@ -7,4 +7,16 @@
     <!-- TODO: Remove: This makes using crispy-tailwind possible, but in later stages we want custom styled inputs anyways -->
     <!-- It also allows designing with new tailwind css classes without the need of running the tailwind cli -->
    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
 <script src="https://unpkg.com/idiomorph@0.7.4/dist/idiomorph-ext.min.js" integrity="sha384-SsScJKzATF/w6suEEdLbgYGsYFLzeKfOA6PY+/C5ZPxOSuA+ARquqtz/BZz9JWU8" crossorigin="anonymous"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Calligraffitti&family=Geist:wght@100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+{% load constants %}
+{% events_data as EVENTS %}
+<script>
+const EVENTS = {{ EVENTS|safe }};
+console.log("The following EVENTS exists globally")
+console.log(EVENTS)
+</script>
