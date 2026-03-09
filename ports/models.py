@@ -8,6 +8,8 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.core.validators import MaxValueValidator
+from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
 from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
@@ -113,6 +115,9 @@ class ScenarioItem(models.Model):
     def verbose_name(self):
         return self._meta.verbose_name
 
+    def __str__(self):
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id}"
+
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
 def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
@@ -169,6 +174,8 @@ class Area(ScenarioItem):
 
 
 class LoadTemplate(ScenarioItem):
+    """Template for timeseries, mostly power series"""
+
     timeseries = models.JSONField()
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
         default=None
@@ -176,12 +183,16 @@ class LoadTemplate(ScenarioItem):
 
 
 class Load(ScenarioItem):
+    """Power timeseries, derived from LoadTemplate"""
+
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
     template = models.ForeignKey(LoadTemplate, on_delete=models.CASCADE)
     factor = models.FloatField(default=1.0)  # scale template values
 
 
 class Grid(ScenarioItem):
+    """Information about how areas are connected"""
+
     class CarrierChoices(models.TextChoices):
         ELECTRICITY = "electricity", "Strom"
         DIESEL = "diesel", "Diesel"
@@ -202,20 +213,24 @@ class Grid(ScenarioItem):
 
 
 class ElectricComponent(ScenarioItem):
+    """Abstract electric component, defines shared characteristics"""
+
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
     power_kw = models.FloatField(default=None, null=True, blank=True)
     efficiency = models.FloatField(default=1.0)
-    power_installed = models.FloatField(default=None, null=True, blank=True)
-    power_min = models.FloatField(default=None, null=True, blank=True)
-    power_max = models.FloatField(default=None, null=True, blank=True)
-    capex = models.FloatField(default=None, null=True, blank=True)
-    opex = models.FloatField(default=None, null=True, blank=True)
+    power_installed = models.FloatField(default=None, null=True, blank=True)  # kWh
+    power_min = models.FloatField(default=None, null=True, blank=True)  # kWh
+    power_max = models.FloatField(default=None, null=True, blank=True)  # kWh
+    capex = models.FloatField(default=None, null=True, blank=True)  # €
+    opex = models.FloatField(default=None, null=True, blank=True)  # €/a
 
     class Meta:
         abstract = True  # abstract table
 
 
 class Generator(ElectricComponent):
+    """Transforms fuel into electricity"""
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
@@ -224,6 +239,8 @@ class Generator(ElectricComponent):
 
 
 class Heating(ElectricComponent):
+    """Transforms energy source to heat"""
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
@@ -233,7 +250,8 @@ class Heating(ElectricComponent):
 
 
 class CHP(ElectricComponent):
-    # Blockheizkraftwerk
+    """Combined heat and power (Blockheizkraftwerk)"""
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
@@ -244,21 +262,27 @@ class CHP(ElectricComponent):
 
 
 class FuelCell(ElectricComponent):
+    """Transform H2 into electricity"""
+
     # carrier is always hydrogen
     efficiency_thermal = models.FloatField(default=1.0)
 
 
 class Electrolyzer(ElectricComponent):
+    """Transform electricity into H2"""
+
     # carrier is always electricity
     efficiency_thermal = models.FloatField(default=1.0)
 
 
 class Heatpump(ElectricComponent):
+    """Transform electricity into heat"""
+
     # carrier is always electricity
     class HeatChoices(models.TextChoices):
         AIR = "air", "Luft"
-        water = "water", "Wasser"
-        waste_air = "waste_air", "Abwärme"
+        WATER = "water", "Wasser"
+        WASTE_AIR = "waste_air", "Abwärme"
 
     class ModeChoices(models.IntegerChoices):
         MONOVALENT = 1
@@ -269,20 +293,34 @@ class Heatpump(ElectricComponent):
 
 
 class Solar(ElectricComponent):
+    """Photovoltaics"""
+
     profile = models.ForeignKey(
         Load, on_delete=models.SET_NULL, default=None, null=True, blank=True
     )
-    azimut = models.FloatField(default=None, null=True, blank=True)  # 0-360
-    angle = models.FloatField(default=None, null=True, blank=True)  # 0-90
+    azimut = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(360)],
+    )
+    angle = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(90)],
+    )
     spec_power = models.FloatField(default=None, null=True, blank=True)  # kW/m^2
-    surface_area_installed = models.FloatField(default=None, null=True, blank=True)
-    surface_area_min = models.FloatField(default=None, null=True, blank=True)
-    surface_area_max = models.FloatField(default=None, null=True, blank=True)
+    surface_area_installed = models.FloatField(default=None, null=True, blank=True)  # m^2
+    surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
+    surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
 
 
 class Storage(ScenarioItem):
+    """Generic energy storage"""
+
     class CarrierChoices(models.TextChoices):
-        ELECTRICITY = "electricity", "Strom"
+        ELECTRICITY = "electricity", "Strom"  # battery
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
@@ -290,6 +328,7 @@ class Storage(ScenarioItem):
     carrier = models.CharField(choices=CarrierChoices)
     efficiency_load = models.FloatField(default=1.0)
     efficiency_store = models.FloatField(default=1.0)
+    # capacity: unit depends on carrier. kWh for electricity and heat, liters for H2
     capacity_installed = models.FloatField(default=None, null=True, blank=True)
     capacity_min = models.FloatField(default=None, null=True, blank=True)
     capacity_max = models.FloatField(default=None, null=True, blank=True)
