@@ -40,17 +40,22 @@
         </div>
 
         <c-select.index
-        selectedValue='{{selectedScenario|default:"status_quo"}}'
+        selectedValue='{{scenario.internal_id}}'
         inputName='selectedScenario'
         image="noImageYet"
       >
+        {% for s in scenarios %}
        <c-select.button
-          selectValue='status_quo'
+          selectValue={{s.internal_id}}
         >
-         Ist-Zustand
+          {{s.name}}
         </c-select.button>
-       <c-select.button selectValue='scenario'>
-         Szenario
+        {% endfor %}
+
+       <c-select.button
+          selectValue=1234
+        >
+          Some other (not really)
         </c-select.button>
       </c-select.index>
       </div>

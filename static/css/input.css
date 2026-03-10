@@ -30,6 +30,29 @@
     }
 }
 
+@keyframes slideIn {
+    0% {
+        transform: translateX(-100%);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+
+    }
+}
+
+
+.slide-in {
+    animation: slideIn 0.4s ease-out forwards;
+}
+
+.htmx-request .my-hide,
+.htmx-request.my-hide {
+    display: none;
+}
+
 /* When a request is inflight this sets the style of htmx-indicators */
 .htmx-indicator {
     opacity: 0;

@@ -10,6 +10,7 @@ The implementation can be fouind inside the custom css tailwind brackets
    class="w-full [anchor-name:--select-dropdown-{{uid}}]" >
   <button @click='show=!show'
           @click.outside='show=false'
+      type='button'
       class="
       relative
       cursor-pointer
@@ -21,7 +22,7 @@ The implementation can be fouind inside the custom css tailwind brackets
     </p>
     <div :class="show && 'rotate-180'"
          class='relative shrink-0 size-[16px] transition-transform'>
-      <img alt="" class="block max-w-none size-full" src={{ image }} />
+         <img alt="" class="block max-w-none size-full" {% if image %}src={{image }}{% endif %}/>
     </div>
   </button>
   <div x-show="show"

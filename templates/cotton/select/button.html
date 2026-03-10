@@ -6,6 +6,7 @@ A select without a selectValue has no use. The assertion could be removed later
   You should pass a selectValue
 {% endif %}
 <button
+  type='button'
   data-value='{{selectValue}}'
   x-init="if (selectedValue==$el.dataset.value){selectedElement=$el;console.log('initialized with selectedElement')}"
   @click='selectedValue= $el.dataset.value; selectedElement = $el ;console.log("changed selectedValue")'

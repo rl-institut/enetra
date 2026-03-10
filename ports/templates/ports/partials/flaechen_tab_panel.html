@@ -1,27 +1,36 @@
 <div class="flex flex-col gap-[16px]">
-  <div>
+
     <div class="flex items-center gap-[8px] mb-[8px]">
         <div class="w-[12px] h-[12px] bg-[#a78bfa] rounded-[2px]"></div>
       <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
         GEBÄUDEFLÄCHEN
 
     </div>
-<c-list count=5 title="Meine Gebaüde" >
+  <div>
+    <c-list count={{areas|length}} title="Meine Gebaüde"
+
+    >
       {% comment %}
         Note all the different ways selected and non selected can be passed to cotton
       {% endcomment %}
-     <c-list.item :selected=False title="Großes Gebäude" :indicated=False />
-     <c-list.item selected title="Kleines Gebaüde" indicated />
-     <c-list.item  title="Schloss" indicated >list Item has no slot yet</c-list.item>
-     <c-list.item :selected=True title="Schloss" indicated ></c-list.item>
-     <c-list.item :selected=True title="Haus" indicated ></c-list.item>
-     <c-list.item :selected=True title="Rathaus" indicated ></c-list.item>
-     <c-list.item :selected=True title="Hütte" indicated ></c-list.item>
-     <c-list.item :selected=True title="Burg" indicated ></c-list.item>
-
+      {% for item in building_areas %}
+              <div class="contents"
+                {% comment %}
+                hx-get this template with the item injected
+                ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
+                {% endcomment %}
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-swap="innerHTML"
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
+              >
+        <c-list.item id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+      </div>
+      {% endfor %}
 </c-list>
       </p>
-    <button onClick='console.log("{handleAddBuilding} not implemented")'
+    <button button='button' onClick='console.log("{handleAddBuilding} not implemented")'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
       >+ Gebäudefläche</button>
   </div>
@@ -46,7 +55,7 @@
      <c-list.item :selected=True title="Parkplatz" indicated >list Item has no slot yet</c-list.item>
 
 </c-list>
-    <button onClick='console.log("{handleAddFreiflache} not implemented")'
+    <button button='button' onClick='console.log("{handleAddFreiflache} not implemented")'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
       >+ Freifläche</button>
   </div>

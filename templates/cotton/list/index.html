@@ -1,6 +1,6 @@
-<c-vars :customTitle=False :border=True count title description></c-vars>
+<c-vars :customTitle=False :border=True :bulkMode=False count title description></c-vars>
 <div class="cotton-list bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full"
-     x-data='{isBulkMode: false}'>
+  x-data='{isBulkMode: {{bulkMode|lower}} }'>
   <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
     {% if customTitle %}
       {{ title }}
