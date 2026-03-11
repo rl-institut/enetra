@@ -43,6 +43,19 @@
     }
 }
 
+@keyframes slideFromBottom {
+    0% {
+        transform: translateY(100%);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+
+    }
+}
+
 @keyframes slideFromTop {
     0% {
         transform: translateY(-100%);
@@ -56,10 +69,13 @@
     }
 }
 
+.my-slide-in-from-bottom {
+    animation: slideFromBottom 0.4s ease-out forwards;
+}
+
 .my-slide-in-from-top {
     animation: slideFromTop 0.4s ease-out forwards;
 }
-
 .slide-in {
     animation: slideFromLeft 0.4s ease-out forwards;
 }
@@ -67,6 +83,11 @@
 .htmx-request .my-hide,
 .htmx-request.my-hide {
     display: none;
+}
+
+.htmx-slide-in .htmx-added,
+.htmx-slide-in.htmx-added {
+    animation: slideFromTop 0.4s ease-out forwards;
 }
 
 /* When a request is inflight this sets the style of htmx-indicators */

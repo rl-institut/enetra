@@ -28,7 +28,7 @@
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
               >
-        <c-list.item id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+        <c-list.item id='area-button-list{{item.internal_id}}' class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False />
       </div>
       {% endpartialdef %}
       {% endfor %}

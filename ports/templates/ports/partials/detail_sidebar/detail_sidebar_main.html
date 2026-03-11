@@ -182,7 +182,7 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
 
 {% if created %}
 <div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'  >
-  {% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' %}
+{% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}
 </div>
 {% else %}
   <c-list.item hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
