@@ -15,7 +15,6 @@ from django.db.models.signals import post_save
 from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
-from django.forms import Form
 from django.forms import ModelForm
 
 logger = logging.getLogger("django_ports")
@@ -216,7 +215,9 @@ class Area(ScenarioItem):
     )
 
     @classmethod
-    def adjust_Form(cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area") -> type[Form]:
+    def adjust_Form(
+        cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area"
+    ) -> type[ModelForm]:
         FormClass.base_fields["usage"].required = True
         if instance.area_type == Area.AreaTypeChoices.BUILDING:
             FormClass.base_fields["usage"].choices = Area.BuildingUsageChoices

@@ -261,21 +261,24 @@ class DetailsView(FormView):
         )
 
     def post(self, request, *args, **kwargs):
-        if self.Model == Solar or self.Model == Area:
-            form = self.Form(data=request.POST)
+        if self.Model == Area:
             if not self.instance:
                 # Create a new item and pass it back in the default state
                 form = self.Form(data={"internal_id": uuid4()})
                 # do NOT pass the request.POST directly which could lead to unauthorized injections
                 extra_args = {}
                 if self.Model == Area:
+                    # TODO: Refactor into model method so this function stays clean
                     allowed_attributes = ["area_type"]
                     for att in allowed_attributes:
                         extra_args[att] = request.POST.get(att)
+                count = self.Model.objects.filter(
+                    scenario=self.scenario, area_type=extra_args["area_type"]
+                ).count()
 
                 self.instance = self.Model.objects.create(
                     scenario=self.scenario,
-                    name="Neues Objekt",
+                    name=f"Neues Fläche {count + 1}",
                     **extra_args,
                     # TODO: manager=request.user
                 )
@@ -289,25 +292,21 @@ class DetailsView(FormView):
 
                 return render(self.request, self.template, self.context)
             try:
+                self.Form = Area.adjust_Form(self.Form, instance=self.instance)
+                form = self.Form(data=request.POST, instance=self.instance)
+                self.context["form"] = form
                 if form.is_valid():
-                    instance = self.Model.objects.filter(
-                        scenario=self.scenario,
-                        internal_id=form.cleaned_data["internal_id"],
-                    ).first()
-                    if instance:
-                        form = self.Form(data=request.POST, instance=instance)
-                        self.context["item"] = form.save()
-                    else:
-                        # Patch in data which was not part of the form but is part of the model
-                        obj = form.save(commit=False)
-                        obj.scenario = self.scenario
-                        obj.save()
+                    self.context["item"] = form.save()
+                    # else:
+                    #     # Patch in data which was not part of the form but is part of the model
+                    #     obj = form.save(commit=False)
+                    #     obj.scenario = self.scenario
+                    #     obj.save()
                     self.context["success"] = "Erfolgreich gespeichert"
                 else:
                     self.context["errors"] = ["An error occured", form.errors]
             except Exception:
                 self.context["errors"] = ["An error occured"]
-            self.context["form"] = form
             return render(self.request, self.template, self.context)
         raise Http404("This model does not exist")
 

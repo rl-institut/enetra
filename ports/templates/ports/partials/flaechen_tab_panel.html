@@ -8,7 +8,7 @@
 
     </div>
   <div>
-    <c-list id='flaechen-tab-building-list' count={{areas|length}} title="Meine Gebaüde"
+    <c-list id='flaechen-tab-building-area-list' count title="Meine Gebaüde"
 
     >
       {% comment %}
@@ -55,7 +55,7 @@
         FREIFLÄCHEN
       </p>
     </div>
-<c-list count=5 title="Meine Flächen" >
+<c-list id='flaechen-tab-open-area-list' count title="Meine Flächen" >
       {% comment %}
         Note all the different ways selected and non selected can be passed to cotton
       {% endcomment %}
@@ -79,6 +79,13 @@
 </c-list>
     <button type='button' onClick='console.log("{handleAddFreiflache} not implemented")'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+                hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
+                hx-vals='{"area_type": "{{Area.AreaTypeChoices.OPEN|assertValue}}" }'
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
       >+ Freifläche</button>
   </div>
   <div class="pt-0">
