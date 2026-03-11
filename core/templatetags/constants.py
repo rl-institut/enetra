@@ -6,7 +6,7 @@ from django.conf import settings
 
 register = template.Library()
 
-
+events_dict = dict()
 with open("ports/static/ports/events.json") as f:
     events_dict = json.load(f)
 
@@ -15,6 +15,7 @@ class EventsAccessor:
     """Proxy object returned by {% events %} — supports {{ EVENTS.KEY }} syntax."""
 
     def __getattr__(self, key: str) -> str:
+        global events_dict
         if settings.DEBUG:
             # Keep the file fresh during development
             with open("ports/static/ports/events.json") as f:
@@ -40,6 +41,8 @@ def events_data():
 
 @register.filter
 def assertValue(val):
-    if val is None or val == "":
+    print(f"asserting: {val}")
+    if val is None or val == "" or val == "None":
         print("Value is none or empty string")
         raise AssertionError("AssertedValue is None")
+    return val

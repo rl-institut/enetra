@@ -31,6 +31,11 @@ urlpatterns = [
         name="leaflet",
     ),
     path(
+        "details_create/<uuid:scenario_internal_id>/<str:model>/",
+        views.DetailsView.as_view(),
+        name="details_create",
+    ),
+    path(
         "details/<uuid:scenario_internal_id>/<str:model>/<uuid:internal_id>/",
         views.DetailsView.as_view(),
         name="details",

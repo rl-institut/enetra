@@ -63,11 +63,16 @@ def home(request):
     scenario = Scenario.objects.last()
     context["scenario"] = scenario
     context["scenarios"] = Scenario.objects.all()
-    context["building_areas"] = Area.objects.filter(scenario=scenario)
-    context["open_areas"] = Area.objects.filter(scenario=scenario)
+    context["building_areas"] = Area.objects.filter(
+        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
+    )
+    context["open_areas"] = Area.objects.filter(
+        scenario=scenario, area_type=Area.AreaTypeChoices.OPEN
+    )
     context["solars"] = Solar.objects.filter(scenario=scenario)
     context["generators"] = Generator.objects.filter(scenario=scenario)
     context["heaters"] = Heating.objects.filter(scenario=scenario)
+    context["Area"] = Area
     return render(request, "ports/tool_base.html", context)
 
 
@@ -197,37 +202,23 @@ class DetailsView(FormView):
         self.Form = ScenarioItemFormFactory(self.Model)
         if self.Model == Area:
             self.template = "ports/partials/detail_sidebar/detail_sidebar_main.html"
-        self.instance = self.Model.objects.get(
-            scenario=self.scenario, internal_id=kwargs["internal_id"]
-        )
-
+        self.instance = self.Model.objects.filter(
+            scenario=self.scenario, internal_id=kwargs.get("internal_id")
+        ).first()
         assert ScenarioItem in self.Model.mro()
         self.context: dict[str, Any] = {"scenario": self.scenario}
         self.context["item"] = self.instance
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        if not self.instance:
+            raise Http404("This instance does not exist")
         if self.Model not in [Solar, Area, Generator]:
             raise Http404("This model does not exist or is not implemented yet")
-        prefix = request.GET.get("prefix")
-        if prefix:
-            # Usually this item already exists if it is requested with a prefix
-            form = self.Form(data=request.GET, prefix=prefix)
-            form.is_valid()
-            _id = form.cleaned_data.get("internal_id")
-            # If the item was deleted, we clean up by removing the form
-            # Posting the form with the same prefix would create issues since
-            # the deleteditem already has the same id
-            if _id and not self.Model.objects.filter(internal_id=_id).exists():
-                response = HttpResponse(b"This element was deleted")
-                response["HX-Retarget"] = f".form-container-{_id}"
-                response["HX-Reswap"] = "outerHTML"
-                return response
-        else:
-            _id = uuid4()
-            form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
-            # form autogenerates instance with random uuid. we have to stop this diverging
-            form.instance.internal_id = _id
+        _id = uuid4()
+        form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
+        # form autogenerates instance with random uuid. we have to stop this diverging
+        form.instance.internal_id = _id
         self.context["form"] = form
         if self.Model == Area:
             self.Form.base_fields["usage"].required = True
@@ -262,13 +253,41 @@ class DetailsView(FormView):
         # NOTE: data is send as hx-include, so not part of POST
         form = self.Form(data=request.GET)
         form.is_valid()
-        out = self.instance.delete()
-        # TODO: Style a response which shows deletion
-        return HttpResponse(out)
+        self.instance.delete()
+        return render(
+            self.request,
+            "ports/partials/detail_sidebar/detail_deleted.html",
+            self.context,
+        )
 
     def post(self, request, *args, **kwargs):
         if self.Model == Solar or self.Model == Area:
             form = self.Form(data=request.POST)
+            if not self.instance:
+                # Create a new item and pass it back in the default state
+                form = self.Form(data={"internal_id": uuid4()})
+                # do NOT pass the request.POST directly which could lead to unauthorized injections
+                extra_args = {}
+                if self.Model == Area:
+                    allowed_attributes = ["area_type"]
+                    for att in allowed_attributes:
+                        extra_args[att] = request.POST.get(att)
+
+                self.instance = self.Model.objects.create(
+                    scenario=self.scenario,
+                    name="Neues Objekt",
+                    **extra_args,
+                    # TODO: manager=request.user
+                )
+
+                self.context["form"] = Area.adjust_Form(self.Form, instance=self.instance)(
+                    instance=self.instance
+                )
+
+                self.context["item"] = self.instance
+                self.context["created"] = True
+
+                return render(self.request, self.template, self.context)
             try:
                 if form.is_valid():
                     instance = self.Model.objects.filter(

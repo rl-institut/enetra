@@ -1,3 +1,4 @@
+{% load partials %}
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
 <form hx-indicator='this'>
@@ -22,10 +23,12 @@
     {% endif %}
     {{ errors }}
     <button hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+      hx-target='closest form'
             hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
             type='button'
-            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
-      DELETE Must remove itself and the list too
+            class="
+      w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+      DELETE
     </button>
     <button type='button'
             onClick='console.log("{handleAddBuilding} not implemented")'
@@ -176,4 +179,15 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
       </div>
     </details-sidebar-content>
   </form>
-  <c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />
+
+{% if created %}
+<div  hx-swap-oob='beforeend:#flaechen-tab-building-list .slot'  >
+  {% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' %}
+</div>
+{% else %}
+  <c-list.item hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+{% endif %}
+{% comment %}
+
+<c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />
+{% endcomment %}

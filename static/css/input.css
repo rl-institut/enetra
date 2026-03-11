@@ -30,7 +30,7 @@
     }
 }
 
-@keyframes slideIn {
+@keyframes slideFromLeft {
     0% {
         transform: translateX(-100%);
         opacity: 1;
@@ -43,9 +43,25 @@
     }
 }
 
+@keyframes slideFromTop {
+    0% {
+        transform: translateY(-100%);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+
+    }
+}
+
+.my-slide-in-from-top {
+    animation: slideFromTop 0.4s ease-out forwards;
+}
 
 .slide-in {
-    animation: slideIn 0.4s ease-out forwards;
+    animation: slideFromLeft 0.4s ease-out forwards;
 }
 
 .htmx-request .my-hide,

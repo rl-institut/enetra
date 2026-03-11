@@ -1,6 +1,7 @@
-<c-vars :customTitle=False :border=True :bulkMode=False count title description></c-vars>
-<div class="cotton-list bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full"
-  x-data='{isBulkMode: {{bulkMode|lower}} }'>
+<c-vars id :customTitle=False :border=True :bulkMode=False count title description></c-vars>
+<div id={{id}} class="cotton-list bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full "
+  x-data='{isBulkMode: {{bulkMode|lower}}, count:null} '
+>
   <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
     {% if customTitle %}
       {{ title }}
@@ -9,13 +10,16 @@
         <span class="leading-[normal] text-[14px]">{{ title }}</span>
         {% if count %}
           <span class="leading-[normal] text-[13px]">&nbsp</span>
-          <span class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[13px]">({{ count }})</span>
+          <span class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[13px]" x-text='count'></span>
         {% endif %}
       </p>
     <c-list.button></c-list.button>
     {% endif %}
   </div>
-  <div class=" {% if border %}border-[#cbd5e1] border-b border-solid{% endif %}  content-stretch flex flex-col items-start pb-px relative rounded-[8px] shrink-0 w-full">
+
+  <div class="{% if border %}border-[#cbd5e1] border-b border-solid{% endif %}  content-stretch flex flex-col items-start pb-px relative rounded-[8px] shrink-0 w-full slot overflow-hidden"
+  x-on:htmx:load.window='count=$el.querySelectorAll(`.cotton-list-item`).length'
+  >
     {{ slot }}
   </div>
 </div>
