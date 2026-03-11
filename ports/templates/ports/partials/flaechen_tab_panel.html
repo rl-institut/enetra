@@ -22,6 +22,7 @@
                 hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
                 hx-target="#detailSidebar"
                 hx-trigger="click"
+                hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
               >

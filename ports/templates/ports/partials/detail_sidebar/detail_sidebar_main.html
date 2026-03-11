@@ -1,74 +1,71 @@
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-
-<form
-
-      hx-indicator='this'
->
-  {{form.internal_id}}
-  {{form.geom}}
-{% comment %}
+<form hx-indicator='this'>
+  {{ form.internal_id }}
+  {% comment %}
   we should have a busy indicator
-{% endcomment %}
+  {% endcomment %}
   <div class="htmx-indicator bg-red-500 loader"></div>
-<details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
+  <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
     {% comment %}
       hidden field to
     {% endcomment %}
     {% if success %}
-    <div x-data="{show:true }" class='absolute animate-in fade-in duration-1000' x-init='setTimeout(()=>show=false, 1000)'
-        x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
-      x-show="show"
-    >
-    <c-alert class=""
-      variant="success" title={{success}}>
-      </c-alert>
-    </div>
-    {% endif %}
-
-      {{errors}}
-
-    <button
-      hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-      type='button' onClick='console.log("{handleAddBuilding} not implemented")'
-      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
-      >DELETE</button>
-
-    <button type='button' onClick='console.log("{handleAddBuilding} not implemented")'
-      hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-      hx-target="closest form"
-      hx-swap="outerHTML"
-
-      x-data
-      @click='console.log("foo"); event.preventDefault()'
-      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
-      >REFRESH</button>
-
-    <button type='button' onClick='console.log("{handleAddBuilding} not implemented")'
-      hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-      hx-target="closest form"
-      hx-swap="outerHTML"
-      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
-      >POST</button>
-  <div class="flex items-center justify-between gap-[8px] mb-[8px]">
-    <div class="flex items-center gap-[8px] flex-1">
-      <div class="flex shrink-0 text-[#a78bfa] ">
-        <c-icon.building />
+      <div x-data="{show:true }"
+           class='absolute animate-in fade-in duration-1000'
+           x-init='setTimeout(()=>show=false, 1000)'
+           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
+           x-show="show">
+        <c-alert class="" variant="success" title={{ success }}>
+        </c-alert>
       </div>
-      <h2 class="font-semibold text-[20px] text-[#1e293b]">{{item.get_area_type_display|default:"Missing area_type"}}</h2>
-      <button class="flex-shrink-0 hover:opacity-60 transition-opacity">
-        <c-icon.three-dots />
+    {% endif %}
+    {{ errors }}
+    <button hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+            hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
+            type='button'
+            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+      DELETE Must remove itself and the list too
+    </button>
+    <button type='button'
+            onClick='console.log("{handleAddBuilding} not implemented")'
+            hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+            hx-target="closest form"
+            hx-swap="outerHTML"
+            x-data
+            @click='console.log("foo"); event.preventDefault()'
+            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+      REFRESH
+    </button>
+    <button type='button'
+            onClick='console.log("{handleAddBuilding} not implemented")'
+            hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+            hx-target="closest form"
+            hx-swap="outerHTML"
+            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+      POST
+    </button>
+    <div class="flex items-center justify-between gap-[8px] mb-[8px]">
+      <div class="flex items-center gap-[8px] flex-1">
+        <div class="flex shrink-0 text-[#a78bfa] ">
+          <c-icon.building />
+        </div>
+        <h2 class="font-semibold text-[20px] text-[#1e293b]">{{ item.get_area_type_display|default:"Missing area_type" }}</h2>
+        <button type='button'
+                class="flex-shrink-0 hover:opacity-60 transition-opacity">
+          <c-icon.three-dots />
+        </button>
+      </div>
+      <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
+      <button type='button'
+              @click="isOpen=false"
+              class="flex-shrink-0 hover:opacity-60 transition-opacity">
+        <c-icon.close />
       </button>
     </div>
-    <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
-    <button type='button' @click="isOpen=false"
-            class="flex-shrink-0 hover:opacity-60 transition-opacity">
-      <c-icon.close />
-    </button>
-  </div>
-  <div class="mt-[12px]">
-    <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
-    {% comment %}
+    <div class="mt-[12px]">
+      <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
+      {% comment %}
               @Bryan what is the logic for readonly?
 
 readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('freiflache-custom-')}
@@ -76,111 +73,107 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
             does the list have to update simultaneous?
             ScenarioItems can communicate via events. by making the events model attributes, we can ensure communication works as intended
             do we need save events?
-    {% endcomment %}
-    <c-input :field=form.name x-data='{}'
-           type="text"
-           @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value}); console.log('value change event emitted')"
-           class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-           placeholder="Name eingeben" >
-  </c-input>
-  </div>
-  {% if not item.geom %}
-  <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
-    <p class="text-[13px] text-[#64748b] flex-1">
-      Es wurde noch keine {{item.get_area_type_display}} auf der Karte gezeichnet.
-    </p>
-    <button type='button' class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
-      <c-icon.location-marker class="w-[16px] h-[16px]" />
-      {{item.get_area_type_display}} zeichnen
-    </button>
-  </div>
-  {% endif %}
-  <!-- {/* Building/Area Type Dropdown */} -->
-  <div class="flex flex-col gap-[8px]">
-    <label class="font-semibold text-[16px] text-[#1e293b]">{{item.get_area_type_display}} Options</label>
+      {% endcomment %}
+      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value}); console.log('value change event emitted')" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
+      </c-input>
+    </div>
+    {% if not item.geom %}
+      <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
+        <p class="text-[13px] text-[#64748b] flex-1">
+          Es wurde noch keine {{ item.get_area_type_display }} auf der Karte gezeichnet.
+        </p>
+        <button type='button'
+                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
+          <c-icon.location-marker class="w-[16px] h-[16px]" />
+          {{ item.get_area_type_display }} zeichnen
+        </button>
+      </div>
+    {% endif %}
+    <!-- {/* Building/Area Type Dropdown */} -->
+    <div class="flex flex-col gap-[8px]">
+      <label class="font-semibold text-[16px] text-[#1e293b]">{{ item.get_area_type_display }} Options</label>
       <c-select.index classButton='border-[#cbd5e1]!' :inputName=form.usage.name :selectedValue=form.usage.value>
-  {% for value, label in form.fields.usage.choices %}
-    <c-select.button selectValue={{value}} >
-      {{label}}
-      </c-select.button>
-    {% endfor %}
-    </c-select.index>
-    {% comment %}
+        {% for value, label in form.fields.usage.choices %}
+          <c-select.button selectValue={{ value }}>
+            {{ label }}
+          </c-select.button>
+        {% endfor %}
+      </c-select.index>
+      {% comment %}
       for gebäude
                 <option value="Büro">Büro</option>
                 <option value="Lager">Lager</option>
                 <option value="Produktion">Produktion</option>
                 <option value="Wohnen">Wohnen</option>
             )}
-    {% endcomment %}
-  </div>
-</details-sidebar-header>
-<details-sidebar-content class='my-hide'>
-  <div class="px-[21px] py-[16px]">
-    <!-- {/* Question */} -->
-    <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
-    <!-- {/* Configuration Sections */} -->
-    <div class="flex flex-col gap-[16px]">
-      <!-- {/* LASTEN Section */} -->
-      <c-detail-sidebar-section title=Lasten :items=loads>
-        <c-slot name='icon'>
-          <c-icon.lasten class='flex-shrink-0 w-[16px] h-[16px]' />
-        </c-slot>
-      </c-detail-sidebar-section>
-      <c-detail-sidebar-section title=Energietechnik :items=energy_components  >
-        <c-slot name='icon'>
-          <c-icon.bolt class='flex-shrink-0 w-[16px] h-[16px]' />
-        </c-slot>
-      </c-detail-sidebar-section>
-      <c-detail-sidebar-section title=MOBILITÄT>
-        <c-slot name='icon'>
-          <c-icon.logistic class='flex-shrink-0 w-[16px] h-[16px]' />
-        </c-slot>
-      </c-detail-sidebar-section>
-      <netzanschluss class='block'>
-      <div class="flex flex-col gap-[16px] pt-[8px]">
-        <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
-          <span class="w-[16px] h-[16px]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </span>
-          NETZANSCHLÜSSE
-          <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
-        </h3>
-        <div class="flex flex-col gap-[8px]">
+      {% endcomment %}
+    </div>
+  </details-sidebar-header>
+  <details-sidebar-content class='my-hide'>
+    <div class="px-[21px] py-[16px]">
+      <!-- {/* Question */} -->
+      <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
+      <!-- {/* Configuration Sections */} -->
+      <div class="flex flex-col gap-[16px]">
+        <!-- {/* LASTEN Section */} -->
+        <c-detail-sidebar-section title=Lasten :items=loads>
+          <c-slot name='icon'>
+            <c-icon.lasten class='flex-shrink-0 w-[16px] h-[16px]' />
+          </c-slot>
+        </c-detail-sidebar-section>
+        <c-detail-sidebar-section title=Energietechnik :items=energy_components>
+          <c-slot name='icon'>
+            <c-icon.bolt class='flex-shrink-0 w-[16px] h-[16px]' />
+          </c-slot>
+        </c-detail-sidebar-section>
+        <c-detail-sidebar-section title=MOBILITÄT>
+          <c-slot name='icon'>
+            <c-icon.logistic class='flex-shrink-0 w-[16px] h-[16px]' />
+          </c-slot>
+        </c-detail-sidebar-section>
+        <netzanschluss class='block'>
+        <div class="flex flex-col gap-[16px] pt-[8px]">
+          <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
+            <span class="w-[16px] h-[16px]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </span>
+            NETZANSCHLÜSSE
+            <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
+          </h3>
+          <div class="flex flex-col gap-[8px]">
             Setting the grid like this does not really make sense, since the grid could be connected to other elements. a similiar approach like last would make more sense imo, with the drop down on the componenten, which might be linked to multiple other containers
-          <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
-          <c-select.index selectedValue="HV" inputName="AnschlussType">
-            <c-select.button selectValue="HV">
-              Hochspannung
-            </c-select.button>
-            <c-select.button selectValue="MV">
-              Mittelspannung
-            </c-select.button>
-            <c-select.button selectValue="LV">
-              Niederspannung
-            </c-select.button>
-          </c-select.index>
+            <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
+            <c-select.index selectedValue="HV" inputName="AnschlussType">
+              <c-select.button selectValue="HV">
+                Hochspannung
+              </c-select.button>
+              <c-select.button selectValue="MV">
+                Mittelspannung
+              </c-select.button>
+              <c-select.button selectValue="LV">
+                Niederspannung
+              </c-select.button>
+            </c-select.index>
+          </div>
+          <button type='button'
+                  class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+            + Anschluss
+          </button>
+          <label class="flex items-center gap-[8px] cursor-pointer">
+            <input
+              type="checkbox"
+              defaultChecked={itemName !== 'Lagerhalle 2'}
+              class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer"
+              />
+              <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
+            </label>
+          </div>
+          </netzanschluss>
         </div>
-        <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
-          + Anschluss
-        </button>
-        <label class="flex items-center gap-[8px] cursor-pointer">
-          <input
-            type="checkbox"
-            defaultChecked={itemName !== 'Lagerhalle 2'}
-            class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer"
-            />
-            <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
-          </label>
-        </div>
-        </netzanschluss>
-      </div>
-      <!--Configurations -->
-
+        <!--Configurations -->
       </div>
     </details-sidebar-content>
-</form>
-
-<c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{item.internal_id}}' {{:selected=False title={{item.name}} :indicated=False />
+  </form>
+  <c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />

@@ -15,7 +15,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
             exclude=exclude + ["area_type", "geom"],
             field_classes={"geom": GeoJSONPolygonField},
             widgets={
-                "internal_id": forms.TextInput(),
+                "internal_id": forms.HiddenInput(),
                 "geom": GeoJSONWidget(),
                 "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
