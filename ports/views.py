@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -261,140 +260,54 @@ class DetailsView(FormView):
         )
 
     def post(self, request, *args, **kwargs):
-        if self.Model == Area:
-            if not self.instance:
-                # Create a new item and pass it back in the default state
-                form = self.Form(data={"internal_id": uuid4()})
-                # do NOT pass the request.POST directly which could lead to unauthorized injections
-                extra_args = {}
-                if self.Model == Area:
-                    # TODO: Refactor into model method so this function stays clean
-                    allowed_attributes = ["area_type"]
-                    for att in allowed_attributes:
-                        extra_args[att] = request.POST.get(att)
-                count = self.Model.objects.filter(
-                    scenario=self.scenario, area_type=extra_args["area_type"]
-                ).count()
+        if self.Model not in [Area]:
+            raise NotImplementedError("This model is not implemented for posting yet")
+        if not self.instance:
+            # Create a new item and pass it back in the default state
+            form = self.Form(data={"internal_id": uuid4()})
+            # do NOT pass the request.POST directly which could lead to unauthorized injections
+            extra_args = {}
+            if self.Model == Area:
+                # TODO: Refactor into model method so this function stays clean
+                allowed_attributes = ["area_type"]
+                for att in allowed_attributes:
+                    extra_args[att] = request.POST.get(att)
+            count = self.Model.objects.filter(
+                scenario=self.scenario, area_type=extra_args["area_type"]
+            ).count()
 
-                self.instance = self.Model.objects.create(
-                    scenario=self.scenario,
-                    name=f"Neues Fläche {count + 1}",
-                    **extra_args,
-                    # TODO: manager=request.user
-                )
+            self.instance = self.Model.objects.create(
+                scenario=self.scenario,
+                name=f"Neues Fläche {count + 1}",
+                **extra_args,
+                # TODO: manager=request.user
+            )
 
-                self.context["form"] = Area.adjust_Form(self.Form, instance=self.instance)(
-                    instance=self.instance
-                )
+            self.context["form"] = Area.adjust_Form(self.Form, instance=self.instance)(
+                instance=self.instance
+            )
 
-                self.context["item"] = self.instance
-                self.context["created"] = True
+            self.context["item"] = self.instance
+            self.context["created"] = True
 
-                return render(self.request, self.template, self.context)
-            try:
-                self.Form = Area.adjust_Form(self.Form, instance=self.instance)
-                form = self.Form(data=request.POST, instance=self.instance)
-                self.context["form"] = form
-                if form.is_valid():
-                    self.context["item"] = form.save()
-                    # else:
-                    #     # Patch in data which was not part of the form but is part of the model
-                    #     obj = form.save(commit=False)
-                    #     obj.scenario = self.scenario
-                    #     obj.save()
-                    self.context["success"] = "Erfolgreich gespeichert"
-                else:
-                    self.context["errors"] = ["An error occured", form.errors]
-            except Exception:
-                self.context["errors"] = ["An error occured"]
             return render(self.request, self.template, self.context)
-        raise Http404("This model does not exist")
-
-
-class CrudView(FormView):
-    template = "ports/partials/create_form.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        # TODO: Add authorization
-        time.sleep(0.1)
-        self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
-        model = kwargs["model"]
-        self.Model = apps.get_model("ports", model)
-        self.Form = ScenarioItemFormFactory(self.Model)
-        assert ScenarioItem in self.Model.mro()
-        self.context = {"scenario": self.scenario}
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        time.sleep(0.1)
-        if self.Model == Solar or self.Model == Area:
-            prefix = request.GET.get("prefix")
-            if prefix:
-                # Usually this item already exists if it is requested with a prefix
-                form = self.Form(data=request.GET, prefix=prefix)
-                form.is_valid()
-                _id = form.cleaned_data.get("internal_id")
-                # If the item was deleted, we clean up by removing the form
-                # Posting the form with the same prefix would create issues since
-                # the deleteditem already has the same id
-                if _id and not self.Model.objects.filter(internal_id=_id).exists():
-                    response = HttpResponse(b"This element was deleted")
-                    response["HX-Retarget"] = f".form-container-{_id}"
-                    response["HX-Reswap"] = "outerHTML"
-                    return response
-            else:
-                _id = uuid4()
-                form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
-                # form autogenerates instance with random uuid. we have to stop this diverging
-                form.instance.internal_id = _id
+        try:
+            self.Form = Area.adjust_Form(self.Form, instance=self.instance)
+            form = self.Form(data=request.POST, instance=self.instance)
             self.context["form"] = form
-            if self.Model == Solar:
-                template = "ports/dynamic_forms.html#crud-solar-htmx-partial"
-            elif self.Model == Area:
-                template = "ports/dynamic_forms.html#crud-area-htmx-partial"
+            if form.is_valid():
+                self.context["item"] = form.save()
+                # else:
+                #     # Patch in data which was not part of the form but is part of the model
+                #     obj = form.save(commit=False)
+                #     obj.scenario = self.scenario
+                #     obj.save()
+                self.context["success"] = "Erfolgreich gespeichert"
             else:
-                raise NotImplementedError()
-            return render(self.request, template, self.context)
-        raise Http404("This model does not exist")
-
-    def delete(self, request, *args, **kwargs):
-        time.sleep(0.1)
-        # NOTE: data is send as hx-include, so not part of POST
-        prefix = request.GET["prefix"]
-        form = self.Form(data=request.GET, prefix=prefix)
-        form.is_valid()
-        out = self.Model.objects.filter(
-            scenario=self.scenario, internal_id=form.cleaned_data["internal_id"]
-        ).delete()
-        # TODO: Style a response which shows deletion
-        return HttpResponse(out)
-
-    def post(self, request, *args, **kwargs):
-        prefix = request.POST["prefix"]
-        if self.Model == Solar or self.Model == Area:
-            form = self.Form(data=request.POST, prefix=prefix)
-            try:
-                if form.is_valid():
-                    instance = self.Model.objects.filter(
-                        scenario=self.scenario,
-                        internal_id=form.cleaned_data["internal_id"],
-                    ).first()
-                    if instance:
-                        form = self.Form(data=request.POST, instance=instance, prefix=prefix)
-                        self.context["item"] = form.save()
-                    else:
-                        # Patch in data which was not part of the form but is part of the model
-                        obj = form.save(commit=False)
-                        obj.scenario = self.scenario
-                        obj.save()
-                    self.context["success"] = "Erfolgreich gespeichert"
-                else:
-                    self.context["errors"] = ["An error occured"]
-            except Exception:
-                self.context["errors"] = ["An error occured"]
-            self.context["form"] = form
-            return render(self.request, self.template, self.context)
-        raise Http404("This model does not exist")
+                self.context["errors"] = ["An error occured", form.errors]
+        except Exception:
+            self.context["errors"] = ["An unexpected error occured"]
+        return render(self.request, self.template, self.context)
 
 
 # Create your views here.
