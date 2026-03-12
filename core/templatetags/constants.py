@@ -2,7 +2,6 @@ import json
 from difflib import get_close_matches
 
 from django import template
-from django.conf import settings
 
 register = template.Library()
 
@@ -16,10 +15,6 @@ class EventsAccessor:
 
     def __getattr__(self, key: str) -> str:
         global events_dict
-        if settings.DEBUG:
-            # Keep the file fresh during development
-            with open("ports/static/ports/events.json") as f:
-                events_dict = json.load(f)
         if key not in events_dict:
             raise template.TemplateSyntaxError(
                 f"EVENTS has no key '{key}'. "
@@ -41,7 +36,6 @@ def events_data():
 
 @register.filter
 def assertValue(val):
-    print(f"asserting: {val}")
     if val is None or val == "" or val == "None":
         print("Value is none or empty string")
         raise AssertionError("AssertedValue is None")
