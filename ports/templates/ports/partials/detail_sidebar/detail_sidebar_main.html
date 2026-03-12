@@ -67,16 +67,10 @@
       </button>
     </div>
     <div class="mt-[12px]">
+    {% comment %}
+     Do we need this special emitting of value changes?
+    {% endcomment %}
       <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
-      {% comment %}
-              @Bryan what is the logic for readonly?
-
-readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('freiflache-custom-')}
-
-            does the list have to update simultaneous?
-            ScenarioItems can communicate via events. by making the events model attributes, we can ensure communication works as intended
-            do we need save events?
-      {% endcomment %}
       <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value}); console.log('value change event emitted')" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
       </c-input>
     </div>
@@ -102,14 +96,6 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
           </c-select.button>
         {% endfor %}
       </c-select.index>
-      {% comment %}
-      for gebäude
-                <option value="Büro">Büro</option>
-                <option value="Lager">Lager</option>
-                <option value="Produktion">Produktion</option>
-                <option value="Wohnen">Wohnen</option>
-            )}
-      {% endcomment %}
     </div>
   </details-sidebar-header>
   <details-sidebar-content class='my-hide'>
@@ -180,6 +166,12 @@ readOnly={!selectedItemId.startsWith('gebaude-') && !selectedItemId.startsWith('
     </details-sidebar-content>
   </form>
 
+{% comment %}
+On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
+In case of a created element the list is appended through 'beforeend'
+In case of an update the list element is swapped
+
+{% endcomment %}
 {% if created %}
 <div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'  >
 {% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}

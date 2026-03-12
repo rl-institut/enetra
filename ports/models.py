@@ -44,7 +44,7 @@ class Scenario(models.Model):
 
     @atomic()
     def safe_delete(self):
-        """Delete Scenario by first deleting all references When deleting the
+        """Delete Scenario by first deleting all references. When deleting the
         scenario in the usual way, django iterates over other models to delete
         them. this triggers post_delete which creates deletedItems. these
         deletedItems are not cleaned up by django. this is handled with this

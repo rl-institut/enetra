@@ -26,7 +26,7 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatched show-detail-sidebar') "
               >
         <c-list.item id='area-button-list{{item.internal_id}}' class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False />
       </div>

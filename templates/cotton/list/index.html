@@ -17,7 +17,7 @@
     {% endif %}
   </div>
 
-  <div class="{% if border %}border-[#cbd5e1] border-b border-solid{% endif %}  content-stretch flex flex-col items-start pb-px relative rounded-[8px] shrink-0 w-full slot overflow-hidden"
+  <div class="{% if border %}border-[#cbd5e1] border-b border-solid{% endif %}  content-stretch flex flex-col items-start pb-px relative rounded-[8px] shrink-0 w-full slot "
   x-on:htmx:load.window='count=$el.querySelectorAll(`.cotton-list-item`).length'
   >
     {{ slot }}
