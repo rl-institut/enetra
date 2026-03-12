@@ -34,7 +34,7 @@
   <input id='focusedForm' class='bg-red-400' name='focusedForm'>
   <h1 class="text-2xl font-bold underline">Areas</h1>
   <div class="area-form-container"
-       hx-on::oob-before-swap="console.log(event); console.log('element-settled. Dispatching area-changed event'); htmx.trigger(this, 'area-changed', {})">
+       hx-on::oob-before-swap="htmx.trigger(this, 'area-changed', {})">
     {% for form in areas %}
     {% include "ports/partials/create_form.html" %}
   {% endfor %}
@@ -71,7 +71,7 @@
   });
 
   function drawElements() {
-    console.log('drawing elements');
+
     const geometries = getGeoJsons();
     for (const featureGroup of Object.values(featureGroups)) {
       featureGroup.clearLayers()
@@ -79,7 +79,7 @@
     geometries.forEach((geo) => {
       geojson = geo.geojson;
       layer_name = geo.layer;
-      console.log(layer_name);
+
       id = geo.id;
       style = geo.style;
       if (geojson.type == "Polygon") {

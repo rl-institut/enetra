@@ -31,17 +31,15 @@
       DELETE
     </button>
     <button type='button'
-            onClick='console.log("{handleAddBuilding} not implemented")'
+
             hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
             hx-target="closest form"
             hx-swap="outerHTML"
             x-data
-            @click='console.log("foo"); event.preventDefault()'
             class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
       REFRESH
     </button>
     <button type='button'
-            onClick='console.log("{handleAddBuilding} not implemented")'
             hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
             hx-target="closest form"
             hx-swap="outerHTML"
@@ -71,7 +69,7 @@
      Do we need this special emitting of value changes?
     {% endcomment %}
       <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
-      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value}); console.log('value change event emitted')" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
+      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value});" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
       </c-input>
     </div>
     {% if not item.geom %}

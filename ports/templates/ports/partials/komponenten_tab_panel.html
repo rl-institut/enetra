@@ -26,7 +26,7 @@
                 hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=generator.model_name internal_id=generator.internal_id %}"
                 hx-target="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on:click='console.log("hello from htmx")'
+                hx-on:click=''
 
               >
               <c-list.item :border=False :selected=False title='{{generator.name}} ({{generator.area.name}})' :indicated=False  />

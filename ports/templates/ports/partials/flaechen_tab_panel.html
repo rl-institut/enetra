@@ -26,7 +26,7 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatched show-detail-sidebar') "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
               >
         <c-list.item id='area-button-list{{item.internal_id}}' class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False />
       </div>
@@ -34,7 +34,7 @@
       {% endfor %}
 </c-list>
       </p>
-    <button type='button' onClick='console.log("{handleAddBuilding} not implemented")'
+    <button type='button'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
                 hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
                 hx-vals='{"area_type": "{{Area.AreaTypeChoices.BUILDING|assertValue}}" }'
@@ -42,7 +42,7 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
       >+ Gebäudefläche</button>
   </div>
   <div>
@@ -70,14 +70,14 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
               >
         <c-list.item id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
       </div>
       {% endfor %}
 
 </c-list>
-    <button type='button' onClick='console.log("{handleAddFreiflache} not implemented")'
+    <button type='button'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
                 hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
                 hx-vals='{"area_type": "{{Area.AreaTypeChoices.OPEN|assertValue}}" }'
@@ -85,7 +85,7 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); console.log('dispatch') "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
       >+ Freifläche</button>
   </div>
   <div class="pt-0">

@@ -1,5 +1,5 @@
 <div x-data
-     x-on:htmx:load="console.log('afterswap'); setTimeout(()=>$dispatch('hide-detail-sidebar'),1000)">
+     x-on:htmx:load="setTimeout(()=>$dispatch('hide-detail-sidebar'),1000)">
   This element was deleted
 </div>
 

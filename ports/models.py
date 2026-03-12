@@ -157,6 +157,10 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario.save()
 
 
+class ChangedItem(ScenarioItem):
+    pass
+
+
 class DeletedItem(ScenarioItem):
     """Store basic information about deleted item.
 
