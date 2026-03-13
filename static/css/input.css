@@ -76,13 +76,14 @@
 .my-slide-in-from-top {
     animation: slideFromTop 0.4s ease-out forwards;
 }
+
 .slide-in {
     animation: slideFromLeft 0.4s ease-out forwards;
 }
 
 .htmx-request .my-hide,
 .htmx-request.my-hide {
-    display: none;
+    filter: blur(2px);
 }
 
 .htmx-slide-in .htmx-added,

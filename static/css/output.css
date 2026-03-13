@@ -13,7 +13,6 @@
     --color-red-800: oklch(44.4% 0.177 26.899);
     --color-orange-100: oklch(95.4% 0.038 75.164);
     --color-orange-500: oklch(70.5% 0.213 47.604);
-    --color-amber-50: oklch(98.7% 0.022 95.277);
     --color-yellow-50: oklch(98.7% 0.026 102.212);
     --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-yellow-400: oklch(85.2% 0.199 91.936);
@@ -419,9 +418,6 @@
   }
   .inline-flex {
     display: inline-flex;
-  }
-  .list-item {
-    display: list-item;
   }
   .table {
     display: table;
@@ -967,9 +963,6 @@
   }
   .bg-\[\#ff9500\] {
     background-color: #ff9500;
-  }
-  .bg-amber-50 {
-    background-color: var(--color-amber-50);
   }
   .bg-background {
     background-color: var(--background);
@@ -1574,6 +1567,12 @@
       border-top-right-radius: 8px;
     }
   }
+  .first\:border-t-2 {
+    &:first-child {
+      border-top-style: var(--tw-border-style);
+      border-top-width: 2px;
+    }
+  }
   .last\:rounded-br-\[8px\] {
     &:last-child {
       border-bottom-right-radius: 8px;
@@ -1995,7 +1994,7 @@
   animation: slideFromLeft 0.4s ease-out forwards;
 }
 .htmx-request .my-hide, .htmx-request.my-hide {
-  display: none;
+  filter: blur(2px);
 }
 .htmx-slide-in .htmx-added, .htmx-slide-in.htmx-added {
   animation: slideFromTop 0.4s ease-out forwards;

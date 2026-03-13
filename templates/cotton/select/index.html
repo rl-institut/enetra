@@ -1,4 +1,4 @@
-<c-vars image debugWidget=False classButton random=></c-vars>
+<c-vars image debugWidget=False selectedValue inputName classButton random=></c-vars>
 {% load core_extras %}
 {% gen_uuid as uid %}
 {% comment %}
@@ -6,7 +6,7 @@ NOTE: and @Bryan
 I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
 The implementation can be fouind inside the custom css tailwind brackets
 {% endcomment %}
-<div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
+<div {{attrs}} x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
    class="w-full [anchor-name:--select-dropdown-{{uid}}]" >
   <button @click='show=!show'
           @click.outside='show=false'
@@ -37,7 +37,7 @@ The implementation can be fouind inside the custom css tailwind brackets
     {{ slot }}
   </div>
    <input class="border {% if not debugWidget == True%}hidden{% endif %}"
-         x-effect='selectedValue; console.log("selectedValue changed. We should dispatch an event here"); $dispatch("onchange")'
+         x-effect='selectedValue;$el.dispatchEvent(new Event("change", { bubbles: true })); $el.dispatchEvent(new Event("input", { bubbles: true }))'
          name='{{inputName}}'
          value='{{selectedValue}}'
          x-model='selectedValue'>

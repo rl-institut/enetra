@@ -36,6 +36,11 @@ urlpatterns = [
         name="details_create",
     ),
     path(
+        "changes/<uuid:scenario_internal_id>/",
+        views.changes,
+        name="changes",
+    ),
+    path(
         "details/<uuid:scenario_internal_id>/<str:model>/<uuid:internal_id>/",
         views.DetailsView.as_view(),
         name="details",

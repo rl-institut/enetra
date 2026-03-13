@@ -16,10 +16,17 @@
   data from the server and inserting it in the sidebar component
   @click='$dispatch("{{EVENTS.openChangesSidebar}}")'
   {% endcomment %}
-  <button @click='handleViewChange("changes")'
+  <button type='button'
+                hx-get="{% url 'ports:changes' scenario_internal_id=scenario.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); "
+
           class="flex items-center gap-[8px] px-[8px] py-[4px] hover:opacity-80 transition-opacity cursor-pointer">
         <span class="w-full h-full">🔄️</span>
-    <p class="font-bold text-[13px] text-[#b45309] text-nowrap">2 Änderungen</p>
+    <p class="font-bold text-[13px] text-[#b45309] text-nowrap">{{changes_count|default:"Missing count"}} Änderungen</p>
   </button>
   <!-- {/* Calculation Modal */} -->
         {% include 'ports/partials/scenario_calculation_modal.html' with id=id%}

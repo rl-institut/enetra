@@ -2,6 +2,7 @@ import json
 import logging
 from collections.abc import Iterable
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 from typing import Literal
 from uuid import uuid4
@@ -18,6 +19,7 @@ from django.http.response import HttpResponse
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views.generic import FormView
 from django_oemof import models as oemof_models
 from django_oemof import simulation
@@ -26,6 +28,8 @@ from ports.create_placeholder_scenario import create_scenario
 from ports.forms import ScenarioItemFormFactory
 
 from .models import Area
+from .models import ChangedItem
+from .models import DeletedItem
 from .models import ElectricComponent
 from .models import Generator
 from .models import Heating
@@ -51,6 +55,93 @@ def get_authentification(
 def test(request):
     context = {}
     return render(request, "ports/test.html", context)
+
+
+def changes(request, scenario_internal_id: uuid4):
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not get_authentification(scenario, request.user, "read"):
+        HttpResponseForbidden("No access")
+    days = int(request.GET.get("days", "90"))
+    otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
+    query_time = timezone.now().astimezone() - timedelta(days=days)
+
+    filter = {"scenario": scenario, "created_at__gte": query_time}
+    changed_items_query = ChangedItem.objects.filter(**filter).order_by("-created_at")
+
+    if request.user.is_authenticated:
+        user_changes_count = changed_items_query.filter(manager=request.user).count()
+        other_changes_count = changed_items_query.exclude(manager=request.user).count()
+    else:
+        user_changes_count = 0
+        other_changes_count = changed_items_query.count()
+
+    exclude = {}
+    if otherchanges:
+        if request.user.is_authenticated:
+            exclude = {"manager": request.user}
+    elif request.user.is_authenticated:
+        filter |= {"manager": request.user}
+    else:
+        # no matches, user is not authenticated
+        filter |= {"id": None}
+
+    original_items_dict = dict()
+    port_models = apps.get_app_config("ports").get_models()
+    # Create a mapping for all scenario items
+    for Model in port_models:
+        if Model in [DeletedItem, ChangedItem, Scenario]:
+            continue
+        original_items = Model.objects.filter(scenario=scenario)
+        original_items_dict[Model] = {x.internal_id: x for x in original_items}
+
+    item_original_item = []
+    # NOTE: get_models is an iterator and has to be reset
+    port_models = apps.get_app_config("ports").get_models()
+    for Model in port_models:
+        if Model == Scenario:
+            continue
+        if Model == DeletedItem:
+            for item in Model.objects.filter(**filter).exclude(**exclude):
+                item_original_item.append(
+                    {
+                        "status": "deleted",
+                        "time": item.created_at,
+                        "item": item,
+                        "original_item": None,
+                    }
+                )
+        elif Model == ChangedItem:
+            for item in Model.objects.filter(**filter).exclude(**exclude):
+                # Original item might have been deleted
+                item_original_item.append(
+                    {
+                        "status": "changed",
+                        "time": item.created_at,
+                        "item": item,
+                        "original_item": original_items_dict[item.content_type.model_class()].get(
+                            item.internal_id
+                        ),
+                    }
+                )
+        else:
+            for item in Model.objects.filter(**filter).exclude(**exclude):
+                item_original_item.append(
+                    {
+                        "status": "created",
+                        "time": item.created_at,
+                        "item": item,
+                        "original_item": item,
+                    }
+                )
+    item_original_item = sorted(item_original_item, key=lambda x: x["time"], reverse=True)
+
+    context = {}
+    context["item_original_items"] = item_original_item
+    context["scenario"] = scenario
+    context["user_changes_count"] = user_changes_count
+    context["other_changes_count"] = other_changes_count
+
+    return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
 def home(request):

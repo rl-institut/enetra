@@ -1,3 +1,4 @@
+<c-vars class selectValue ></c-vars>
 {% comment %}
 A select without a selectValue has no use. The assertion could be removed later
 
@@ -12,7 +13,8 @@ A select without a selectValue has no use. The assertion could be removed later
   @click='selectedValue= $el.dataset.value; selectedElement = $el ;console.log("changed selectedValue")'
   :class="selectedValue==$el.dataset.value ? 'bg-[#eaf2fe] font-semibold' : 'text-[#1e293b] '"
   class='w-full text-left px-[16px] py-[12px] text-[14px]  border-t border-x border-[#1e293b40] last:border-b
-  transition-colors hover:bg-[#f8fafc] cursor-pointer'
+  transition-colors hover:bg-[#f8fafc] cursor-pointer {{class}}'
+  {{attrs}}
 >
   {{slot}}
 </button>

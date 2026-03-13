@@ -119,7 +119,9 @@ class ScenarioItem(models.Model):
         ScenarioItem.scenarioitem_post_delete.send(sender=sender, instance=instance)
 
     def _send_scenarioitem_post_save(sender, instance, **kwargs):
-        ScenarioItem.scenarioitem_post_save.send(sender=sender, instance=instance)
+        ScenarioItem.scenarioitem_post_save.send(
+            sender=sender, instance=instance, created=kwargs.get("created")
+        )
 
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
@@ -143,7 +145,7 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
     # Create a DeletedItem with all Scenario item values
     # We use post_delete to only create these items when the item is really deleted.
     # using pre_delete leads to errors if deletion fails
-    if sender == DeletedItem:
+    if sender in [DeletedItem, ChangedItem]:
         return
     deleted_item = DeletedItem.from_scenario_item(instance)
     deleted_item.save()
@@ -157,8 +159,58 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario.save()
 
 
+@receiver(ScenarioItem.scenarioitem_post_save)
+def create_changeditem_post_save(sender, instance, **kwargs):
+    """Create a ChangedItem"""
+    # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
+    # Create a ChangedItem with all Scenarioitem values
+    # We use post_save to only create these items when the item is really deleted.
+    if sender in [DeletedItem, ChangedItem]:
+        return
+    # Item was created. Dont create a ChangedItem
+    if kwargs.get("created"):
+        return
+    changed_item = ChangedItem.from_scenario_item(instance)
+    changed_item.save()
+
+
 class ChangedItem(ScenarioItem):
-    pass
+    """Store basic information about a changed item.
+
+    This is an "easy" implementation, but its not very transparent to the developer.
+
+    This gives explicit access to updates of items, which are not in the database anymore.
+    Example:
+    User Tom is shown an item Foo of id 123. User Jim deletes Foo 123.
+    The scenario gets an update with a new timestamp updated at. Toms site polls the scenario
+    for changes.
+    A change is detected. Searching for updates would not show that 123 is deleted. but searching
+    DeletedItem.objects.filter(update_at__gt=last_update) shows a Foo item 123 was deleted.
+    a signal can be passed to Toms frontend 'updateFoo123'. This refetches the instance and shows
+    tom. "This item has been deleted".
+    """
+
+    class Meta:
+        # Explicit overwrite of ScenarioItem constraint. Multiple ChangedItems can share the same
+        # internalId
+        constraints = []
+        ordering = ["scenario", "id"]  # Optional: share common Meta options
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+
+    def __repr__(self):
+        return f"Changed with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
+
+    @classmethod
+    def from_scenario_item(cls, item: ScenarioItem) -> "ChangedItem":
+        changed_item = ChangedItem(
+            **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
+        )
+        content_type = ContentType.objects.get(
+            app_label=item._meta.app_label, model=item._meta.model_name
+        )
+        changed_item.content_type = content_type
+        return changed_item
 
 
 class DeletedItem(ScenarioItem):

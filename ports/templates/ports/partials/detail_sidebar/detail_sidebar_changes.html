@@ -1,4 +1,17 @@
-<details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
+{% with days=request.GET.days|default:'90' %}
+{% with otherchanges=request.GET.otherchanges %}
+<change-log-container class='block'
+      x-data
+      hx-get="{% url 'ports:changes' scenario_internal_id=scenario.internal_id %}"
+      hx-include="[name='days'], [name='otherchanges']"
+      hx-trigger='click from:button.submit'
+>
+  <div class="htmx-indicator bg-red-500 loader"></div>
+
+{% comment %}
+  my-hide hides the containers while hx is in flight
+{% endcomment %}
+<details-sidebar-header class="my-hide block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
     <button
       @click="isOpen=false"
@@ -13,95 +26,64 @@
   </div>
 </details-sidebar-header>
 
-<details-sidebar-content>
-  <div class="px-[20px] py-[24px] flex flex-col gap-[24px]">
+
+<details-sidebar-content class='my-hide'>
+  <div class="px-[20px] py-[24px] flex flex-col gap-[24px]"
+
+
+    >
     <div class="flex gap-[8px] items-center">
       <div class="w-[24px] h-[24px]">
         <span class="w-full h-full">🔄️</span>
       </div>
       <p class="font-normal text-[16px] text-[#1e293b] uppercase">Änderungsverlauf</p>
     </div>
-
     <div class="flex flex-col gap-[8px]">
       <p class="font-semibold text-[14px] text-[#1e293b]">Zeitraum</p>
-      <c-select.index classButton='border-[#94a3b8]!' selectedValue='1'>
-        <c-select.button selectValue='1'>
+      <c-select.index
+          classButton='border-[#94a3b8]!' selectedValue='{{days}}' inputName='days'>
+        <c-select.button class='submit'
+            selectValue='90'>
           Letzte 90 Tage
         </c-select.button>
-        <c-select.button selectValue='2'>
+        <c-select.button
+            class='submit'
+            selectValue='30'>
           Letzte 30 Tage
-        </c-select.button>
-        <c-select.button selectValue='3'>
+        </c-select.button
+          >
+        <c-select.button selectValue='7'
+
+            class='submit'
+          >
           Letzte 7 Tage
         </c-select.button>
       </c-select.index>
     </div>
-
     <div class="flex gap-[4px]">
-      <button class="bg-[#0e7490] text-white font-semibold text-[14px] px-[12px] py-[4px] rounded-full hover:bg-[#0c647a] transition-colors">
-        Ich (3)
-      </button>
-      <button class="bg-[#f8fafc] text-[#64748b] font-semibold text-[14px] px-[12px] py-[4px] rounded-full hover:bg-[#e2e8f0] transition-colors">
-        Andere Beteiligte (11)
+        <input x-ref='otherchanges' name='otherchanges' class='hidden' value='{{otherchanges}}'>
+      <button
+        type='button'
+        @click='$refs.otherchanges.value="false"'
+        class="{% if not otherchanges == 'true' %}bg-[#0e7490] text-white hover:bg-[#e2e8f0]{% else %}  bg-[#f8fafc] text-[#64748b] hover:bg-[#0c647a]{% endif %}  font-semibold text-[14px] px-[12px] py-[4px] rounded-full  transition-colors submit">
+          Ich ({{user_changes_count}})
+        </button>
+      <button
+        type='button'
+        @click='$refs.otherchanges.value="true"'
+        class="{% if otherchanges == 'true' %}bg-[#0e7490] text-white hover:bg-[#e2e8f0]{% else %}  bg-[#f8fafc] text-[#64748b] hover:bg-[#0c647a]{% endif %} font-semibold text-[14px] px-[12px] py-[4px] rounded-full  transition-colors submit">
+          Andere Beteiligte ({{other_changes_count}})
       </button>
     </div>
 
     <div class="flex flex-col gap-[0px]">
-      <div class="border-t-2 border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
-        <div class="flex gap-[8px] items-center">
-          <c-icon.plus/>
-          <p class="font-semibold text-[14px] text-[#1e293b]">
-            <span class="font-bold text-[#0e7490]">Wärmepumpe</span>
-            <span> in </span>
-            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
-            <span> überschrieben</span>
-          </p>
-        </div>
-        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
-          <c-icon.circle_full/>
-          <span>6.11.2025 15:51</span>
-          <span>•</span>
-          <span>Ich</span>
-        </div>
-        <div class="bg-[#f8fafc] rounded-[8px] p-[12px] mt-[4px]">
-          <p class="text-[14px] text-[#1e293b]">Leistung 20 kW → 25 kW</p>
-        </div>
-      </div>
-
-      <div class="border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
-        <div class="flex gap-[8px] items-center">
-          <c-icon.plus/>
-          <p class="font-semibold text-[14px] text-[#1e293b]">
-            <span class="font-bold text-[#0e7490]">Wärmepumpe</span>
-            <span> zu </span>
-            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
-            <span> hinzugefügt</span>
-          </p>
-        </div>
-        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
-          <c-icon.circle_full/>
-          <span>5.11.2025 08:45</span>
-          <span>•</span>
-          <span>Ich</span>
-        </div>
-      </div>
-
-      <div class="border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
-        <div class="flex gap-[8px] items-center">
-          <c-icon.close class='w-[16px] h-[16px]'/>
-          <p class="font-semibold text-[14px] text-[#1e293b]">
-            <span>Diesel-Generator von </span>
-            <span class="font-bold text-[#0e7490]">Lagerhalle 1</span>
-            <span> entfernt</span>
-          </p>
-        </div>
-        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
-          <c-icon.circle_full/>
-          <span>4.11.2025 16:23</span>
-          <span>•</span>
-          <span>Ich</span>
-        </div>
-      </div>
+      {% for i in item_original_items %}
+      <c-change-log-item :status=i.status :item=i.item original_item=i.original_item />
+        {% endfor %}
     </div>
   </div>
 </details-sidebar-content>
+</change-log-container>
+
+{% endwith %}
+{% endwith %}
