@@ -1,29 +1,36 @@
-<c-vars class :border=True callback title></c-vars>
+<c-vars indicated selected  class :border=True callback title></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
 {% comment %}
-  isSelected is populated by the input
+  selected is populated by the input
+wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<div class='
+<label class='
   cotton-list-item
   {% if border %}border border-[#cbd5e1] border-solid {% endif %}
   content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px]
+  has-[input:checked]:bg-[#ECFEFF]
+  bg-white
+  hover:bg-[#f8fafc]
   {{class}}
   '
-     :class="isSelected ? 'bg-[#ECFEFF]' : 'bg-white hover:bg-[#f8fafc]'"
-     x-data='{isSelected: null}'
-     @click='if (isBulkMode) isSelected = !isSelected; console.log("{{title}} clicked"); {{callback}}'
+
+    @input ="if (isBulkMode){ isSelected = !isSelected; console.log('swapped')} else {selected=$refs.radioOrCheckbox.value}; {{callback}}"
+    x-data='{isSelected: null}'
+
      {{ attrs }}
   >
-  <template x-if='isBulkMode'>
     <div class="relative shrink-0 size-[16px] flex items-center justify-center">
-      <input type="checkbox"
-             x-model.fill='isSelected'
-             {% if selected == True %}checked{% endif %}
-             class="size-[14px] cursor-pointer accent-[#0E7490]" />
+      <input :type="isBulkMode ? 'checkbox' : 'radio'"
+             x-ref='radioOrCheckbox'
+            x-effect='
+      if (!isBulkMode) {isSelected = $el.value==selected;}
+      '
+      :name="isBulkMode ?'{{value}}' : '{{radioName}}'"
+          value="{{value}}"
+             class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />
     </div>
-  </template>
   {% comment %}
     Should the image be shown even without bulkselection?
   {% endcomment %}
@@ -50,4 +57,4 @@
            :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`'>
     </div>
   </div>
-</div>
+</label>
