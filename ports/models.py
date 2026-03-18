@@ -58,6 +58,9 @@ class Scenario(models.Model):
         DeletedItem.objects.filter(scenario=self).delete()
         self.delete()
 
+    def changed_event(self):
+        return f"{self._meta.model_name}-{self.internal_id}-changed"
+
 
 class ScenarioItem(models.Model):
     """All items which have a scenario as reference inherit some common functionality"""
@@ -136,6 +139,12 @@ class ScenarioItem(models.Model):
 
     def __str__(self):
         return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
+
+    def changed_event(self):
+        return f"{self._meta.model_name}-{self.internal_id}-changed"
+
+    def deleted_event(self):
+        return f"{self._meta.model_name}-{self.internal_id}-deleted"
 
 
 @receiver(ScenarioItem.scenarioitem_post_delete)

@@ -15,13 +15,15 @@ class EventsAccessor:
 
     def __getattr__(self, key: str) -> str:
         global events_dict
-        if key not in events_dict:
+        # ignore private variables. debug toolbar calls context/and EVENTS and this fails
+        if key[0] != "_" and key not in events_dict:
+            pass
             raise template.TemplateSyntaxError(
                 f"EVENTS has no key '{key}'. "
                 f"Closest match: {get_close_matches(key, events_dict.keys(), n=1, cutoff=0.0)[0]}: \n"
                 f"Available keys: {sorted(events_dict.keys())}"
             )
-        return events_dict[key]
+        return events_dict.get(key, "")
 
 
 @register.simple_tag

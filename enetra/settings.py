@@ -53,6 +53,13 @@ if env.bool("DJANGO_LOCAL_DEVELOPMENT", default=False):
 
 
 # Application definition
+DEBUG_TOOLBAR = env.bool("DJANGO_DEBUG_TOOLBAR", default=False)
+
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
 
 INSTALLED_APPS = [
     "unfold",  # before django.contrib.admin
@@ -77,8 +84,6 @@ INSTALLED_APPS = [
     "guardian",
     "widget_tweaks",
 ]
-
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -90,6 +95,17 @@ MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
+
+if DEBUG_TOOLBAR:
+    print("DEBUG TOOLBAR ENABLED")
+    # for debugging and profiling
+    INSTALLED_APPS.append("debug_toolbar")
+    MIDDLEWARE.append(
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+    )
+    DEBUG_TOOLBAR_CONFIG = {}
+    DEBUG_TOOLBAR_CONFIG["UPDATE_ON_FETCH"] = True
+
 
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",  # this is default

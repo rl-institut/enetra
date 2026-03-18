@@ -2,18 +2,34 @@
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
 <form hx-indicator='this'>
+    {% comment %}
+    hidden field for internal_id. We might be able to skip it since internal_id is also send via ulr
+    {% endcomment %}
   {{ form.internal_id }}
   {% comment %}
   we should have a busy indicator
   {% endcomment %}
   <div class="htmx-indicator bg-red-500 loader"></div>
   <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
+
     {% comment %}
-      hidden field to
+    This shows when the client dispatches an event that this item was changed and
+    the last update from the server is not equal to this change event.
     {% endcomment %}
+      <div x-data="{show:false }"
+           class='animate-in fade-in duration-1000'
+          x-on:{{item.changed_event}}.document='if(event.detail.updated_at != "{{item.updated_at|date:"c"}}")show=true;'
+          x-on:{{item.deleted_event}}.document='show=true;'
+           x-show="show">
+        <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
+        Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht um die Änderungen sehen zu können.
+        </c-alert>
+      </div>
+
+
     {% if success %}
       <div x-data="{show:true }"
-           class='absolute animate-in fade-in duration-1000'
+           class='animate-in fade-in duration-1000'
            x-init='setTimeout(()=>show=false, 1000)'
            x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
            x-show="show">
@@ -170,12 +186,11 @@ In case of a created element the list is appended through 'beforeend'
 In case of an update the list element is swapped
 
 {% endcomment %}
+
 {% if created %}
-<div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'  >
-{% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}
-</div>
-{% else %}
-  <c-list.item hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='created' %}
+{% elif success %}
+  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='changed' %}
 {% endif %}
 {% comment %}
 

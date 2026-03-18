@@ -2,11 +2,14 @@
 {% with otherchanges=request.GET.otherchanges %}
 <change-log-container class='block'
       x-data
+      x-on:{{scenario.changed_event}}.document='$dispatch("trigger");console.log( "triggered")'
       hx-get="{% url 'ports:changes' scenario_internal_id=scenario.internal_id %}"
       hx-include="[name='days'], [name='otherchanges']"
-      hx-trigger='click from:button.submit'
+      hx-trigger='click from:button.submit, trigger'
 >
   <div class="htmx-indicator bg-red-500 loader"></div>
+
+
 
 {% comment %}
   my-hide hides the containers while hx is in flight

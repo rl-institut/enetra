@@ -1,0 +1,48 @@
+{% load constants %}
+{% comment %}
+For each model implement the changes which need to be made to the SPA to be up to date.
+Posts/updates/ changes can fetch the data and swap oob
+
+For focused elements which are not rendered all the time, a event can be sent
+
+
+{% endcomment %}
+{% if item.model_name|lower == 'area' %}
+{% if status == 'created' %}
+<div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'
+  {% comment %}
+  data createdid is used to check if this was inserted already in the flaechen_list
+  {% endcomment %}
+  data-createdid='area-button-list{{item.internal_id}}'
+>
+  {% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}
+</div>
+{% elif status == 'changed' %}
+
+  {% if sendEvents %}
+  <c-list.item
+  hx-on::load="
+  const cEvent = new CustomEvent('{{item.changed_event|assertValue}}',{detail:{updated_at:'{{item.updated_at|date:"c"}}'}});
+  document.dispatchEvent(cEvent);
+  "
+  hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+{% else %}
+  <c-list.item
+  hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+  {% endif %}
+{% elif status == 'deleted' %}
+<div hx-swap-oob='outerHTML'
+  {% if sendEvents %}
+  hx-on::load="
+  const cEvent = new CustomEvent('{{item.deleted_event|assertValue}}',{detail:{updated_at:'{{item.updated_at|date:"c"}}'}});
+  document.dispatchEvent(cEvent);
+  "
+  {% endif %}
+     id='area-button-list{{item.internal_id}}'>
+  This item was deleted
+  <button x-data type="button" @click="$el.parentElement.remove()">
+    <c-icon.close />
+  </button>
+</div>
+{% endif %}
+{% endif %}

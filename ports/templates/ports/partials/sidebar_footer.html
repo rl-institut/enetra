@@ -2,7 +2,9 @@
 {% events as EVENTS %}
 {% with "calculate-scenario-modal" as id %}
 <div x-data
-     class="bg-[#f8fafc] content-stretch flex flex-col gap-[16px] items-center p-[16px]">
+     class="bg-[#f8fafc] content-stretch flex flex-col gap-[16px] items-center p-[16px]"
+
+>
   <!-- {/* Szenario berechnen Button */} -->
   <button
         command="show-modal"
@@ -22,13 +24,29 @@
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar')); "
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
 
           class="flex items-center gap-[8px] px-[8px] py-[4px] hover:opacity-80 transition-opacity cursor-pointer">
         <span class="w-full h-full">🔄️</span>
-    <p class="font-bold text-[13px] text-[#b45309] text-nowrap">{{changes_count|default:"Missing count"}} Änderungen</p>
+        {% include 'ports/partials/changes_count.html' with all_changes_count=all_changes_count %}
   </button>
   <!-- {/* Calculation Modal */} -->
         {% include 'ports/partials/scenario_calculation_modal.html' with id=id%}
+
+
+
+  {% comment %}
+    filtering the notification for updates not triggered by current user would make sense
+  {% endcomment %}
+      <div x-data="{show:false }"
+    x-cloak
+           class='animate-in fade-in duration-1000'
+          x-on:{{scenario.changed_event}}.document='show=true;setTimeout(()=>show=false, 1000)'
+           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
+           x-show="show">
+        <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
+      Das Szenario wurde gerade geändert.
+        </c-alert>
+      </div>
 </div>
 {% endwith %}

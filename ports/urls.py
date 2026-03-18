@@ -36,6 +36,11 @@ urlpatterns = [
         name="details_create",
     ),
     path(
+        "changes_count/<uuid:scenario_internal_id>/",
+        views.changes_count,
+        name="changes_count",
+    ),
+    path(
         "changes/<uuid:scenario_internal_id>/",
         views.changes,
         name="changes",

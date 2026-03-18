@@ -8,6 +8,14 @@
 
     </div>
   <div>
+    <div
+
+      hx-on:htmx:oob-before-swap="if(document.getElementById(event.detail.fragment?.dataset?.createdid)){
+      event.detail.shouldSwap=false
+      console.log('stopped insertion since element exists already in the dom')
+      }
+      "
+    >
     <c-list id='flaechen-tab-building-area-list' count title="Meine Gebaüde"
 
     >
@@ -16,7 +24,7 @@
       {% endcomment %}
       {% for item in building_areas %}
       {% partialdef building-area-list-item inline %}
-              <div class="contents"
+              <div class="w-full"
                 {% comment %}
                 hx-get this template with the item injected
                 ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
@@ -28,11 +36,13 @@
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
               >
-        <c-list.item id='area-button-list{{item.internal_id}}' class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False />
+          <c-list.item id='area-button-list{{item.internal_id}}' value={{item.internal_id}} class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
       </div>
       {% endpartialdef %}
       {% endfor %}
 </c-list>
+
+      </div>
       </p>
     <button type='button'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
