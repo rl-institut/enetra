@@ -9,36 +9,41 @@
     </div>
   <div>
     <div
-
+      {% comment %}
+        TODO:
+        This behaviour should be moved to a template specific js file.
+        It handles filtering of duplicate list inserts as well as turning of animations on list items after they ran
+      Without it they would retrigger on each visiblity change, e.g. tab switch
+      {% endcomment %}
+    x-data
       hx-on:htmx:oob-before-swap="if(document.getElementById(event.detail.fragment?.dataset?.createdid)){
       event.detail.shouldSwap=false
       console.log('stopped insertion since element exists already in the dom')
       }
       "
-    >
-    <c-list id='flaechen-tab-building-area-list' count title="Meine Gebaüde"
+      @animationend='event.target.classList.add("!animate-none")'
 
+    >
+    <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude"
+        @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)"
     >
       {% comment %}
         Note all the different ways selected and non selected can be passed to cotton
       {% endcomment %}
       {% for item in building_areas %}
-      {% partialdef building-area-list-item inline %}
-              <div class="w-full"
                 {% comment %}
                 hx-get this template with the item injected
                 ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
                 {% endcomment %}
+          <c-list.item
+                @detail-sidebar-closed.document="isSelected=false"
                 hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
                 hx-target="#detailSidebar"
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-              >
-          <c-list.item id='area-button-list{{item.internal_id}}' value={{item.internal_id}} class='{{cListClass}}' :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
-      </div>
-      {% endpartialdef %}
+            id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
       {% endfor %}
 </c-list>
 
@@ -68,6 +73,7 @@
 <c-list id='flaechen-tab-open-area-list' count title="Meine Flächen" >
       {% comment %}
         Note all the different ways selected and non selected can be passed to cotton
+
       {% endcomment %}
       {% for item in open_areas %}
               <div class="contents"

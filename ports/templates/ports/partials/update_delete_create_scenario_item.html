@@ -15,7 +15,17 @@ For focused elements which are not rendered all the time, a event can be sent
   {% endcomment %}
   data-createdid='area-button-list{{item.internal_id}}'
 >
-  {% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}
+          <c-list.item
+                @detail-sidebar-closed.document="isSelected=false"
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+                class='my-slide-in-from-bottom'
+            id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
+
 </div>
 {% elif status == 'changed' %}
 
