@@ -8,17 +8,17 @@ NOTE: and @Bryan
 I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
 The implementation can be fouind inside the custom css tailwind brackets
 {% endcomment %}
-<div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
+<div x-data=" {show: false, selectedValue: '{{ selectedValue }}', selectedElement: '{{ selectedValue }}', }"
      class="w-full [anchor-name:--select-dropdown-{{ uid }}]">
-  <button @click='show=!show'
-          @click.outside='show=false'
-          type='button'
+  <button @click="show=!show"
+          @click.outside="show=false"
+          type="button"
           class=" relative cursor-pointer {{ classButton }} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors ">
     <p x-html="selectedElement.innerHTML"
        class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
     </p>
     <div :class="show && 'rotate-180'"
-         class='relative shrink-0 size-[16px] transition-transform  '>
+         class="relative shrink-0 size-[16px] transition-transform  ">
       {% if image %}<img alt="" class="block max-w-none size-full" src={{ image }} />
       {{image}}
       {% else %}
@@ -36,8 +36,8 @@ The implementation can be fouind inside the custom css tailwind brackets
     {{ slot }}
   </div>
   <input class="border {% if not debugWidget == True %}hidden{% endif %}"
-         x-effect='selectedValue; console.log("selectedValue changed. We should dispatch an event here"); $dispatch("onchange")'
-         name='{{ inputName }}'
-         value='{{ selectedValue }}'
-         x-model='selectedValue'>
+         x-effect="selectedValue; console.log('selectedValue changed. We should dispatch an event here'); $dispatch('onchange')"
+         name="{{ inputName }}"
+         value="{{ selectedValue }}"
+         x-model="selectedValue">
 </div>

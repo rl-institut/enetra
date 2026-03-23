@@ -17,7 +17,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
             widgets={
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
-                "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+                "name": forms.CharField(max_length=100, required=True),
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
@@ -26,13 +26,12 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
         exclude=exclude,
         widgets={
             "internal_id": forms.HiddenInput(),
-            "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+            "name": forms.CharField(max_length=100, required=True),
             "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
         },
     )
 
 
-# TODO: Move to forms
 class GeoJSONPolygonField(PolygonField):
     def to_python(self, value):
         if not value:
