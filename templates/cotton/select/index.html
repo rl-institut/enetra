@@ -1,5 +1,7 @@
-<c-vars image debugWidget=False classButton random=></c-vars>
+<c-vars image debugWidget=False classButton random=>
+</c-vars>
 {% load core_extras %}
+
 {% gen_uuid as uid %}
 {% comment %}
 NOTE: and @Bryan
@@ -7,38 +9,35 @@ I added the modern anchor css to make sure the dropdown/select expands in a dire
 The implementation can be fouind inside the custom css tailwind brackets
 {% endcomment %}
 <div x-data=' {show: false, selectedValue: `{{ selectedValue }}`, selectedElement: `{{ selectedValue }}`, }'
-   class="w-full [anchor-name:--select-dropdown-{{uid}}]" >
+     class="w-full [anchor-name:--select-dropdown-{{ uid }}]">
   <button @click='show=!show'
           @click.outside='show=false'
-      type='button'
-      class="
-      relative
-      cursor-pointer
-      {{classButton}} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors
-      "
-   >
+          type='button'
+          class=" relative cursor-pointer {{ classButton }} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors ">
     <p x-html="selectedElement.innerHTML"
        class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
     </p>
     <div :class="show && 'rotate-180'"
-         class='relative shrink-0 size-[16px] transition-transform'>
-         <img alt="" class="block max-w-none size-full" {% if image %}src={{image }}{% endif %}/>
+         class='relative shrink-0 size-[16px] transition-transform  '>
+      {% if image %}<img alt="" class="block max-w-none size-full" src={{ image }} />
+      {{image}}
+      {% else %}
+      <c-icon.chevron class="block max-w-none size-full" />
+      {% endif %}
     </div>
   </button>
   <div x-show="show"
        x-cloak
-       class="
-      absolute margin-0 inset-auto bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50 [position-anchor:--select-dropdown-{{uid}}] [position-area:bottom] [position-try-fallbacks:top] [width:anchor-size(width)]"
-     >
+       class=" absolute margin-0 inset-auto bg-white border border-[#94a3b8] rounded-[3px] shadow-lg z-50 [position-anchor:--select-dropdown-{{ uid }}] [position-area:bottom] [position-try-fallbacks:top] [width:anchor-size(width)]">
     {% comment %}
       right: anchor(right);
      insert multiple select/button  here
     {% endcomment %}
     {{ slot }}
   </div>
-   <input class="border {% if not debugWidget == True%}hidden{% endif %}"
+  <input class="border {% if not debugWidget == True %}hidden{% endif %}"
          x-effect='selectedValue; console.log("selectedValue changed. We should dispatch an event here"); $dispatch("onchange")'
-         name='{{inputName}}'
-         value='{{selectedValue}}'
+         name='{{ inputName }}'
+         value='{{ selectedValue }}'
          x-model='selectedValue'>
 </div>

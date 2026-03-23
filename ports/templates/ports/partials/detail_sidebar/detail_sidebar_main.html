@@ -2,15 +2,16 @@
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
 <form hx-indicator='this'>
+    {% comment %}
+    hidden field for internal_id. We might be able to skip it since internal_id is also send via url.
+    {% endcomment %}
   {{ form.internal_id }}
   {% comment %}
+  TODO:
   we should have a busy indicator
   {% endcomment %}
   <div class="htmx-indicator bg-red-500 loader"></div>
   <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
-    {% comment %}
-      hidden field to
-    {% endcomment %}
     {% if success %}
       <div x-data="{show:true }"
            class='absolute animate-in fade-in duration-1000'
@@ -57,9 +58,8 @@
           <c-icon.three-dots />
         </button>
       </div>
-      <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
       <button type='button'
-              @click="isOpen=false"
+              @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
@@ -98,11 +98,8 @@
   </details-sidebar-header>
   <details-sidebar-content class='my-hide'>
     <div class="px-[21px] py-[16px]">
-      <!-- {/* Question */} -->
       <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
-      <!-- {/* Configuration Sections */} -->
       <div class="flex flex-col gap-[16px]">
-        <!-- {/* LASTEN Section */} -->
         <c-detail-sidebar-section title=Lasten :items=loads>
           <c-slot name='icon'>
             <c-icon.lasten class='flex-shrink-0 w-[16px] h-[16px]' />
@@ -159,7 +156,6 @@
           </div>
           </netzanschluss>
         </div>
-        <!--Configurations -->
       </div>
     </details-sidebar-content>
   </form>
@@ -171,13 +167,26 @@ In case of an update the list element is swapped
 
 {% endcomment %}
 {% if created %}
-<div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'  >
-{% include 'ports/partials/flaechen_tab_panel.html#building-area-list-item' with cListClass="animate-in slide-in-from-bottom-full" %}
-</div>
+  <div  hx-swap-oob='beforeend:#flaechen-tab-{{item.area_type}}-area-list .slot'  >
+          <c-list.item
+                  hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                  hx-target="#detailSidebar"
+                  hx-trigger="click"
+                  hx-indicator="#detailSidebar"
+                  hx-swap="innerHTML"
+                  hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+                  id='area-button-list{{item.internal_id}}' class="animate-in slide-in-from-bottom-full" :selected=False title={{item.name}} :indicated=False />
+  </div>
 {% else %}
-  <c-list.item hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+  <c-list.item
+        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+        hx-target="#detailSidebar"
+        hx-trigger="click"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML"
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+        id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
 {% endif %}
 {% comment %}
-
 <c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />
 {% endcomment %}

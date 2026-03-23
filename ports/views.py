@@ -57,7 +57,10 @@ def home(request):
     if request.GET.get("new"):
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
-        create_scenario()
+        s = create_scenario()
+        s.name = request.GET.get("new")
+        s.save(update_fields=["name"])
+
     context = {}
     scenario = Scenario.objects.last()
     context["scenario"] = scenario
