@@ -218,6 +218,7 @@ class Area(ScenarioItem):
         choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
         null=True,
         blank=True,
+        default=None,
     )
 
     @classmethod
