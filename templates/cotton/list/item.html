@@ -1,4 +1,5 @@
-<c-vars indicated selected  class :border=True callback title></c-vars>
+<c-vars indicated selected  class :border=True callback title>
+</c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
@@ -6,31 +7,32 @@
   selected is populated by the input
 wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<label class='
-  cotton-list-item
-  {% if border %}border border-[#cbd5e1] border-solid {% endif %}
-  content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px]
-  has-[input:checked]:bg-[#ECFEFF]
-  bg-white
-  hover:bg-[#f8fafc]
-  {{class}}
-  '
-
-    @input ="if (isBulkMode){ isSelected = !isSelected; console.log('swapped')} else {selected=$refs.radioOrCheckbox.value}; {{callback}}"
-    x-data='{isSelected: null}'
-
-     {{ attrs }}
-  >
-    <div class="relative shrink-0 size-[16px] flex items-center justify-center">
-      <input :type="isBulkMode ? 'checkbox' : 'radio'"
-             x-ref='radioOrCheckbox'
-            x-effect='
-      if (!isBulkMode) {isSelected = $el.value==selected;}
-      '
-      :name="isBulkMode ?'{{value}}' : '{{radioName}}'"
-          value="{{value}}"
-             class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />
-    </div>
+<label class=' cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} '
+       x-data='{isSelected: $el.querySelector("input").checked }'
+       @input="if (isBulkMode) { isSelected = !isSelected; console.log('swapped')};{{ callback }}"
+       @checked='isSelected=true; event.preventDefault()'
+       @unchecked='isSelected=false; event.preventDefault()'
+       {{ attrs }}>
+  <div class="relative shrink-0 size-[16px] flex items-center justify-center">
+    <input :type="isBulkMode ? 'checkbox' : 'radio'"
+            {% comment %}
+             With hx-preserve we ignore swapped in content but keep the preswaped input. this is
+             handy to keep checked and select status.
+            This raises some issues with alpine state managment. using x-effect to toggle isSelected
+            directly did not work in combination with hx-preserve
+            Instead we dispatch an event to toggle the alpine state a level above.
+            {% endcomment %}
+           id="input_{{ value }}_{{ radioName }}"
+           hx-preserve
+           x-effect="ischecked = $el.value==selected;
+              if (!isBulkMode) {
+                if (ischecked) {$dispatch('checked')}
+                else {$dispatch('unchecked')}
+              } "
+           :name="isBulkMode ?'{{ value }}' : '{{ radioName }}'"
+           value="{{ value }}"
+           class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />
+  </div>
   {% comment %}
     Should the image be shown even without bulkselection?
   {% endcomment %}
@@ -41,6 +43,9 @@ wrap everyting in a label so everything toggles the radio/checkbox
          :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`' />
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
+    {% comment %}
+     shrink-0 stops the element from wrapping? This is bad behaviour if we allow long names.
+    {% endcomment %}
     <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px]"
        :class="isSelected ? 'text-[#0E7490]' : 'text-[#64748b]'">{{ title }}</p>
     {% comment %}

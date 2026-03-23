@@ -146,6 +146,12 @@ class ScenarioItem(models.Model):
     def deleted_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-deleted"
 
+    @classmethod
+    def adjust_Form(
+        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem"
+    ) -> type[ModelForm]:
+        return FormClass
+
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
 def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
@@ -306,6 +312,12 @@ class Load(ScenarioItem):
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
     template = models.ForeignKey(LoadTemplate, on_delete=models.CASCADE)
     factor = models.FloatField(default=1.0)  # scale template values
+
+    @classmethod
+    def adjust_Form(
+        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem"
+    ) -> type[ModelForm]:
+        return FormClass
 
 
 class Grid(ScenarioItem):

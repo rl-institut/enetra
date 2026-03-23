@@ -188,9 +188,9 @@ In case of an update the list element is swapped
 {% endcomment %}
 
 {% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='created' %}
+  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='created' selected=True %}
 {% elif success %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='changed' %}
+  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False item=item status='changed' selected=True %}
 {% endif %}
 {% comment %}
 

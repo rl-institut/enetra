@@ -35,10 +35,24 @@ For focused elements which are not rendered all the time, a event can be sent
   const cEvent = new CustomEvent('{{item.changed_event|assertValue}}',{detail:{updated_at:'{{item.updated_at|date:"c"}}'}});
   document.dispatchEvent(cEvent);
   "
-  hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+  hx-swap-oob='true' id='area-button-list{{item.internal_id}}'
+                @detail-sidebar-closed.document="isSelected=false"
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+
+  value={{item.internal_id}}  title={{item.name}} :indicated=False radioName='selected-building-areas' />
 {% else %}
   <c-list.item
-  hx-swap-oob='true' id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+                @detail-sidebar-closed.document="isSelected=false"
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+  hx-swap-oob='true' id='area-button-list{{item.internal_id}}' value={{item.internal_id}}  title={{item.name}} :indicated=False radioName='selected-building-areas' />
   {% endif %}
 {% elif status == 'deleted' %}
 <div hx-swap-oob='outerHTML'

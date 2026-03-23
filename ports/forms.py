@@ -4,6 +4,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.forms import modelform_factory
 
 from ports.models import Area
+from ports.models import Load
 from ports.models import ScenarioItem
 
 
@@ -21,12 +22,25 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
+
+    elif ItemModel == Load:
+        return modelform_factory(
+            ItemModel,
+            exclude=exclude + ["area"],
+            field_classes={"geom": GeoJSONPolygonField},
+            widgets={
+                "internal_id": forms.HiddenInput(),
+                # "geom": GeoJSONWidget(),
+                "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+            },
+        )
     return modelform_factory(
         ItemModel,
         exclude=exclude,
         widgets={
             "internal_id": forms.HiddenInput(),
-            "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+            "name": forms.TextInput(),
             "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
         },
     )

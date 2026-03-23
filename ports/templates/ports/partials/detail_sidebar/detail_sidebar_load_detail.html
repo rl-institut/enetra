@@ -1,35 +1,78 @@
+<form hx-indicator='this'>
+  {{ form.internal_id }}
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
     <button
-      onClick="handleViewChange('main')"
+      hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.area.model_name internal_id=item.area.internal_id %}"
+      hx-target="#detailSidebar"
+      hx-trigger="click"
+      hx-indicator="#detailSidebar"
+      hx-swap="innerHTML"
+
+            type="button"
       class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
     >
       <c-icon.arrow_left/>
-      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zu {{name}}</span>
+      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zu Fläche {{item.area.name}}</span>
     </button>
-    <button @click="isOpen=false" class="flex-shrink-0 hover:opacity-60 transition-opacity">
+    <button
+            type="button"
+        @click="$dispatch('hide-detail-sidebar')" class="flex-shrink-0 hover:opacity-60 transition-opacity">
       <c-icon.close/>
     </button>
   </div>
 </details-sidebar-header>
 
 <details-sidebar-content>
+    {% if success %}
+      <div x-data="{show:true }"
+           class='animate-in fade-in duration-1000'
+           x-init='setTimeout(()=>show=false, 1000)'
+           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
+           x-show="show">
+        <c-alert class="" variant="success" title={{ success }}>
+        </c-alert>
+      </div>
+    {% endif %}
+    {{ errors }}
+
   <div class="px-[24px] py-[24px]">
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
-      <button class="hover:opacity-60 transition-opacity">
+      <button
+            type="button"
+          class="hover:opacity-60 transition-opacity">
         <c-icon.three_dots class='w-[20px] h-[20px]'/>
       </button>
     </div>
 
     <div class="flex flex-col gap-[16px]">
+
       <div class="flex flex-col gap-[8px]">
         <label class="font-semibold text-[14px] text-[#1e293b]">Name</label>
-        <input
-          type="text"
-          value="Gebäude 11 - Heizung"
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2"
-        />
+
+      <c-input :field=form.name x-data=""
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
+        </c-input>
+
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Name</label>
+
+      <c-input :field=form.template x-data=""
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
+        </c-input>
+
+      </div>
+
+<div class="flex flex-col gap-[8px]">
+        <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
+
+      <c-input :field=form.factor x-data=""
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Multiplikator eingeben">
+        </c-input>
+
       </div>
 
       <div class="flex flex-col gap-[8px]">
@@ -77,13 +120,20 @@
         </div>
       </div>
 
-      <button class="w-full bg-[#0e7490] text-white font-semibold text-[14px] hover:bg-[#0c647a] transition-colors py-2 rounded-full">
+      <button
+            hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+            hx-target="closest form"
+            hx-swap="outerHTML"
+            type="button"
+        class="w-full bg-[#0e7490] text-white font-semibold text-[14px] hover:bg-[#0c647a] transition-colors py-2 rounded-full">
         Speichern
       </button>
 
       <button
-        onClick="handleViewChange('main')"
+          x-data
+        @click="$dispatch('hide-detail-sidebar')"
         class="w-full text-[#1e293b] font-semibold text-[14px] py-[8px] hover:opacity-80 transition-opacity"
+          type="button"
       >
         <c-icon.close class='w-[16px] h-[16px]'/>
         Abbrechen
@@ -91,3 +141,4 @@
     </div>
   </div>
 </details-sidebar-content>
+</form>

@@ -11,7 +11,13 @@
         <div class="flex flex-col gap-[8px] pt-[8px] w-full">
            {% for item in items %}
 
-          <button onClick='console.log("transition to lasten view not implemented")'
+          <button
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-trigger="click"
+                hx-indicator="#detailSidebar"
+                hx-swap="innerHTML"
+
               type='button'
                   class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer">
             <div class="flex items-center gap-[8px] flex-1">

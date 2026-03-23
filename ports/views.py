@@ -440,6 +440,8 @@ class DetailsView(FormView):
         self.Form = ScenarioItemFormFactory(self.Model)
         if self.Model == Area:
             self.template = "ports/partials/detail_sidebar/detail_sidebar_main.html"
+        elif self.Model == Load:
+            self.template = "ports/partials/detail_sidebar/detail_sidebar_load_detail.html"
         self.instance = self.Model.objects.filter(
             scenario=self.scenario, internal_id=kwargs.get("internal_id")
         ).first()
@@ -460,7 +462,7 @@ class DetailsView(FormView):
                     self.context,
                 )
             raise Http404("This instance does not exist")
-        if self.Model not in [Solar, Area, Generator]:
+        if self.Model not in [Solar, Area, Generator, Load]:
             raise Http404("This model does not exist or is not implemented yet")
         _id = uuid4()
         form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
@@ -492,6 +494,9 @@ class DetailsView(FormView):
                 q = model.objects.filter(area=self.instance)
                 qs.extend(list(q))
             self.context["energy_components"] = qs
+        elif self.Model == Load:
+            self.context["form"] = self.Form(instance=self.instance)
+            return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
         return render(self.request, self.template, self.context)
@@ -508,7 +513,7 @@ class DetailsView(FormView):
         )
 
     def post(self, request, *args, **kwargs):
-        if self.Model not in [Area]:
+        if self.Model not in [Area, Load]:
             raise NotImplementedError("This model is not implemented for posting yet")
         if not self.instance:
             # Create a new item and pass it back in the default state
@@ -531,7 +536,7 @@ class DetailsView(FormView):
                 # TODO: manager=request.user
             )
 
-            self.context["form"] = Area.adjust_Form(self.Form, instance=self.instance)(
+            self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
                 instance=self.instance
             )
 
@@ -540,7 +545,7 @@ class DetailsView(FormView):
 
             return render(self.request, self.template, self.context)
         try:
-            self.Form = Area.adjust_Form(self.Form, instance=self.instance)
+            self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
             self.context["form"] = form
             if form.is_valid():
@@ -550,6 +555,7 @@ class DetailsView(FormView):
                 #     obj = form.save(commit=False)
                 #     obj.scenario = self.scenario
                 #     obj.save()
+                print(self.context["item"])
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
                 self.context["errors"] = ["An error occured", form.errors]

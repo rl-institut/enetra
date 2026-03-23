@@ -21,6 +21,7 @@
   <script src='{% static "leaflet.draw.js" %}'></script>
   <script defer src='{% static "map-events-interface.js" %}'></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
 {% endblock header %}
 {% block sideBar %}
   <div>
@@ -71,9 +72,6 @@
     </c-detail-sidebar.component>
     <c-detail-sidebar.component template="template-detail">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template_detail.html" %}
-    </c-detail-sidebar.component>
-    <c-detail-sidebar.component template="load-detail">
-      {% include "ports/partials/detail_sidebar/detail_sidebar_load_detail.html" %}
     </c-detail-sidebar.component>
   </c-detail-sidebar>
   <div>
