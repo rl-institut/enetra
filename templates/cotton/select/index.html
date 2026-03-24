@@ -19,7 +19,7 @@ The implementation can be fouind inside the custom css tailwind brackets
     </p>
     <div :class="show && 'rotate-180'"
          class="relative shrink-0 size-[16px] transition-transform  ">
-      {% if image %}<img alt="" class="block max-w-none size-full" src={{ image }} />
+      {% if image %}
       {{image}}
       {% else %}
       <c-icon.chevron class="block max-w-none size-full" />

@@ -229,17 +229,7 @@ class DetailsView(FormView):
             else:
                 self.Form.base_fields["usage"].choices = Area.OpenUsageChoices
             self.context["form"] = self.Form(instance=self.instance)
-            # Classic/ Django way of handling inline formsets
-            # LoadFormSet = inlineformset_factory(Area, Load, fields=("__all__"), extra=1)
-            # load_form = LoadFormSet(
-            #     request.GET or None,
-            #     instance=self.instance,
-            #     # queryset=Load.objects.filter(some_filter=True),
-            # )
-            # self.context["load_form"] = load_form
-
-            # Much easier to just pass the queryset to the frontend, since this view
-            # does not need to implement the forms, but only point to appropriate views
+            # pass queryset to frontend to create links to load forms
             self.context["loads"] = Load.objects.filter(area=self.instance)
             models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
             qs = list()
@@ -300,11 +290,6 @@ class DetailsView(FormView):
             self.context["form"] = form
             if form.is_valid():
                 self.context["item"] = form.save()
-                # else:
-                #     # Patch in data which was not part of the form but is part of the model
-                #     obj = form.save(commit=False)
-                #     obj.scenario = self.scenario
-                #     obj.save()
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
                 self.context["errors"] = ["An error occured", form.errors]

@@ -261,7 +261,7 @@ X_FRAME_OPTIONS = "DENY"
 STATIC_URL = "static/"
 UPLOAD_PATH = "uploads/"
 MEDIA_ROOT = env.str("DJANGO_MEDIA_ROOT", "media/")
-MEDIA_URL = "media/asdf/"
+MEDIA_URL = "media/"
 
 # while the above line checks all the app folders for static folders the below one can be a list of
 # general static file folders

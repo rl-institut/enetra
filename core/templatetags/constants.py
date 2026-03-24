@@ -10,9 +10,8 @@ class EventsAccessor:
     """Proxy object returned by {% events %} — supports {{ EVENTS.KEY }} syntax."""
 
     def __getattr__(self, key: str) -> str:
-        # ignore private variables. debug toolbar calls context/and EVENTS and this fails
+        # Check if requested key is in events dict. Ignore private variables
         if key[0] != "_" and key not in settings.EVENTS_DICT:
-            pass
             raise template.TemplateSyntaxError(
                 f"EVENTS has no key '{key}'. "
                 f"Closest match: {get_close_matches(key, settings.EVENTS_DICT.keys(), n=1, cutoff=0.0)[0]}: \n"
