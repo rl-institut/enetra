@@ -17,7 +17,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
             widgets={
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
-                "name": forms.CharField(max_length=100, required=True),
+                "name": forms.TextInput(),
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
@@ -26,7 +26,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
         exclude=exclude,
         widgets={
             "internal_id": forms.HiddenInput(),
-            "name": forms.CharField(max_length=100, required=True),
+            "name": forms.TextInput(),
             "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
         },
     )

@@ -28,7 +28,6 @@ def events():
 
 @register.simple_tag
 def events_data():
-    print(settings.__dict__)
     return settings.EVENTS_DICT
 
 
