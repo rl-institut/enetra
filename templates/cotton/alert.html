@@ -32,6 +32,7 @@ through {% include 'templates/success.svg' %} or
     {% elif variant == 'success' %}hx-get="{% static 'success.svg' %}"
     hx-trigger='load' hx-target='this' hx-include='this' hx-swap='afterbegin'
     {% else %}
+    {% endif %}
 {% endif %}
 
 class="font-bold flex
@@ -42,9 +43,8 @@ class="font-bold flex
 {% else %}
 {% endif %}
     "
-    {{attrs}}
+{{attrs}}
     >
-        {% endif %}
 
     {{title}}</span>
   {{slot}}

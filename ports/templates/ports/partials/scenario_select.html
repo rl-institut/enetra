@@ -28,7 +28,6 @@
           </div>
           <button
             command="show-modal" commandfor="scenario-create-modal"
-            onClick="console.log('Clicking/Callback handleScenarioToggle not implemented yet')"
           class='{{buttonBgColor}} content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 border-0 cursor-pointer transition-colors'
           >
             <p class="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] text-right">
@@ -40,17 +39,21 @@
         </div>
 
         <c-select.index
-        selectedValue='{{selectedScenario|default:"status_quo"}}'
+        selectedValue='{{scenario.internal_id}}'
         inputName='selectedScenario'
-        image="noImageYet"
       >
+        {% for s in scenarios %}
        <c-select.button
-          selectValue='status_quo'
+          selectValue={{s.internal_id}}
         >
-         Ist-Zustand
+          {{s.name}}
         </c-select.button>
-       <c-select.button selectValue='scenario'>
-         Szenario
+        {% endfor %}
+
+       <c-select.button
+          selectValue=1234
+        >
+          Some other (not really)
         </c-select.button>
       </c-select.index>
       </div>

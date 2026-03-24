@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -8,14 +7,10 @@ from typing import Literal
 from uuid import uuid4
 
 import numpy as np
-from django import forms
 from django.apps.registry import apps
 from django.contrib.auth.models import User
-from django.contrib.gis.forms import PolygonField
-from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Value
 from django.forms import ModelForm
-from django.forms import modelform_factory
 from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseForbidden
@@ -27,7 +22,14 @@ from django.views.generic import FormView
 from django_oemof import models as oemof_models
 from django_oemof import simulation
 
+from ports.create_placeholder_scenario import create_scenario
+from ports.forms import ScenarioItemFormFactory
+
 from .models import Area
+from .models import ElectricComponent
+from .models import Generator
+from .models import Heating
+from .models import Load
 from .models import Scenario
 from .models import ScenarioItem
 from .models import Solar
@@ -52,7 +54,27 @@ def test(request):
 
 
 def home(request):
+    if request.GET.get("new"):
+        # NOTE: during development call /?new=true
+        # to create a new placeholder scenario
+        s = create_scenario()
+        s.name = request.GET.get("new")
+        s.save(update_fields=["name"])
+
     context = {}
+    scenario = Scenario.objects.last()
+    context["scenario"] = scenario
+    context["scenarios"] = Scenario.objects.all()
+    context["building_areas"] = Area.objects.filter(
+        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
+    )
+    context["open_areas"] = Area.objects.filter(
+        scenario=scenario, area_type=Area.AreaTypeChoices.OPEN
+    )
+    context["solars"] = Solar.objects.filter(scenario=scenario)
+    context["generators"] = Generator.objects.filter(scenario=scenario)
+    context["heaters"] = Heating.objects.filter(scenario=scenario)
+    context["Area"] = Area
     return render(request, "ports/tool_base.html", context)
 
 
@@ -133,27 +155,6 @@ def render_oob_updates(
     return oob_changed_items
 
 
-# TODO: Move to forms
-class GeoJSONPolygonField(PolygonField):
-    def to_python(self, value):
-        if not value:
-            return None
-        # Convert GeoJSON string to GEOSGeometry
-        geom = GEOSGeometry(value, srid=4326)
-        if not geom.valid:
-            raise forms.ValidationError(geom.valid_reason)
-        return super().to_python(str(geom))
-
-
-class GeoJSONWidget(forms.Textarea):
-    def format_value(self, value):
-        if value is None:
-            return ""
-        if hasattr(value, "geojson"):
-            return value.geojson
-        return value
-
-
 def leaflet(request):
     s, _ = Scenario.objects.get_or_create(name="Test Scenario")
     a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
@@ -192,116 +193,109 @@ def get_pre(instance_or_uuid: "ScenarioItem | uuid4"):
     return str(instance_or_uuid)[:5]
 
 
-def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
-    exclude = ["manager", "scenario"]
-    if ItemModel == Area:
-        return modelform_factory(
-            ItemModel,
-            exclude=exclude,
-            field_classes={"geom": GeoJSONPolygonField},
-            widgets={
-                "internal_id": forms.TextInput(),
-                "geom": GeoJSONWidget(),
-                "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
-                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
-            },
-        )
-    return modelform_factory(
-        ItemModel,
-        exclude=exclude,
-        widgets={
-            "internal_id": forms.HiddenInput(),
-            "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
-            "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
-        },
-    )
-
-
-class CrudView(FormView):
+class DetailsView(FormView):
     template = "ports/partials/create_form.html"
 
     def dispatch(self, request, *args, **kwargs):
         # TODO: Add authorization
-        time.sleep(0.1)
         self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
         model = kwargs["model"]
         self.Model = apps.get_model("ports", model)
         self.Form = ScenarioItemFormFactory(self.Model)
+        if self.Model == Area:
+            self.template = "ports/partials/detail_sidebar/detail_sidebar_main.html"
+        self.instance = self.Model.objects.filter(
+            scenario=self.scenario, internal_id=kwargs.get("internal_id")
+        ).first()
         assert ScenarioItem in self.Model.mro()
-        self.context = {"scenario": self.scenario}
+        self.context: dict[str, Any] = {"scenario": self.scenario}
+        self.context["item"] = self.instance
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        time.sleep(0.1)
-        if self.Model == Solar or self.Model == Area:
-            prefix = request.GET.get("prefix")
-            if prefix:
-                # Usually this item already exists if it is requested with a prefix
-                form = self.Form(data=request.GET, prefix=prefix)
-                form.is_valid()
-                _id = form.cleaned_data.get("internal_id")
-                # If the item was deleted, we clean up by removing the form
-                # Posting the form with the same prefix would create issues since
-                # the deleteditem already has the same id
-                if _id and not self.Model.objects.filter(internal_id=_id).exists():
-                    response = HttpResponse(b"This element was deleted")
-                    response["HX-Retarget"] = f".form-container-{_id}"
-                    response["HX-Reswap"] = "outerHTML"
-                    return response
+        if not self.instance:
+            raise Http404("This instance does not exist")
+        if self.Model not in [Solar, Area, Generator]:
+            raise Http404("This model does not exist or is not implemented yet")
+        _id = uuid4()
+        form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
+        # form autogenerates instance with random uuid. we have to stop this diverging
+        form.instance.internal_id = _id
+        self.context["form"] = form
+        if self.Model == Area:
+            self.Form.base_fields["usage"].required = True
+            if self.instance.area_type == Area.AreaTypeChoices.BUILDING:
+                self.Form.base_fields["usage"].choices = Area.BuildingUsageChoices
             else:
-                _id = uuid4()
-                form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
-                # form autogenerates instance with random uuid. we have to stop this diverging
-                form.instance.internal_id = _id
-            self.context["form"] = form
-            if self.Model == Solar:
-                template = "ports/dynamic_forms.html#crud-solar-htmx-partial"
-            elif self.Model == Area:
-                template = "ports/dynamic_forms.html#crud-area-htmx-partial"
-            else:
-                raise NotImplementedError()
-            return render(self.request, template, self.context)
-        raise Http404("This model does not exist")
+                self.Form.base_fields["usage"].choices = Area.OpenUsageChoices
+            self.context["form"] = self.Form(instance=self.instance)
+            # pass queryset to frontend to create links to load forms
+            self.context["loads"] = Load.objects.filter(area=self.instance)
+            models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
+            qs = list()
+            for model in models:
+                q = model.objects.filter(area=self.instance)
+                qs.extend(list(q))
+            self.context["energy_components"] = qs
+        else:
+            raise NotImplementedError("No template defined for this Model")
+        return render(self.request, self.template, self.context)
 
     def delete(self, request, *args, **kwargs):
-        time.sleep(0.1)
         # NOTE: data is send as hx-include, so not part of POST
-        prefix = request.GET["prefix"]
-        form = self.Form(data=request.GET, prefix=prefix)
+        form = self.Form(data=request.GET)
         form.is_valid()
-        out = self.Model.objects.filter(
-            scenario=self.scenario, internal_id=form.cleaned_data["internal_id"]
-        ).delete()
-        # TODO: Style a response which shows deletion
-        return HttpResponse(out)
+        self.instance.delete()
+        return render(
+            self.request,
+            "ports/partials/detail_sidebar/detail_deleted.html",
+            self.context,
+        )
 
     def post(self, request, *args, **kwargs):
-        time.sleep(0.1)
-        prefix = request.POST["prefix"]
-        if self.Model == Solar or self.Model == Area:
-            form = self.Form(data=request.POST, prefix=prefix)
-            try:
-                if form.is_valid():
-                    instance = self.Model.objects.filter(
-                        scenario=self.scenario,
-                        internal_id=form.cleaned_data["internal_id"],
-                    ).first()
-                    if instance:
-                        form = self.Form(data=request.POST, instance=instance, prefix=prefix)
-                        form.save()
-                    else:
-                        # Patch in data which was not part of the form but is part of the model
-                        obj = form.save(commit=False)
-                        obj.scenario = self.scenario
-                        obj.save()
-                    self.context["success"] = "Erfolgreich gespeichert"
-                else:
-                    self.context["errors"] = ["An error occured"]
-            except Exception:
-                self.context["errors"] = ["An error occured"]
-            self.context["form"] = form
+        if self.Model not in [Area]:
+            raise NotImplementedError("This model is not implemented for posting yet")
+        if not self.instance:
+            # Create a new item and pass it back in the default state
+            form = self.Form(data={"internal_id": uuid4()})
+            # do NOT pass the request.POST directly which could lead to unauthorized injections
+            extra_args = {}
+            if self.Model == Area:
+                # TODO: Refactor into model method so this function stays clean
+                allowed_attributes = ["area_type"]
+                for att in allowed_attributes:
+                    extra_args[att] = request.POST.get(att)
+            count = self.Model.objects.filter(
+                scenario=self.scenario, area_type=extra_args["area_type"]
+            ).count()
+
+            self.instance = self.Model.objects.create(
+                scenario=self.scenario,
+                name=f"Neues Fläche {count + 1}",
+                **extra_args,
+                # TODO: manager=request.user
+            )
+
+            self.context["form"] = Area.adjust_Form(self.Form, instance=self.instance)(
+                instance=self.instance
+            )
+
+            self.context["item"] = self.instance
+            self.context["created"] = True
+
             return render(self.request, self.template, self.context)
-        raise Http404("This model does not exist")
+        try:
+            self.Form = Area.adjust_Form(self.Form, instance=self.instance)
+            form = self.Form(data=request.POST, instance=self.instance)
+            self.context["form"] = form
+            if form.is_valid():
+                self.context["item"] = form.save()
+                self.context["success"] = "Erfolgreich gespeichert"
+            else:
+                self.context["errors"] = ["An error occured", form.errors]
+        except Exception:
+            self.context["errors"] = ["An unexpected error occured"]
+        return render(self.request, self.template, self.context)
 
 
 # Create your views here.

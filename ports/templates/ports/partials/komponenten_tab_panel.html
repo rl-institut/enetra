@@ -21,17 +21,32 @@
       <div class="border-b border-[#cbd5e1] bg-white">
         <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
           <c-list :border=False title="Generator">
-          <c-list.item :border=False :selected=False title="Generator Lagerhalle 1" :indicated=False callback="handleViewChange('template', 'Generator', 'Generator Lagerhalle 1')" />
+              {% for generator in generators %}
+              <div class="contents"
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=generator.model_name internal_id=generator.internal_id %}"
+                hx-target="#detailSidebar"
+                hx-swap="innerHTML"
+              >
+              <c-list.item :border=False :selected=False title='{{generator.name}} ({{generator.area.name}})' :indicated=False  />
+                </div>
+              {% endfor %}
           </c-list>
         </div>
         <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
           <c-list :border=False title="Heizsystem konventionell">
-          <c-list.item :border=False :selected=False title="Gasheizung Lagerhalle 2" :indicated=False callback="handleViewChange('template', 'Gasheizung', 'Gasheizung Lagerhalle 2')"/>
+
+              {% for heater in heaters %}
+              <c-list.item :border=False :selected=False title="{{heater.name}} ({{heater.area.name}})" :indicated=False :callback="handleViewChange('template','Heizsystem','{{heater.internal_id}}')" />
+
+              {% endfor %}
           </c-list>
         </div>
         <div class="flex flex-col items-center justify-between p-[12px] py-2">
           <c-list :border=False title="Photovoltaik">
-          <c-list.item :border=False :selected=False title="Lagerhalle 2" :indicated=False callback="handleViewChange('template', 'Photovoltaik', 'Lagerhalle 2')" />
+
+              {% for solar in solars %}
+              <c-list.item :border=False :selected=False title="{{solar.name}} ({{solar.area.name}})" :indicated=False :callback="handleViewChange('template','Photovoltaik','{{solar.internal_id}}')" />
+              {% endfor %}
           </c-list>
         </div>
       </div>
@@ -53,13 +68,13 @@
     </div>
     <div class="border border-[#cbd5e1] rounded-[8px] bg-[#f8fafc] overflow-hidden">
       <c-list :border=False customTitle >
-        <c-slot name='title'>
+        <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Vorlagen</h4>
               <c-list.button/>
       </div>
           </c-slot>
-      <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False callback="handleViewChange('template-detail', 'Generator', 'Generator')"/>
+      <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False callback="handleViewChange('template-detail','Generator','Generator')"/>
       </c-list>
     </div>
   </div>

@@ -1,5 +1,4 @@
 import logging
-import shutil
 import uuid
 from pathlib import Path
 
@@ -13,8 +12,10 @@ from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
 from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
+from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
+from django.forms import ModelForm
 
 logger = logging.getLogger("django_ports")
 
@@ -40,6 +41,22 @@ class Scenario(models.Model):
 
     class Meta:
         permissions = (("foo", "Assign foo"),)
+
+    @atomic()
+    def safe_delete(self):
+        """Delete Scenario by first deleting all references. When deleting the
+        scenario in the usual way, django iterates over other models to delete
+        them. this triggers post_delete which creates deletedItems. these
+        deletedItems are not cleaned up by django. this is handled with this
+        function. Maybe a better approach would be use a 'deleted' boolean flag
+        per item or use custom delete functions on the models."""
+        # iterate over all related objects
+        for rel in self._meta.get_fields():
+            if rel.one_to_many:  # reverse FK
+                related_manager = getattr(self, rel.get_accessor_name())
+                related_manager.all().delete()
+        DeletedItem.objects.filter(scenario=self).delete()
+        self.delete()
 
 
 class ScenarioItem(models.Model):
@@ -107,7 +124,7 @@ class ScenarioItem(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
             self.updated_user = self.manager
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def model_name(self):
         return self._meta.model_name
@@ -116,7 +133,7 @@ class ScenarioItem(models.Model):
         return self._meta.verbose_name
 
     def __str__(self):
-        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id}"
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
 
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
@@ -128,13 +145,7 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
     # using pre_delete leads to errors if deletion fails
     if sender == DeletedItem:
         return
-    deleted_item = DeletedItem(
-        **{f.name: getattr(instance, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
-    )
-    content_type = ContentType.objects.get(
-        app_label=sender._meta.app_label, model=sender._meta.model_name
-    )
-    deleted_item.content_type = content_type
+    deleted_item = DeletedItem.from_scenario_item(instance)
     deleted_item.save()
 
 
@@ -146,8 +157,15 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario.save()
 
 
+class ChangedItem(ScenarioItem):
+    pass
+
+
 class DeletedItem(ScenarioItem):
     """Store basic information about deleted item.
+
+    This is an "easy" implementation, but its not very transparent to the developer.
+    A better approach might be deleting ScenarioItems via custom delete method. This would be more performant since it allows bulk creation, and the signal could be "turned" off for Scenario deletes. Each model would need an implementation of safe delete, since related models would need safe deletion as well, for proper cascading.
 
     This gives explicit access to updates of items, which are not in the database anymore.
     Example:
@@ -166,11 +184,53 @@ class DeletedItem(ScenarioItem):
     def __repr__(self):
         return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
 
+    @classmethod
+    def from_scenario_item(cls, item: ScenarioItem) -> "DeletedItem":
+        deleted_item = DeletedItem(
+            **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
+        )
+        content_type = ContentType.objects.get(
+            app_label=item._meta.app_label, model=item._meta.model_name
+        )
+        deleted_item.content_type = content_type
+        return deleted_item
+
 
 # Can an Area serve multiple purposes? (yes)
 # Can an Area serve the same usage, e.g. solar, multiple times? (yes)
 class Area(ScenarioItem):
+    class AreaTypeChoices(models.TextChoices):
+        BUILDING = "building", "Gebäudefläche"
+        OPEN = "open", "Freifläche"
+
+    class OpenUsageChoices(models.TextChoices):
+        PV = "pv", "Photovolatik"
+        PARKING = "parking", "Parkfläche"
+        GREEN = "green", "Grünfläche"
+
+    class BuildingUsageChoices(models.TextChoices):
+        OFFICE = "office", "Büro"
+        STORAGE = "storage", "Lager"
+
     geom = models.PolygonField(null=True, blank=False)
+    area_type = models.CharField(choices=AreaTypeChoices, null=True)
+    usage = models.CharField(
+        choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
+        null=True,
+        blank=True,
+        default=None,
+    )
+
+    @classmethod
+    def adjust_Form(
+        cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area"
+    ) -> type[ModelForm]:
+        FormClass.base_fields["usage"].required = True
+        if instance.area_type == Area.AreaTypeChoices.BUILDING:
+            FormClass.base_fields["usage"].choices = Area.BuildingUsageChoices
+        else:
+            FormClass.base_fields["usage"].choices = Area.OpenUsageChoices
+        return FormClass
 
 
 class LoadTemplate(ScenarioItem):
@@ -364,17 +424,10 @@ class UploadedFile(ScenarioItem):
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
 
-    @receiver(models.signals.post_delete, sender=Scenario)
-    def auto_delete_results_on_delete(sender, instance, **kwargs):
-        """Delete the scenario results folder if the scenario is deleted from the database
 
-        :param sender: Model which sends signal
-        :param instance: instance of a model which gets deleted
-        :param kwargs: other arguments
-        :return:
-        """
-        try:
-            shutil.rmtree(Path(settings.UPLOAD_PATH) / str(instance.task_id))
-        except FileNotFoundError:
-            # The Folder does not exist. That is not a problem
-            logger.debug(f"File {instance} does not exists and could not be deleted ")
+@receiver(models.signals.pre_delete, sender=UploadedFile)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    if instance.file:
+        path = Path(instance.file.path)
+        if path.exists():
+            path.unlink()

@@ -12,7 +12,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
-<script src='{% static "map-interface-enetra.js" %}'></script>
+<script src="{% static 'map-interface-enetra.js' %}"></script>
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css">
   <script src='{% static "leaflet.draw.js" %}'></script>
@@ -31,10 +31,10 @@
   <!-- Hover/Popup etc. events are triggered through events, which contain the clicked map element and position-->
   <!-- Elements are uniquely identifiable via Slug/uuid -->
   <div id="map" style="width: 800px; height: 600px; border: 1px solid #ccc"></div>
-  <input id='focusedForm' class='bg-red-400' name='focusedForm'>
+  <input id="focusedForm" class="bg-red-400" name="focusedForm">
   <h1 class="text-2xl font-bold underline">Areas</h1>
   <div class="area-form-container"
-       hx-on::oob-before-swap="console.log(event); console.log('element-settled. Dispatching area-changed event'); htmx.trigger(this, 'area-changed', {})">
+       hx-on::oob-before-swap="htmx.trigger(this, 'area-changed', {})">
     {% for form in areas %}
     {% include "ports/partials/create_form.html" %}
   {% endfor %}
@@ -42,7 +42,7 @@
 <c-button variant="outline" hx-get="{{ scenario.internal_id }}/area/crud/" hx-target=".area-form-container" hx-swap="beforeend">Add a area instance</c-button>
 <!--  Defer and import as script -->
 <script>
-  var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  var osmUrl = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     osm = L.tileLayer(osmUrl, {
       maxZoom: getMaxZoom(),
@@ -71,7 +71,7 @@
   });
 
   function drawElements() {
-    console.log('drawing elements');
+
     const geometries = getGeoJsons();
     for (const featureGroup of Object.values(featureGroups)) {
       featureGroup.clearLayers()
@@ -79,7 +79,7 @@
     geometries.forEach((geo) => {
       geojson = geo.geojson;
       layer_name = geo.layer;
-      console.log(layer_name);
+
       id = geo.id;
       style = geo.style;
       if (geojson.type == "Polygon") {

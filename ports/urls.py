@@ -31,9 +31,14 @@ urlpatterns = [
         name="leaflet",
     ),
     path(
-        "<uuid:scenario_internal_id>/<str:model>/crud/",
-        views.CrudView.as_view(),
-        name="crud_model",
+        "details_create/<uuid:scenario_internal_id>/<str:model>/",
+        views.DetailsView.as_view(),
+        name="details_create",
+    ),
+    path(
+        "details/<uuid:scenario_internal_id>/<str:model>/<uuid:internal_id>/",
+        views.DetailsView.as_view(),
+        name="details",
     ),
     path(
         "<uuid:scenario_uuid>/<str:first_load_str>/<str:last_update_str>/get_updates/",

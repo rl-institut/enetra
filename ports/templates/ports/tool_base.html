@@ -24,7 +24,7 @@
 {% endblock header %}
 {% block sideBar %}
   <div>
-    <div class='bg-blue-50'>
+    <div class='bg-blue-50 z-[9999]'>
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
       {% include "ports/partials/scenario_select.html" %}
@@ -33,12 +33,12 @@
       <c-tabs.index variant='lined'>
 
       <c-tabs.tab>
-      <c-slot name='label'>Komponenten </c-slot>
-      {% include 'ports/partials/komponenten_tab_panel.html' %}
-      </c-tabs.tab>
-      <c-tabs.tab>
       <c-slot name='label'>Flächen </c-slot>
       {% include 'ports/partials/flaechen_tab_panel.html' %}
+      </c-tabs.tab>
+      <c-tabs.tab>
+      <c-slot name='label'>Komponenten </c-slot>
+      {% include 'ports/partials/komponenten_tab_panel.html' %}
       </c-tabs.tab>
       <c-tabs.tab>
       <c-slot name='label'>Allg.Rand-bedingungen</c-slot>
@@ -53,10 +53,13 @@
 {% endblock sideBarFooter %}
 {% block mainContent %}
   {% include 'ports/partials/map_container.html' %}
-  <c-detail-sidebar open class='bg-white'>
-    <c-detail-sidebar.component template="main">
-      {% include "ports/partials/detail_sidebar/detail_sidebar_main.html" %}
-    </c-detail-sidebar.component>
+  {% comment %}
+    NOTE: The z-index is below the detail sidebar above: This allows a slide-in effect from below
+  this sidebar
+
+  detailSidebar innerHTML is the target for hx-requests
+  {% endcomment %}
+  <c-detail-sidebar id='detailSidebar' class='z-[9998]'  class='bg-white'>
     <c-detail-sidebar.component template="component">
       {% include "ports/partials/detail_sidebar/detail_sidebar_component.html" %}
     </c-detail-sidebar.component>

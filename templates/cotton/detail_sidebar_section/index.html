@@ -12,12 +12,13 @@
            {% for item in items %}
 
           <button onClick='console.log("transition to lasten view not implemented")'
+              type='button'
                   class="flex items-center justify-between gap-[8px] p-[12px] border border-[#cbd5e1] rounded-[8px] bg-white py-1.5 hover:bg-[#f8fafc] transition-colors cursor-pointer">
             <div class="flex items-center gap-[8px] flex-1">
               <div class="flex items-center justify-center w-[11.314px] h-[11.314px]">
                 <div class="w-[8px] h-[8px] bg-[#94a3b8] rotate-45"></div>
               </div>
-                          <span class="font-semibold text-[14px] text-[#64748b]">{{item}}</span>
+                          <span class="font-semibold text-[14px] text-[#64748b]">{{item.name}}</span>
             </div>
             <div
               role="button"
@@ -33,7 +34,10 @@
             <p class="text-[14px] text-[#64748b]">Keine Komponente hinzugefügt</p>
             {% endif %}
 
-          <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+          <button
+              type='button'
+              class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+
             + Hinzufügen
           </button>
         </div>

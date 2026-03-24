@@ -1,13 +1,17 @@
+{% comment %}
+NOTE: DEPRECATED
+
+{% endcomment %}
 {% load partials %}
 
 {% partialdef crud-form-partial inline %}
 <form id="form_{{form.prefix}}"
-    x-data='{}'
-    class ='form-{{form.instance.internal_id}}'
-    hx-post='/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
-    hx-select='#form_{{form.prefix}}'
-    hx-target='this'
-    hx-indicator='.submitbtn'
+    x-data="{}"
+    class ="form-{{form.instance.internal_id}}"
+    hx-post="/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/"
+    hx-select="#form_{{form.prefix}}"
+    hx-target="this"
+    hx-indicator=".submitbtn"
     hx-disabled-elt=".submitbtn"
     hx-on::after-swap="if (event.target == this){
         console.log(event); console.log('element-swaped. Dispatching {{form.instance.model_name}}-changed event'); htmx.trigger(this, '{{form.instance.model_name}}-changed', {})}"
@@ -28,7 +32,7 @@
          The external-update-indicator is set by htmx when somebody changed the item and its not focused
         {% endcomment %}
         {% if external_update %}
-        <div x-data="{show:true}" class="external-update-indicator" x-show='show' x-init="setTimeout(()=>show=false,5000)" >This item was just changed or created at {{form.instance.updated_at}} by User {{form.instance.update_user}}</div>
+        <div x-data="{show:true}" class="external-update-indicator" x-show="show" x-init="setTimeout(()=>show=false,5000)" >This item was just changed or created at {{form.instance.updated_at}} by User {{form.instance.update_user}}</div>
         {% endif %}
     <!-- NOTE: Make sure to have form.media loaded! -->
     {% if success  %}
@@ -55,7 +59,7 @@
             {% for field in form.visible_fields %}
                 {% if field.name == "geom" %}
                     <div class="flex w-full"
-                    x-data='{isEditable:false}'>
+                    x-data="{isEditable:false}">
                     {% comment %}
                      we use the alpineJs magicfunction nextTick, to dispatch the event after the
                     class changes below are applied
@@ -68,11 +72,11 @@
                       Elements which should be drawn should have a value of a geojson, have the class draw-map-element
                     and the layer in the form of map-layer-NAME
                     {% endcomment %}
-                    <c-tail-input class='w-full bg-red-200 map-draw-element ' :field="field"
+                    <c-tail-input class="w-full bg-red-200 map-draw-element " :field="field"
                     x-bind::class="{ 'map-layer-editable': isEditable, 'map-layer-{{form.instance.model_name}}': !isEditable }"
                         @change="$dispatch('geom-changed');">
                     </c-tail-input>
-                    <input @input="$nextTick(() => $dispatch('map-redraw'));" x-model='isEditable' type='checkbox' class='self-end w-14 h-14' name='editable'/>
+                    <input @input="$nextTick(() => $dispatch('map-redraw'));" x-model="isEditable" type="checkbox" class="self-end w-14 h-14" name="editable"/>
                     </div>
                 {% else %}
                     <c-tail-input :field="field">
@@ -89,17 +93,17 @@
         </div>
        <div class="flex">
                 <!-- class to target the hx-indicator -->
-                <c-button class="submitbtn" type='submit'
+                <c-button class="submitbtn" type="submit"
                 >
                     Submit
                 </c-button>
                 {% if form.instance.id is not None  %}
                 <c-button variant="destructive"
-                    type='button'
+                    type="button"
                     hx-select="unset"
                     hx-include="closest form"
-                    hx-delete='/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/'
-                    hx-target='closest form'
+                    hx-delete="/{{scenario.internal_id}}/{{form.instance.model_name}}/crud/"
+                    hx-target="closest form"
                     hx-indicator="this"
                     hx-disabled-elt="this"
                 >
