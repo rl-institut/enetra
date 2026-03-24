@@ -30,8 +30,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
             field_classes={"geom": GeoJSONPolygonField},
             widgets={
                 "internal_id": forms.HiddenInput(),
-                # "geom": GeoJSONWidget(),
-                "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
+                "name": forms.TextInput(),
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
@@ -46,7 +45,6 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem]):
     )
 
 
-# TODO: Move to forms
 class GeoJSONPolygonField(PolygonField):
     def to_python(self, value):
         if not value:

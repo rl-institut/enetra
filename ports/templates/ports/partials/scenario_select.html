@@ -28,7 +28,6 @@
           </div>
           <button
             command="show-modal" commandfor="scenario-create-modal"
-            onClick=""
           class='{{buttonBgColor}} content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 border-0 cursor-pointer transition-colors'
           >
             <p class="font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] text-right">
@@ -42,7 +41,6 @@
         <c-select.index
         selectedValue='{{scenario.internal_id}}'
         inputName='selectedScenario'
-        image="noImageYet"
       >
         {% for s in scenarios %}
        <c-select.button

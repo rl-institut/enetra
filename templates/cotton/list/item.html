@@ -7,8 +7,8 @@
   selected is populated by the input
 wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<label class=' cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} '
-       x-data='{isSelected: $el.querySelector("input").checked }'
+<label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} "
+       x-data="{isSelected: $el.querySelector('input').checked }"
        @input="if (isBulkMode) { isSelected = !isSelected; console.log('swapped')};{{ callback }}"
        @checked='isSelected=true; event.preventDefault()'
        @unchecked='isSelected=false; event.preventDefault()'

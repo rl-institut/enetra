@@ -3,11 +3,10 @@
 <div x-data='{isOpen:{{open|lower}}}'
      @show-detail-sidebar.window='isOpen = true'
      @hide-detail-sidebar.window='isOpen = false'
-    class="{{class}} fixed top-[55px] bottom-0 w-[400px]  shadow-[2px_0px_4px_0px_rgba(0,0,0,0.1)] border-l border-[#e2e8f0] overflow-y-auto transition-all duration-300 ease-in-out
-  "
+    class="{{class}} fixed top-[55px] bottom-0 w-[400px]  shadow-[2px_0px_4px_0px_rgba(0,0,0,0.1)] border-l border-[#e2e8f0] overflow-y-auto transition-all duration-300 ease-in-out "
     :class='isOpen && "slide-in fade-in"'
-     x-show='isOpen'
     x-effect='if (!isOpen){$dispatch("detail-sidebar-closed")}else{$dispatch("detail-sidebar-opened")}'
+     x-show='isOpen'
    x-cloak
   {{attrs}}
 >

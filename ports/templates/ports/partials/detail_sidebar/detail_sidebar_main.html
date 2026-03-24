@@ -1,17 +1,17 @@
 {% load partials %}
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-<form hx-indicator='this'>
+<form hx-indicator="this">
     {% comment %}
-    hidden field for internal_id. We might be able to skip it since internal_id is also send via ulr
+    hidden field for internal_id. We might be able to skip it since internal_id is also send via url.
     {% endcomment %}
   {{ form.internal_id }}
   {% comment %}
+  TODO:
   we should have a busy indicator
   {% endcomment %}
   <div class="htmx-indicator bg-red-500 loader"></div>
   <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
-
     {% comment %}
     This shows when the client dispatches an event that this item was changed and
     the last update from the server is not equal to this change event.
@@ -29,8 +29,8 @@
 
     {% if success %}
       <div x-data="{show:true }"
-           class='animate-in fade-in duration-1000'
-           x-init='setTimeout(()=>show=false, 1000)'
+           class="animate-in fade-in duration-1000"
+           x-init="setTimeout(()=>show=false, 1000)"
            x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
            x-show="show">
         <c-alert class="" variant="success" title={{ success }}>
@@ -39,15 +39,14 @@
     {% endif %}
     {{ errors }}
     <button hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-      hx-target='closest form'
+      hx-target="closest form"
             hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
-            type='button'
+            type="button"
             class="
       w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
       DELETE
     </button>
-    <button type='button'
-
+    <button type="button"
             hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
             hx-target="closest form"
             hx-swap="outerHTML"
@@ -55,7 +54,7 @@
             class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
       REFRESH
     </button>
-    <button type='button'
+    <button type="button"
             hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
             hx-target="closest form"
             hx-swap="outerHTML"
@@ -68,14 +67,13 @@
           <c-icon.building />
         </div>
         <h2 class="font-semibold text-[20px] text-[#1e293b]">{{ item.get_area_type_display|default:"Missing area_type" }}</h2>
-        <button type='button'
+        <button type="button"
                 class="flex-shrink-0 hover:opacity-60 transition-opacity">
           <c-icon.three-dots />
         </button>
       </div>
-      <!-- TODO: since the following button references the cotton detail_sidebar through isOpen, maybe make it a cotton component -->
-      <button type='button'
-              @click="isOpen=false"
+      <button type="button"
+              @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
@@ -93,7 +91,7 @@
         <p class="text-[13px] text-[#64748b] flex-1">
           Es wurde noch keine {{ item.get_area_type_display }} auf der Karte gezeichnet.
         </p>
-        <button type='button'
+        <button type="button"
                 class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
           <c-icon.location-marker class="w-[16px] h-[16px]" />
           {{ item.get_area_type_display }} zeichnen
@@ -103,7 +101,7 @@
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ item.get_area_type_display }} Options</label>
-      <c-select.index classButton='border-[#cbd5e1]!' :inputName=form.usage.name :selectedValue=form.usage.value>
+      <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
           <c-select.button selectValue={{ value }}>
             {{ label }}
@@ -120,21 +118,21 @@
       <div class="flex flex-col gap-[16px]">
         <!-- {/* LASTEN Section */} -->
         <c-detail-sidebar-section title=Lasten :items=loads>
-          <c-slot name='icon'>
-            <c-icon.lasten class='flex-shrink-0 w-[16px] h-[16px]' />
+          <c-slot name="icon">
+            <c-icon.lasten class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
         <c-detail-sidebar-section title=Energietechnik :items=energy_components>
-          <c-slot name='icon'>
-            <c-icon.bolt class='flex-shrink-0 w-[16px] h-[16px]' />
+          <c-slot name="icon">
+            <c-icon.bolt class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
         <c-detail-sidebar-section title=MOBILITÄT>
-          <c-slot name='icon'>
-            <c-icon.logistic class='flex-shrink-0 w-[16px] h-[16px]' />
+          <c-slot name="icon">
+            <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
-        <netzanschluss class='block'>
+        <netzanschluss class="block">
         <div class="flex flex-col gap-[16px] pt-[8px]">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
@@ -160,7 +158,7 @@
               </c-select.button>
             </c-select.index>
           </div>
-          <button type='button'
+          <button type="button"
                   class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
             + Anschluss
           </button>
@@ -175,7 +173,6 @@
           </div>
           </netzanschluss>
         </div>
-        <!--Configurations -->
       </div>
     </details-sidebar-content>
   </form>

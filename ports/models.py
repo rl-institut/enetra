@@ -282,7 +282,10 @@ class Area(ScenarioItem):
     geom = models.PolygonField(null=True, blank=False)
     area_type = models.CharField(choices=AreaTypeChoices, null=True)
     usage = models.CharField(
-        choices=OpenUsageChoices.choices + BuildingUsageChoices.choices, null=True
+        choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
+        null=True,
+        blank=True,
+        default=None,
     )
 
     @classmethod

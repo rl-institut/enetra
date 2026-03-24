@@ -60,78 +60,6 @@ def test(request):
     return render(request, "ports/test.html", context)
 
 
-async def changes_count_async(request, scenario_internal_id: UUID):
-    scenario: Scenario = await aget_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not get_authentification(scenario, request.user, "read"):
-        return HttpResponseForbidden("No access")
-    context = {}
-    last_update = request.GET.get("updated_at")
-    updated_at = scenario.updated_at
-    context["updated_at"] = updated_at
-    context["changed"] = False
-    if last_update:
-        last_update = datetime.fromisoformat(last_update)
-        if scenario.updated_at > last_update:
-            print("changed")
-            context["changed"] = True
-            created_items = []
-            changed_items = []
-            deleted_items = []
-            port_models = apps.get_app_config("ports").get_models()
-            for Model in port_models:
-                if Model in [Scenario, ChangedItem]:
-                    continue
-                if Model in [DeletedItem]:
-                    filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                    items = [
-                        x
-                        async for x in DeletedItem.objects.filter(scenario=scenario)
-                        .filter(**filter)
-                        .select_related("content_type")
-                    ]
-                    for i in items:
-                        Model = i.content_type.model_class()
-                        data = model_to_dict(i)
-                        del data["content_type"]
-                        cleaned_data = {}
-                        for key, value in data.items():
-                            cleaned_data[Model._meta.get_field(key).attname] = value
-                        model_item = Model(**cleaned_data)
-                        deleted_items.append(model_item)
-                    continue
-                filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                created_items.extend(
-                    [x async for x in Model.objects.filter(scenario=scenario).filter(**filter)]
-                )
-                filter = {
-                    "created_at__lte": last_update,
-                    "updated_at__gt": last_update,
-                    "updated_at__lte": updated_at,
-                }
-                changed_items.extend(
-                    [x async for x in Model.objects.filter(scenario=scenario).filter(**filter)]
-                )
-
-            context["created_items"] = created_items
-            context["changed_items"] = changed_items
-            context["deleted_items"] = deleted_items
-
-    # Reuse the calculated changes
-    count = request.GET.get("all_changes_count", None)
-    if not count or context["changed"]:
-        count = 0
-        port_models = apps.get_app_config("ports").get_models()
-        # Create a mapping for all scenario items
-        for Model in port_models:
-            if Model in [Scenario]:
-                continue
-            count += await Model.objects.filter(scenario=scenario).acount()
-
-    context["all_changes_count"] = count
-    context["scenario"] = scenario
-    return render(request, "ports/partials/changes_count.html", context)
-
-
 def changes_count(request, scenario_internal_id: UUID):
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
@@ -296,7 +224,10 @@ def home(request):
     if request.GET.get("new"):
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
-        create_scenario()
+        s = create_scenario()
+        s.name = request.GET.get("new")
+        s.save(update_fields=["name"])
+
     context = {}
     scenario = Scenario.objects.last()
     context["scenario"] = scenario
@@ -442,6 +373,8 @@ class DetailsView(FormView):
             self.template = "ports/partials/detail_sidebar/detail_sidebar_main.html"
         elif self.Model == Load:
             self.template = "ports/partials/detail_sidebar/detail_sidebar_load_detail.html"
+        elif isinstance(self.Model, ElectricComponent):
+            self.template = "ports/partials/detail_sidebar/detail_sidebar_component.html"
         self.instance = self.Model.objects.filter(
             scenario=self.scenario, internal_id=kwargs.get("internal_id")
         ).first()
@@ -462,31 +395,12 @@ class DetailsView(FormView):
                     self.context,
                 )
             raise Http404("This instance does not exist")
-        if self.Model not in [Solar, Area, Generator, Load]:
+        if self.Model not in [Area, Load] and not isinstance(self.Model, ElectricComponent):
             raise Http404("This model does not exist or is not implemented yet")
-        _id = uuid4()
-        form = self.Form(initial={"internal_id": _id}, prefix=get_pre(_id))
-        # form autogenerates instance with random uuid. we have to stop this diverging
-        form.instance.internal_id = _id
-        self.context["form"] = form
         if self.Model == Area:
-            self.Form.base_fields["usage"].required = True
-            if self.instance.area_type == Area.AreaTypeChoices.BUILDING:
-                self.Form.base_fields["usage"].choices = Area.BuildingUsageChoices
-            else:
-                self.Form.base_fields["usage"].choices = Area.OpenUsageChoices
+            self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             self.context["form"] = self.Form(instance=self.instance)
-            # Classic/ Django way of handling inline formsets
-            # LoadFormSet = inlineformset_factory(Area, Load, fields=("__all__"), extra=1)
-            # load_form = LoadFormSet(
-            #     request.GET or None,
-            #     instance=self.instance,
-            #     # queryset=Load.objects.filter(some_filter=True),
-            # )
-            # self.context["load_form"] = load_form
-
-            # Much easier to just pass the queryset to the frontend, since this view
-            # does not need to implement the forms, but only point to appropriate views
+            # pass queryset to frontend to create links to load forms
             self.context["loads"] = Load.objects.filter(area=self.instance)
             models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
             qs = list()
@@ -494,7 +408,7 @@ class DetailsView(FormView):
                 q = model.objects.filter(area=self.instance)
                 qs.extend(list(q))
             self.context["energy_components"] = qs
-        elif self.Model == Load:
+        elif self.Model == Load or isinstance(self.Model, ElectricComponent):
             self.context["form"] = self.Form(instance=self.instance)
             return render(self.request, self.template, self.context)
         else:
@@ -550,12 +464,6 @@ class DetailsView(FormView):
             self.context["form"] = form
             if form.is_valid():
                 self.context["item"] = form.save()
-                # else:
-                #     # Patch in data which was not part of the form but is part of the model
-                #     obj = form.save(commit=False)
-                #     obj.scenario = self.scenario
-                #     obj.save()
-                print(self.context["item"])
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
                 self.context["errors"] = ["An error occured", form.errors]

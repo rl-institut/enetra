@@ -43,12 +43,10 @@
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-            id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
+                id="area-button-list{{item.internal_id}}" :selected=False title={{item.name}} :indicated=False />
       {% endfor %}
 </c-list>
-
       </div>
-      </p>
     <button type='button'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
                 hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
@@ -71,27 +69,20 @@
       </p>
     </div>
 <c-list id='flaechen-tab-open-area-list' count title="Meine Flächen" >
-      {% comment %}
-        Note all the different ways selected and non selected can be passed to cotton
-
-      {% endcomment %}
       {% for item in open_areas %}
-              <div class="contents"
-                {% comment %}
-                hx-get this template with the item injected
-                ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-                {% endcomment %}
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-              >
-        <c-list.item id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
-      </div>
+        {% comment %}
+        hx-get this template with the item injected
+        ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
+        {% endcomment %}
+        <c-list.item
+        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+        hx-target="#detailSidebar"
+        hx-trigger="click"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML"
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+        id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
       {% endfor %}
-
 </c-list>
     <button type='button'
       class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"

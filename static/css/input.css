@@ -76,7 +76,6 @@
 .my-slide-in-from-top {
     animation: slideFromTop 0.4s ease-out forwards;
 }
-
 .slide-in {
     animation: slideFromLeft 0.4s ease-out forwards;
 }
@@ -89,6 +88,12 @@
 .htmx-slide-in .htmx-settling,
 .htmx-slide-in.htmx-settling {
     animation: slideFromBottom 0.4s ease-out forwards;
+    display: none;
+}
+
+.htmx-slide-in .htmx-added,
+.htmx-slide-in.htmx-added {
+    animation: slideFromTop 0.4s ease-out forwards;
 }
 
 /* When a request is inflight this sets the style of htmx-indicators */

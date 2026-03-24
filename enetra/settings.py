@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import json
 from pathlib import Path
 
 import django_stubs_ext
@@ -297,3 +298,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# Custom project settings
+EVENTS_DICT = dict()
+with open("ports/static/ports/events.json") as f:
+    EVENTS_DICT = json.load(f)

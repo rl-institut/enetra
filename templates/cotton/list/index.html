@@ -4,11 +4,13 @@
     @input ="
   if (!isBulkMode)
   selected=event.target.value"
-
+  {% comment %}
+  this unselects all inputs when changing to single input
+  {% endcomment %}
   x-effect="if (!isBulkMode){
       $el.querySelectorAll('input').forEach((i)=>i.checked=false);
       selected=null;
-  }"
+    }"
 >
   <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
     {% if customTitle %}
