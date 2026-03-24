@@ -27,7 +27,7 @@
                 hx-target="#detailSidebar"
                 hx-swap="innerHTML"
               >
-              <c-list.item :border=False :selected=False title='{{generator.name}} ({{generator.area.name}})' :indicated=False  />
+              <c-list.item :border=False :selected=False title='{{generator.name}} ({{generator.area.name}})' :indicated=False value={{generator.internal_id}} radioName='selected-generators' />
                 </div>
               {% endfor %}
           </c-list>
@@ -36,8 +36,7 @@
           <c-list :border=False title="Heizsystem konventionell">
 
               {% for heater in heaters %}
-              <c-list.item :border=False :selected=False title="{{heater.name}} ({{heater.area.name}})" :indicated=False :callback="handleViewChange('template','Heizsystem','{{heater.internal_id}}')" />
-
+              <c-list.item :border=False :selected=False title="{{heater.name}} ({{heater.area.name}})" :indicated=False :callback="handleViewChange('template','Heizsystem','{{heater.internal_id}}')" value={{heater.internal_id}} radioName='selected-heaters' />
               {% endfor %}
           </c-list>
         </div>
@@ -45,8 +44,7 @@
           <c-list :border=False title="Photovoltaik">
 
               {% for solar in solars %}
-              <c-list.item :border=False :selected=False title="{{solar.name}} ({{solar.area.name}})" :indicated=False :callback="handleViewChange('template','Photovoltaik','{{solar.internal_id}}')" />
-              {% endfor %}
+              <c-list.item :border=False :selected=False title="{{solar.name}} ({{solar.area.name}})" :indicated=False :callback="handleViewChange('template','Photovoltaik','{{solar.internal_id}}')" value={{solar.internal_id}} radioName='selected-solars' />              {% endfor %}
           </c-list>
         </div>
       </div>

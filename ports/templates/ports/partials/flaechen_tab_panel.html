@@ -43,7 +43,10 @@
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-                id="area-button-list{{item.internal_id}}" :selected=False title={{item.name}} :indicated=False />
+                id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
+
+
+
       {% endfor %}
 </c-list>
       </div>
@@ -81,7 +84,8 @@
         hx-indicator="#detailSidebar"
         hx-swap="innerHTML"
         hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-        id='area-button-list{{item.internal_id}}' :selected=False title={{item.name}} :indicated=False />
+        id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-open-areas'/>
+
       {% endfor %}
 </c-list>
     <button type='button'
