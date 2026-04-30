@@ -63,6 +63,10 @@ def test(request):
 
 
 def changes_count(request, scenario_internal_id: UUID):
+    """Get the count of changes as partial update
+
+    Piggybacks the request to update the page with new content (from other users)
+    """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
         HttpResponseForbidden("No access")
@@ -128,6 +132,10 @@ def changes_count(request, scenario_internal_id: UUID):
 
 
 def changes(request, scenario_internal_id: UUID):
+    """View for changelog
+
+    Different filter options are supported for timespans and user
+    """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
         HttpResponseForbidden("No access")
@@ -519,14 +527,14 @@ class DetailsView(View):
             self.context["instance"] = new_instance
             self.context["created"] = True
             return render(self.request, self.template, self.context)
-        elif self.Model == Load:
+        elif self.Model == Load or ElectricComponent in self.Model.mro():
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
-            loads = Load.create_new(self.scenario, **data)
+            new_items = self.Model.create_new(self.scenario, **data)
             multi = len(area_internal_ids) > 1
             self.Form = ScenarioItemFormFactory(self.Model, multi=multi, scenario=self.scenario)
-            self.instances = Load.objects.bulk_create(loads)
+            self.instances = self.Model.objects.bulk_create(new_items)
             if not multi:
                 self.instance = self.instances[0]
                 self.instances = []
@@ -534,7 +542,6 @@ class DetailsView(View):
                 self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
                     instance=self.instance
                 )
-                self.template = "ports/partials/detail_sidebar/detail_sidebar_load_detail.html"
 
             else:
                 self.context["instances"] = self.instances
@@ -546,45 +553,7 @@ class DetailsView(View):
                     self.Form, instance=self.instances[0]
                 )(instance=self.instance)
                 self.context["area_internal_ids"] = ",".join(area_internal_ids)
-                self.template = (
-                    "ports/partials/detail_sidebar/detail_sidebar_load_detail_multi.html"
-                )
-
             self.context["created"] = True
-
-            return render(self.request, self.template, self.context)
-
-        elif ElectricComponent in self.Model.mro():
-            # Handle single creation as well as creation from batch view
-            area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
-            data["area_internal_ids"] = area_internal_ids
-            components = self.Model.create_new(self.scenario, **data)
-            multi = len(area_internal_ids) > 1
-            self.Form = ScenarioItemFormFactory(self.Model, multi=multi, scenario=self.scenario)
-            self.instances = self.Model.objects.bulk_create(components)
-            if not multi:
-                self.instance = self.instances[0]
-                self.instances = []
-                self.context["instance"] = self.instance
-                self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
-                    instance=self.instance
-                )
-                self.template = "ports/partials/detail_sidebar/detail_sidebar_component.html"
-
-            else:
-                self.context["instances"] = self.instances
-                self.context["instance"] = None
-                self.context["internal_ids"] = ",".join(
-                    [str(x.internal_id) for x in self.instances]
-                )
-                self.context["form"] = self.Model.adjust_Form(
-                    self.Form, instance=self.instances[0]
-                )(instance=self.instance)
-                self.context["area_internal_ids"] = ",".join(area_internal_ids)
-                self.template = "ports/partials/detail_sidebar/detail_sidebar_component_multi.html"
-
-            self.context["created"] = True
-
             return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
@@ -603,7 +572,7 @@ class DetailsView(View):
     def multi_get(self, request, *args, **kwargs):
         assert not self.instance
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
-        if self.Model == Area:
+        if self.Model == Area or ElectricComponent in self.Model.mro():
             merged_data = model_to_dict(self.instances[0])
             for x in self.instances:
                 data = model_to_dict(x)
@@ -615,17 +584,6 @@ class DetailsView(View):
             self.context["form"] = form
             return render(self.request, self.template, self.context)
 
-        if ElectricComponent in self.Model.mro():
-            merged_data = model_to_dict(self.instances[0])
-            for x in self.instances:
-                data = model_to_dict(x)
-                for key, value in data.items():
-                    if merged_data.get(key) != value and key in merged_data:
-                        del merged_data[key]
-
-            form = self.Form(data=merged_data)
-            self.context["form"] = form
-            return render(self.request, self.template, self.context)
         raise NotImplementedError(f"Multi Get not implemented for {self.Model.__name__}")
 
     def multi_post(self, request, *args, **kwargs):

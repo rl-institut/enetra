@@ -212,14 +212,7 @@ class ChangedItem(ScenarioItem):
     This is an "easy" implementation, but its not very transparent to the developer.
 
     This gives explicit access to updates of items, which are not in the database anymore.
-    Example:
-    User Tom is shown an item Foo of id 123. User Jim deletes Foo 123.
-    The scenario gets an update with a new timestamp updated at. Toms site polls the scenario
-    for changes.
-    A change is detected. Searching for updates would not show that 123 is deleted. but searching
-    DeletedItem.objects.filter(update_at__gt=last_update) shows a Foo item 123 was deleted.
-    a signal can be passed to Toms frontend 'updateFoo123'. This refetches the instance and shows
-    tom. "This item has been deleted".
+    This allows storing update information for more than the last update of an item
     """
 
     class Meta:
