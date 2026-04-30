@@ -1,3 +1,4 @@
+<c-vars area_internal_ids></c-vars>
       <div class="flex flex-col gap-[8px]">
         <c-expand.index variant="strong" expanded >
         <c-slot name="title">
@@ -8,11 +9,11 @@
           </div>
             <c-expand.icon class='w-[19px] h-[19px]' />
         </c-slot>
-        <div class="flex flex-col gap-[8px] pt-[8px] w-full">
+        <div class="flex flex-col gap-[8px] pt-[8px] w-full" hx-disinherit="*">
            {% for item in items %}
 
           <button
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
+                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name  %}?internal_id={{item.internal_id}}"
                 hx-target="#detailSidebar"
                 hx-trigger="click"
                 hx-indicator="#detailSidebar"
@@ -41,11 +42,35 @@
             {% endif %}
 
           <button
-              type='button'
-              class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
 
+        {% for model in models %}
+          <button
+            hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model=model  %}"
+            hx-vals='{"area_internal_ids": "{{area_internal_ids}}"}'
+            hx-target="#detailSidebar"
+            hx-trigger="click"
+            hx-indicator="#detailSidebar"
+            hx-swap="innerHTML"
+            type='button'
+            class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+
+
+          + {{model}} Hinzufügen
+          </button>
+        {% endfor %}
+        {% if model %}
+          <button
+            hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model=model  %}"
+            hx-vals='{"area_internal_ids": "{{area_internal_ids}}"}'
+            hx-target="#detailSidebar"
+            hx-trigger="click"
+            hx-indicator="#detailSidebar"
+            hx-swap="innerHTML"
+            type='button'
+            class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
             + Hinzufügen
           </button>
+        {% endif %}
         </div>
       </c-expand.index>
       </div>

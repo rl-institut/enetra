@@ -22,6 +22,7 @@
   <script defer src='{% static "map-events-interface.js" %}'></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
+  <script src='{% static "ports/tool_base.js" %}'></script>
 {% endblock header %}
 {% block sideBar %}
   <div>
@@ -61,9 +62,6 @@
   detailSidebar innerHTML is the target for hx-requests
   {% endcomment %}
   <c-detail-sidebar id='detailSidebar' class='z-[9998]'  class='bg-white'>
-    <c-detail-sidebar.component template="component">
-      {% include "ports/partials/detail_sidebar/detail_sidebar_component.html" %}
-    </c-detail-sidebar.component>
     <c-detail-sidebar.component template="template">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template.html" %}
     </c-detail-sidebar.component>

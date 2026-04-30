@@ -1,111 +1,93 @@
 {% load constants %}
+
 <div class="flex flex-col gap-[16px]">
-
-    <div class="flex items-center gap-[8px] mb-[8px]">
-        <div class="w-[12px] h-[12px] bg-[#a78bfa] rounded-[2px]"></div>
-      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
-        GEBÄUDEFLÄCHEN
-
+  <div class="flex items-center gap-[8px] mb-[8px]">
+    <div class="w-[12px] h-[12px] bg-[#a78bfa] rounded-[2px]"></div>
+    <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
+      GEBÄUDEFLÄCHEN
     </div>
-  <div>
-    <div
-      {% comment %}
-        TODO:
-        This behaviour should be moved to a template specific js file.
-        It handles filtering of duplicate list inserts as well as turning of animations on list items after they ran
-      Without it they would retrigger on each visiblity change, e.g. tab switch
-      {% endcomment %}
-    x-data
-      hx-on:htmx:oob-before-swap="if(document.getElementById(event.detail.fragment?.dataset?.createdid)){
-      event.detail.shouldSwap=false
-      console.log('stopped insertion since element exists already in the dom')
-      }
-      "
-      @animationend='event.target.classList.add("!animate-none")'
-
+    <div>
+    <form>
+      <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
     >
-    <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude"
-        @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)"
-    >
-      {% comment %}
-        Note all the different ways selected and non selected can be passed to cotton
-      {% endcomment %}
-      {% for item in building_areas %}
-                {% comment %}
-                hx-get this template with the item injected
-                ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-                {% endcomment %}
-          <c-list.item
-                @detail-sidebar-closed.document="isSelected=false"
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-                id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-building-areas'/>
+        {% for item in building_areas %}
+          {% comment %}
+            hx-get the proper template in regards to bulkMode.
+            hx behaviour is set through the defaultHxDetails flag
+            ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
+          {% endcomment %}
 
-
-
-      {% endfor %}
-</c-list>
-      </div>
-    <button type='button'
-      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
-                hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
-                hx-vals='{"area_type": "{{Area.AreaTypeChoices.BUILDING|assertValue}}" }'
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-      >+ Gebäudefläche</button>
-  </div>
-  <div>
-    {% include "ports/partials/andere_beteiligte.html" %}
-  </div>
-  <div>
-    <div class="flex items-center gap-[8px] mb-[8px] pb-0 pt-4 border-t">
-      <div class="w-[12px] h-[12px] bg-[#C6E474] rounded-[2px]"></div>
-      <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
-        FREIFLÄCHEN
-      </p>
-    </div>
-<c-list id='flaechen-tab-open-area-list' count title="Meine Flächen" >
-      {% for item in open_areas %}
         {% comment %}
+        the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
+        {% endcomment %}
+          <c-list.item
+            id='area-button-list{{ item.internal_id }}'
+            :defaultHxDetails=True
+            :selected=False
+            :indicated=False
+            :item=item
+            value='{{ item.internal_id }}'
+            title='{{item.name}}'
+            radioName='internal_id'
+        />
+        {% endfor %}
+      </c-list>
+
+    </form>
+      <button type='button'
+              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
+              hx-vals='{"area_type": "{{ Area.AreaTypeChoices.BUILDING|assertValue }}" }'
+              hx-indicator="#detailSidebar"
+              hx-swap="none"
+              hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+    >+ Gebäudefläche</button>
+    </div>
+    <div>{% include "ports/partials/andere_beteiligte.html" %}</div>
+    <div>
+      <div class="flex items-center gap-[8px] mb-[8px] pb-0 pt-4 border-t">
+        <div class="w-[12px] h-[12px] bg-[#C6E474] rounded-[2px]"></div>
+        <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#1e293b] text-[14px] uppercase tracking-wide">
+          FREIFLÄCHEN
+        </p>
+      </div>
+
+    <form>
+      <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+      >
+        {% for item in open_areas %}
+          {% comment %}
         hx-get this template with the item injected
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-        {% endcomment %}
-        <c-list.item
-        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
-        hx-target="#detailSidebar"
-        hx-trigger="click"
-        hx-indicator="#detailSidebar"
-        hx-swap="innerHTML"
-        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-        id='area-button-list{{item.internal_id}}' value={{item.internal_id}} :selected=False title={{item.name}} :indicated=False radioName='selected-open-areas'/>
-
-      {% endfor %}
-</c-list>
-    <button type='button'
-      class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
-                hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
-                hx-vals='{"area_type": "{{Area.AreaTypeChoices.OPEN|assertValue}}" }'
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
-                hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
-      >+ Freifläche</button>
+          {% endcomment %}
+          <c-list.item
+            id='area-button-list{{ item.internal_id }}'
+            :defaultHxDetails=True
+            :selected=False
+            :indicated=False
+            :item=item
+            value='{{ item.internal_id }}'
+            title='{{item.name}}'
+            radioName='internal_id'
+        />
+        {% endfor %}
+      </c-list>
+    </form>
+      <button type='button'
+              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
+              hx-vals='{"area_type": "{{ Area.AreaTypeChoices.OPEN|assertValue }}" }'
+              hx-indicator="#detailSidebar"
+              hx-swap="none"
+              hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));">
+          + Freifläche</button>
+    </div>
+    <div class="pt-0">
+      <p class="font-['Inter:Semi_Bold',sans-serif] text-[14px] text-[#64748b]">Andere Beteiligte (0)</p>
+    </div>
   </div>
-  <div class="pt-0">
-    <p class="font-['Inter:Semi_Bold',sans-serif] text-[14px] text-[#64748b]">Andere Beteiligte (0)</p>
-  </div>
-</div>
-
-    {% comment %}
+  {% comment %}
     <List variant="list" items={lagerhalleItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
       <AndereBeteiligte />
     <List variant="list" items={freiflacheItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
-    {% endcomment %}
+  {% endcomment %}

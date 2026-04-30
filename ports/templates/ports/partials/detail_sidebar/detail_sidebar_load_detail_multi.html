@@ -1,9 +1,12 @@
+{% load constants %}
 <form hx-indicator='this'>
-  {{ form.internal_id }}
+
+  <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
+  <input name="area_internal_ids" class='hidden' value='{{area_internal_ids}}'>
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
     <button
-      hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}?internal_id={{instance.area.internal_id}}"
+      hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.area.model_name  %}?internal_ids={{area_internal_ids|assertValue}}"
       hx-target="#detailSidebar"
       hx-trigger="click"
       hx-indicator="#detailSidebar"
@@ -13,7 +16,7 @@
       class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
     >
       <c-icon.arrow_left/>
-      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zu Fläche {{instance.area.name}}</span>
+      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zurück zu ausgewählten Flächen</span>
     </button>
     <button
             type="button"
@@ -47,15 +50,6 @@
     </div>
 
     <div class="flex flex-col gap-[16px]">
-
-      <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Name</label>
-
-      <c-input :field=form.name x-data=""
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
-        </c-input>
-
-      </div>
 
       <div class="flex flex-col gap-[8px]">
         <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
@@ -121,7 +115,8 @@
       </div>
 
       <button
-          hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  %}?=internal_id={{instance.internal_id}}"
+          hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  %}"
+            hx-vals='{"internal_ids": "{{internal_ids}}"}'
             hx-target="closest form"
             hx-swap="outerHTML"
             type="button"
@@ -130,7 +125,7 @@
       </button>
 
       <button
-          x-data
+        x-data
         @click="$dispatch('hide-detail-sidebar')"
         class="w-full text-[#1e293b] font-semibold text-[14px] py-[8px] hover:opacity-80 transition-opacity"
           type="button"

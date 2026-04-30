@@ -1,7 +1,8 @@
-
-    <button @click='isBulkMode = !isBulkMode;
-       '
-            class="bg-[#f8fafc] content-stretch flex items-center justify-center px-[12px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[#e2e8f0] transition-colors">
-      <p class="font-['Inter:Medium',sans-serif] font-medium leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[12px] text-right"
-         x-text=" isBulkMode ? 'Fertig' : 'Mehrauswahl'"></p>
-    </button>
+<c-vars class callback></c-vars>
+<button @click="isBulkMode = !isBulkMode; {{ callback }}"
+        type="button"
+        {{ attrs }}
+        class="{{ class }} bg-[#f8fafc] content-stretch flex items-center justify-center px-[12px] py-[4px] relative rounded-[100px] shrink-0 cursor-pointer hover:bg-[#e2e8f0] transition-colors">
+    <p class="font-['Inter:Medium',sans-serif] font-medium leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[12px] text-right"
+       x-text=" isBulkMode ? 'Einzelauswahl' : 'Mehrauswahl'"></p>
+</button>

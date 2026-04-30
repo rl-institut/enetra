@@ -39,7 +39,7 @@ The implementation can be fouind inside the custom css tailwind brackets
     {{ slot }}
   </div>
    <input class="border {% if not debugWidget == True %}hidden{% endif %}"
-         x-effect="selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event("input", { bubbles: true }))"
+         x-effect="selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
          name="{{inputName}}"
          value="{{selectedValue}}"
          x-model="selectedValue">

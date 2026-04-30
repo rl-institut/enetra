@@ -3,19 +3,15 @@
 
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-{% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
-{% else %}
-  {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name as form_url %}
 <form hx-indicator="this"
   id="form_{{internal_id}}"
-  hx-select="#form_{{internal_id}}"
-  hx-target="this"
-  hx-swap="outerHTML"
 >
-  {{ form.internal_id }}
-  <input name="area_internal_ids" class='hidden' value='{{internal_id}}'>
-
+  <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
+  <input name="area_internal_ids" class='hidden' value='{{internal_ids}}'>
+    {% comment %}
+    hidden field for internal_id. We might be able to skip it since internal_id is also send via url.
+    {% endcomment %}
   {% comment %}
   TODO:
   we should have a busy indicator
@@ -28,8 +24,8 @@
     {% endcomment %}
       <div x-data="{show:false }"
            class='animate-in fade-in duration-1000'
-          x-on:{{instance.changed_event}}.document='if(event.detail.updated_at != "{{instance.updated_at|date:"c"}}")show=true;'
-          x-on:{{instance.deleted_event}}.document='show=true;'
+          x-on:{{instances.0.changed_event}}.document='if(event.detail.updated_at != "{{instances.0.updated_at|date:"c"}}")show=true;'
+          x-on:{{instances.0.deleted_event}}.document='show=true;'
            x-show="show">
         <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
         Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht um die Änderungen sehen zu können.
@@ -47,25 +43,16 @@
         </c-alert>
       </div>
     {% endif %}
+    {% if errors %}
+    Errors
     {{ errors }}
-    <button hx-delete="{{form_url|assertValue}}"
-            hx-confirm="Wollen Sie {{ instance.name }} wirklich löschen?"
-            hx-select="*"
-            type="button"
-            class="
-      w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
-      DELETE
-    </button>
+    {% endif %}
     <button type="button"
-            hx-get="{{form_url}}"
-            hx-vals='{"internal_id": "{{internal_id}}"}'
-            x-data
-            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
-      REFRESH
-    </button>
-    <button type="button"
-            hx-post="{{form_url}}"
-            id="#form_{{internal_id}}"
+      hx-post="{{form_url}}?internal_ids={{request.GET.internal_ids}}"
+            hx-select="#form_{{internal_id}}"
+            hx-vals='{"area_type": "{{instances.0.area_type|assertValue}}" }'
+            hx-target="closest form"
+            hx-swap="outerHTML"
             class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
       POST
     </button>
@@ -74,11 +61,18 @@
         <div class="flex shrink-0 text-[#a78bfa] ">
           <c-icon.building />
         </div>
-          {% if instance.area_type == Model.AreaTypeChoices.BUILDING %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Gebäudefläche</h2>
+          {% if area_type == Model.AreaTypeChoices.BUILDING %}
+            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Gebäudeflächen bearbeiten</h2>
           {% else %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Freifläche</h2>
+            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Freiflächen bearbeiten</h2>
           {% endif %}
+            <ul>
+         {% for item in instances %}
+          <li class="font-semibold  text-[#1e293b] text-xs">{{item.name}}</li>
+          {% endfor %}
+
+
+        </ul>
 
         <button type="button"
                 class="flex-shrink-0 hover:opacity-60 transition-opacity">
@@ -92,30 +86,10 @@
       </button>
     </div>
 
-    <div class="mt-[12px]">
-    {% comment %}
-     Do we need this special emitting of value changes?
-    {% endcomment %}
-      <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label>
-      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch(`{{ itemchange_event|default:'itemChanged' }}`, {value: $el.value});" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
-      </c-input>
-    </div>
-    {% if not instance.geom %}
-      <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
-        <p class="text-[13px] text-[#64748b] flex-1">
-          Es wurde noch keine {{ instance.get_area_type_display }} auf der Karte gezeichnet.
-        </p>
-        <button type="button"
-                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
-          <c-icon.location-marker class="w-[16px] h-[16px]" />
-          {{ instance.get_area_type_display }} zeichnen
-        </button>
-      </div>
-    {% endif %}
-
+    Multi select cant change names or geometry
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
-      <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label>
+      <label class="font-semibold text-[16px] text-[#1e293b]">{{ instances.0.get_area_type_display }} Options</label>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
           <c-select.button selectValue={{ value }}>
@@ -132,18 +106,35 @@
       <!-- {/* Configuration Sections */} -->
       <div class="flex flex-col gap-[16px]">
         <!-- {/* LASTEN Section */} -->
-        <c-detail-sidebar-section.index title=Lasten :items=loads model="load" :area_internal_ids=instance.internal_id>
-          <c-slot name="icon">
-            <c-icon.lasten class="flex-shrink-0 w-[16px] h-[16px]" />
-          </c-slot>
-        </c-detail-sidebar-section>
-        <c-detail-sidebar-section.index title=Energietechnik :items=energy_components :models=electric_models :area_internal_ids=instance.internal_id>
+      <div class="flex flex-col gap-[8px]">
+        <c-expand.index variant="strong" expanded >
+        <c-slot name="title">
+          <div class="flex items-center gap-[8px]">
+              <c-icon.lasten class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]" />
+              <h3 class="font-normal text-[16px] text-[#1e293b] uppercase">Lasten</h3>
+              <c-icon.info class="flex-shrink-0 w-[16px] h-[16px] text-[#64748b]" />
+          </div>
+            <c-expand.icon class='w-[19px] h-[19px]' />
+        </c-slot>
+        <div class="flex flex-col gap-[8px] pt-[8px] w-full">
+          <button
+              hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='load'  %}"
+              hx-target="#detailSidebar"
+              hx-trigger="click"
+              hx-indicator="#detailSidebar"
+              hx-swap="innerHTML"
+              type='button'
+              class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+            + Ausgewählten Flächen Hinzufügen
+          </button>
+        </div>
+      </c-expand.index>
+      </div>
+        <c-detail-sidebar-section.index title=Energietechnik :items=[] :models=electric_models :area_internal_ids=internal_ids>
           <c-slot name="icon">
             <c-icon.bolt class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
-        TODO:
-        <!-- #FIXME: add mobility items -->
         <c-detail-sidebar-section title=MOBILITÄT :items=[] model="mobility">
           <c-slot name="icon">
             <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
@@ -192,7 +183,7 @@
       </div>
     </details-sidebar-content>
   </form>
-{% endif %}
+
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
 In case of a created element the list is appended through 'beforeend'
@@ -205,7 +196,6 @@ In case of an update the list element is swapped
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
 
-
 {% comment %}
-
+<c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />
 {% endcomment %}

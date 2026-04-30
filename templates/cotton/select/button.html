@@ -9,7 +9,7 @@ A select without a selectValue has no use. The assertion could be removed later
 <button
   type='button'
   data-value='{{selectValue}}'
-  x-init="if (selectedValue==$el.dataset.value){selectedElement=$el;console.log('initialized with selectedElement')}"
+  x-init="if (selectedValue==$el.dataset.value){selectedElement=$el;}"
   @click='selectedValue= $el.dataset.value; selectedElement = $el ;console.log("changed selectedValue")'
   :class="selectedValue==$el.dataset.value ? 'bg-[#eaf2fe] font-semibold' : 'text-[#1e293b] '"
   class='w-full text-left px-[16px] py-[12px] text-[14px]  border-t border-x border-[#1e293b40] last:border-b

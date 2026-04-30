@@ -36,3 +36,13 @@ def assertValue(val):
         print("Value is none or empty string")
         raise AssertionError("AssertedValue is None")
     return val
+
+
+@register.filter
+def get_value(d: dict, name):
+    return d[name]
+
+
+@register.filter
+def widget_type(field):
+    return field.field.widget.__class__.__name__

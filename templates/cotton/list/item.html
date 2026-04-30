@@ -1,5 +1,12 @@
-<c-vars indicated selected  class :border=True callback title>
+<c-vars indicated selected  class :border=True callback title
+  :defaultHxDetails=False
+  item
+
+
+>
 </c-vars>
+
+
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
@@ -9,10 +16,34 @@ wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
 <label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} "
        x-data="{isSelected: $el.querySelector('input').checked }"
-       @checked='isSelected=true; event.preventDefault()'
-       @unchecked='isSelected=false; event.preventDefault()'
-       {{ attrs }}>
+       x-on:htmx:load="
+        isSelected=$el.querySelector('input').checked;
+        if (!isBulkMode){
+          if(isSelected)selected=$el.querySelector('input').value
+        }
+        "
+       @checked="isSelected=true; event.preventDefault()"
+       @unchecked="isSelected=false; event.preventDefault()"
+       {{ attrs }}
+
+       {% if defaultHxDetails %}
+        x-data
+        @detail-sidebar-closed.document="isSelected=false"
+        @input="$nextTick(()=>$dispatch('getdetails'))"
+
+        hx-swap-oob='true'
+        hx-include="closest form"
+        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
+        hx-trigger='getdetails'
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML"
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+      {% endif %}
+
+>
   <div class="relative shrink-0 size-[16px] flex items-center justify-center">
+
     <input :type="isBulkMode ? 'checkbox' : 'radio'"
             {% comment %}
              With hx-preserve we ignore swapped in content but keep the preswaped input. this is
@@ -23,12 +54,20 @@ wrap everyting in a label so everything toggles the radio/checkbox
             {% endcomment %}
            id="input_{{ value }}_{{ radioName }}"
            hx-preserve
-            {% if selected %}checked{% endif %}
+            {% if selected %}
+            checked
+          {% endif %}
+          {% comment %}
+          onClick handles the dispatch when the element is interacted with directly
+          x-effect handles when the selection is changed from the outside, e.g. radiobutton is switched.
+          {% endcomment %}
+          x-on:click="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
+          "
            x-effect="ischecked = $el.value==selected;
               if (!isBulkMode) {
                 if (ischecked) {$dispatch('checked')}
                 else {$dispatch('unchecked')}
-              } "
+            } "
            :name="isBulkMode ?'{{value }}' : '{{ radioName }}'"
            value="{{ value }}"
            class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />

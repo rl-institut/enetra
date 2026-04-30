@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from collections.abc import Iterable
 from datetime import datetime
 from datetime import timedelta
@@ -23,10 +24,11 @@ from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.views.generic import FormView
+from django.views.generic import View
 from django_oemof import models as oemof_models
 from django_oemof import simulation
 
+from ports import models
 from ports.create_placeholder_scenario import create_scenario
 from ports.forms import ScenarioItemFormFactory
 
@@ -72,7 +74,6 @@ def changes_count(request, scenario_internal_id: UUID):
     if last_update:
         last_update = datetime.fromisoformat(last_update)
         if scenario.updated_at > last_update:
-            print("changed")
             context["changed"] = True
             created_items = []
             changed_items = []
@@ -82,7 +83,10 @@ def changes_count(request, scenario_internal_id: UUID):
                 if Model in [Scenario, ChangedItem]:
                     continue
                 if Model in [DeletedItem]:
-                    filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
+                    filter = {
+                        "created_at__gt": last_update,
+                        "created_at__lte": updated_at,
+                    }
                     items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
                     for i in items:
                         Model = i.content_type.model_class()
@@ -220,6 +224,23 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
+def get_home_context():
+    data = {}
+    scenario = Scenario.objects.last()
+    data["scenario"] = scenario
+    data["scenarios"] = Scenario.objects.all()
+    data["building_areas"] = Area.objects.filter(
+        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
+    )
+    data["open_areas"] = Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN)
+    data["solars"] = Solar.objects.filter(scenario=scenario)
+    data["generators"] = Generator.objects.filter(scenario=scenario)
+    data["heaters"] = Heating.objects.filter(scenario=scenario)
+    data["Area"] = Area
+
+    return data
+
+
 def home(request):
     if request.GET.get("new"):
         # NOTE: during development call /?new=true
@@ -228,20 +249,7 @@ def home(request):
         s.name = request.GET.get("new")
         s.save(update_fields=["name"])
 
-    context = {}
-    scenario = Scenario.objects.last()
-    context["scenario"] = scenario
-    context["scenarios"] = Scenario.objects.all()
-    context["building_areas"] = Area.objects.filter(
-        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
-    )
-    context["open_areas"] = Area.objects.filter(
-        scenario=scenario, area_type=Area.AreaTypeChoices.OPEN
-    )
-    context["solars"] = Solar.objects.filter(scenario=scenario)
-    context["generators"] = Generator.objects.filter(scenario=scenario)
-    context["heaters"] = Heating.objects.filter(scenario=scenario)
-    context["Area"] = Area
+    context = get_home_context()
     return render(request, "ports/tool_base.html", context)
 
 
@@ -360,60 +368,226 @@ def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
     return str(instance_or_uuid)[:5]
 
 
-class DetailsView(FormView):
+class DetailsView(View):
+    """View which handles detail request for instances
+
+    Handles get and post for single instances but also for batched instanced.
+    """
+
     template = "ports/partials/create_form.html"
+    created = False
+    multi = False
+    scenario: models.Scenario | None = None
+    Model: type[models.ScenarioItem] | None = None
+    instance: models.ScenarioItem = None
+    instances: Iterable[ScenarioItem] = []
+    data: dict = {}
+
+    def get_basic_context(self, request, *args, **kwargs) -> dict:
+        context = {
+            "scenario": self.scenario,
+            "Model": self.Model,
+            "model_name": self.Model._meta.model_name,
+            "internal_id": self.internal_id,
+            "internal_ids": ",".join(self.internal_ids),
+            "instance": self.instance,
+            "instances": self.instances,
+            "electric_models": [
+                m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
+            ],
+        }
+
+        return context
+
+    def setup_view(self, request, *args, **kwargs) -> None:
+        self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
+        self.Model = apps.get_model("ports", kwargs["model"])
+        assert ScenarioItem in self.Model.mro()
+        self.data = request.GET
+        if request.method == "POST":
+            self.data = request.POST
+        internal_ids = self.data.get("internal_ids", "").split(",")
+        # These instances should be shown or posted.
+        self.internal_ids = [] if internal_ids[0] == "" else internal_ids
+        self.internal_id = self.data.get("internal_id")
+
+        # NOTE: created is set through the url resolver
+        if self.created:
+            pass
+        elif len(self.internal_ids) > 1:
+            self.multi = True
+            self.instances = self.Model.objects.filter(
+                scenario=self.scenario, internal_id__in=self.internal_ids
+            )
+        elif not self.internal_ids and not self.internal_id:
+            # Empty selection and nothing created
+            return
+        else:
+            # Multi select with a single item selected behaves the same as single select
+            self.internal_id = self.internal_id or self.internal_ids[0]
+            self.internal_ids = []
+            # NOTE: Can be None if the instance was deleted
+            self.instance = self.Model.objects.filter(
+                scenario=self.scenario, internal_id=self.internal_id
+            ).first()
+        self.Form = ScenarioItemFormFactory(self.Model, multi=self.multi, scenario=self.scenario)
+        suffix = ""
+        if self.multi:
+            suffix = "_multi"
+        if self.Model == Area:
+            self.template = f"ports/partials/detail_sidebar/detail_sidebar_main{suffix}.html"
+        elif self.Model == Load:
+            self.template = f"ports/partials/detail_sidebar/detail_sidebar_load_detail{suffix}.html"
+        elif ElectricComponent in self.Model.mro():
+            self.template = f"ports/partials/detail_sidebar/detail_sidebar_component{suffix}.html"
 
     def dispatch(self, request, *args, **kwargs):
+        # FIXME
         # TODO: Add authorization
-        self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
-        model = kwargs["model"]
-        self.Model = apps.get_model("ports", model)
-        self.Form = ScenarioItemFormFactory(self.Model)
-        if self.Model == Area:
-            self.template = "ports/partials/detail_sidebar/detail_sidebar_main.html"
-        elif self.Model == Load:
-            self.template = "ports/partials/detail_sidebar/detail_sidebar_load_detail.html"
-        elif isinstance(self.Model, ElectricComponent):
-            self.template = "ports/partials/detail_sidebar/detail_sidebar_component.html"
-        self.instance = self.Model.objects.filter(
-            scenario=self.scenario, internal_id=kwargs.get("internal_id")
-        ).first()
-        assert ScenarioItem in self.Model.mro()
-        self.context: dict[str, Any] = {"scenario": self.scenario}
-        self.context["item"] = self.instance
+        # Instantiate the class with its fixed attributes
+        self.setup_view(request, *args, **kwargs)
+
+        if not self.internal_ids and not self.internal_id and not self.created:
+            # No item selected. Don't swap but hide the detail-sidebar. Ignore this if self.created
+            response = HttpResponse()
+            response["HX-Reswap"] = "none"
+            response["HX-Trigger"] = "hide-detail-sidebar"
+            return response
+        self.context = self.get_basic_context(request, *args, **kwargs)
+        if self.created:
+            if self.Model == Area:
+                self.context["area_type"] = self.data.get("area_type")
+            return self.create(request, *args, **kwargs)
+        elif self.multi:
+            if request.method == "POST":
+                return self.multi_post(request, *args, **kwargs)
+            if request.method == "GET":
+                return self.multi_get(request, *args, **kwargs)
+        if self.instance is None:
+            return self.get_deleted(request, *args, **kwargs)
+
         return super().dispatch(request, *args, **kwargs)
 
+    def get_area_context(self) -> dict:
+        # pass queryset to frontend to create links to load forms
+        context = {}
+        context["loads"] = Load.objects.filter(area=self.instance)
+        models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
+        qs = list()
+        for model in models:
+            q = model.objects.filter(area=self.instance)
+            qs.extend(list(q))
+        context["energy_components"] = qs
+        return context
+
+    def get_deleted(self, request, *args, **kwargs):
+        deleted_item = DeletedItem.objects.filter(
+            scenario=self.scenario, internal_id=self.internal_id
+        ).first()
+        if deleted_item:
+            return render(
+                self.request,
+                "ports/partials/detail_sidebar/detail_deleted.html",
+                self.context,
+            )
+        raise Http404("This instance does not exist")
+
     def get(self, request, *args, **kwargs):
-        if not self.instance:
-            deleted_item = DeletedItem.objects.filter(
-                scenario=self.scenario, internal_id=kwargs.get("internal_id")
-            ).first()
-            if deleted_item:
-                return render(
-                    self.request,
-                    "ports/partials/detail_sidebar/detail_deleted.html",
-                    self.context,
-                )
-            raise Http404("This instance does not exist")
-        if self.Model not in [Area, Load] and not isinstance(self.Model, ElectricComponent):
+        if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
             raise Http404("This model does not exist or is not implemented yet")
+        self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
+        self.context["form"] = self.Form(instance=self.instance)
         if self.Model == Area:
-            self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
-            self.context["form"] = self.Form(instance=self.instance)
-            # pass queryset to frontend to create links to load forms
-            self.context["loads"] = Load.objects.filter(area=self.instance)
-            models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
-            qs = list()
-            for model in models:
-                q = model.objects.filter(area=self.instance)
-                qs.extend(list(q))
-            self.context["energy_components"] = qs
-        elif self.Model == Load or isinstance(self.Model, ElectricComponent):
-            self.context["form"] = self.Form(instance=self.instance)
+            self.context |= self.get_area_context()
+        elif self.Model == Load or ElectricComponent in self.Model.mro():
             return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
         return render(self.request, self.template, self.context)
+
+    def create(self, request, *args, **kwargs):
+        assert not self.instance
+        # Create a new item and pass it back in the default state
+        self.Form(data={"internal_id": uuid4()})
+        # do NOT pass the request.POST directly which could lead to unauthorized injections
+        multi = False
+        # NOTE: POST.get(k) handles unpacking of values e.g. value=="foo" instead of ["foo"]
+        data = {k: request.POST.get(k) for k in request.POST}
+        if self.Model == Area:
+            new_instance = Area.create_new(self.scenario, **data)
+            new_instance.save()
+            self.context["instance"] = new_instance
+            self.context["created"] = True
+            return render(self.request, self.template, self.context)
+        elif self.Model == Load:
+            # Handle single creation as well as creation from batch view
+            area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
+            data["area_internal_ids"] = area_internal_ids
+            loads = Load.create_new(self.scenario, **data)
+            multi = len(area_internal_ids) > 1
+            self.Form = ScenarioItemFormFactory(self.Model, multi=multi, scenario=self.scenario)
+            self.instances = Load.objects.bulk_create(loads)
+            if not multi:
+                self.instance = self.instances[0]
+                self.instances = []
+                self.context["instance"] = self.instance
+                self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
+                    instance=self.instance
+                )
+                self.template = "ports/partials/detail_sidebar/detail_sidebar_load_detail.html"
+
+            else:
+                self.context["instances"] = self.instances
+                self.context["instance"] = None
+                self.context["internal_ids"] = ",".join(
+                    [str(x.internal_id) for x in self.instances]
+                )
+                self.context["form"] = self.Model.adjust_Form(
+                    self.Form, instance=self.instances[0]
+                )(instance=self.instance)
+                self.context["area_internal_ids"] = ",".join(area_internal_ids)
+                self.template = (
+                    "ports/partials/detail_sidebar/detail_sidebar_load_detail_multi.html"
+                )
+
+            self.context["created"] = True
+
+            return render(self.request, self.template, self.context)
+
+        elif ElectricComponent in self.Model.mro():
+            # Handle single creation as well as creation from batch view
+            area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
+            data["area_internal_ids"] = area_internal_ids
+            components = self.Model.create_new(self.scenario, **data)
+            multi = len(area_internal_ids) > 1
+            self.Form = ScenarioItemFormFactory(self.Model, multi=multi, scenario=self.scenario)
+            self.instances = self.Model.objects.bulk_create(components)
+            if not multi:
+                self.instance = self.instances[0]
+                self.instances = []
+                self.context["instance"] = self.instance
+                self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
+                    instance=self.instance
+                )
+                self.template = "ports/partials/detail_sidebar/detail_sidebar_component.html"
+
+            else:
+                self.context["instances"] = self.instances
+                self.context["instance"] = None
+                self.context["internal_ids"] = ",".join(
+                    [str(x.internal_id) for x in self.instances]
+                )
+                self.context["form"] = self.Model.adjust_Form(
+                    self.Form, instance=self.instances[0]
+                )(instance=self.instance)
+                self.context["area_internal_ids"] = ",".join(area_internal_ids)
+                self.template = "ports/partials/detail_sidebar/detail_sidebar_component_multi.html"
+
+            self.context["created"] = True
+
+            return render(self.request, self.template, self.context)
+        else:
+            raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
     def delete(self, request, *args, **kwargs):
         # NOTE: data is send as hx-include, so not part of POST
@@ -426,38 +600,63 @@ class DetailsView(FormView):
             self.context,
         )
 
-    def post(self, request, *args, **kwargs):
-        if self.Model not in [Area, Load]:
-            raise NotImplementedError("This model is not implemented for posting yet")
-        if not self.instance:
-            # Create a new item and pass it back in the default state
-            form = self.Form(data={"internal_id": uuid4()})
-            # do NOT pass the request.POST directly which could lead to unauthorized injections
-            extra_args = {}
-            if self.Model == Area:
-                # TODO: Refactor into model method so this function stays clean
-                allowed_attributes = ["area_type"]
-                for att in allowed_attributes:
-                    extra_args[att] = request.POST.get(att)
-            count = self.Model.objects.filter(
-                scenario=self.scenario, area_type=extra_args["area_type"]
-            ).count()
+    def multi_get(self, request, *args, **kwargs):
+        assert not self.instance
+        self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
+        if self.Model == Area:
+            merged_data = model_to_dict(self.instances[0])
+            for x in self.instances:
+                data = model_to_dict(x)
+                for key, value in data.items():
+                    if merged_data.get(key) != value and key in merged_data:
+                        del merged_data[key]
 
-            self.instance = self.Model.objects.create(
-                scenario=self.scenario,
-                name=f"Neues Fläche {count + 1}",
-                **extra_args,
-                # TODO: manager=request.user
-            )
-
-            self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
-                instance=self.instance
-            )
-
-            self.context["item"] = self.instance
-            self.context["created"] = True
-
+            form = self.Form(data=merged_data)
+            self.context["form"] = form
             return render(self.request, self.template, self.context)
+
+        if ElectricComponent in self.Model.mro():
+            merged_data = model_to_dict(self.instances[0])
+            for x in self.instances:
+                data = model_to_dict(x)
+                for key, value in data.items():
+                    if merged_data.get(key) != value and key in merged_data:
+                        del merged_data[key]
+
+            form = self.Form(data=merged_data)
+            self.context["form"] = form
+            return render(self.request, self.template, self.context)
+        raise NotImplementedError(f"Multi Get not implemented for {self.Model.__name__}")
+
+    def multi_post(self, request, *args, **kwargs):
+        if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
+            raise NotImplementedError("This model is not implemented for multi posting yet")
+        assert not self.instance
+        self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
+        try:
+            form = self.Form(data=request.POST)
+            self.context["form"] = form
+            if form.is_valid():
+                self.context["instances"] = form.save()
+                self.context["success"] = "Erfolgreich gespeichert"
+            else:
+                self.context["errors"] = ["An error occured", form.errors]
+        except Exception:
+            self.context["errors"] = ["An unexpected error occured"]
+            traceback.print_exc()
+
+        if self.Model == Load or ElectricComponent in self.Model.mro():
+            # Multi post request for Load needs references to areas
+            self.context["area_internal_ids"] = self.request.POST.get("area_internal_ids")
+        self.context |= get_home_context()
+        self.context["update"] = True
+
+        return render(self.request, self.template, self.context)
+
+    def post(self, request, *args, **kwargs):
+        if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
+            raise NotImplementedError("This model is not implemented for posting yet")
+        assert self.instance
         try:
             self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
@@ -468,7 +667,11 @@ class DetailsView(FormView):
             else:
                 self.context["errors"] = ["An error occured", form.errors]
         except Exception:
+            logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
+
+        self.context |= get_home_context()
+        self.context["update"] = True
         return render(self.request, self.template, self.context)
 
 

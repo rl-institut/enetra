@@ -3,7 +3,7 @@
   {% if all_changes_count == '' %}
   hx-trigger="load"
   {% else %}
-  hx-trigger="load delay:50s, click"
+  hx-trigger="load delay:10000s, click"
   {% endif %}
   hx-swap="outerHTML"
   hx-target='this'
@@ -13,7 +13,7 @@
   hx-on::after-settle="document.dispatchEvent(new CustomEvent('{{scenario.changed_event}}'));console.log('changed')"
   {% endif %}
   hx-indicator='this'
-  class="font-bold bg-red-500 text-[13px] text-[#b45309] text-nowrap">{{all_changes_count|default:"Lädt"}} Änderungen
+  class="font-bold  text-[13px] text-[#b45309] text-nowrap">{{all_changes_count|default:"Lädt"}} Änderungen
 </p>
 
 
