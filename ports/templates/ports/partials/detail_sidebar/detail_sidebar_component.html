@@ -35,6 +35,7 @@
     <div class="flex items-center justify-between gap-[8px]">
       <button
         hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"
+          hx-vals='{"internal_id": "{{instance.area.internal_id}}"}'
           hx-target="#detailSidebar"
           hx-trigger="click"
           hx-indicator="#detailSidebar"
