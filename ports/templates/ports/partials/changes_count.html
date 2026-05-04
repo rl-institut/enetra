@@ -3,7 +3,7 @@
   {% if all_changes_count == '' %}
   hx-trigger="load"
   {% else %}
-  hx-trigger="load delay:10000s, click"
+  hx-trigger="load delay:100s, click"
   {% endif %}
   hx-swap="outerHTML"
   hx-target='this'
@@ -19,11 +19,11 @@
 
 
 {% for item in created_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with item=item status='created' sendEvents=True  %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True  %}
   {% endfor %}
 {% for item in deleted_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with item=item status='deleted' sendEvents=True %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='deleted' sendEvents=True %}
   {% endfor %}
 {% for item in changed_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with item=item status='changed' sendEvents=True %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='changed' sendEvents=True %}
   {% endfor %}

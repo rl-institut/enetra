@@ -21,11 +21,12 @@
         the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
         {% endcomment %}
           <c-list.item
-            id='area-button-list{{ item.internal_id }}'
+            id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
             :selected=False
             :indicated=False
             :item=item
+            hx-swap-oob='{{updateOob|default:"false"}}'
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
@@ -61,11 +62,12 @@
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
           {% endcomment %}
           <c-list.item
-            id='area-button-list{{ item.internal_id }}'
+            id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
             :selected=False
             :indicated=False
             :item=item
+            hx-oob-swap="{{updateOob|default:"false"}}"
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'

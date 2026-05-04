@@ -7,7 +7,6 @@ For focused elements which are not rendered all the time, a event can be sent
 
 
 {% endcomment %}
-{% if instance.model_name|lower == 'area' %}
 {% if status == 'created' %}
     {% comment %}
     When inserting a newly created area, the content depends on the state of the list.
@@ -15,59 +14,60 @@ For focused elements which are not rendered all the time, a event can be sent
     this fetches the correct data and inserts it
 
     {% endcomment %}
-<div  hx-swap-oob='beforeend:#flaechen-tab-{{instance.area_type}}-area-list .slot'
+
+<div
+    {% if instance.model_name == "area"  %}
+      hx-swap-oob='beforeend:#flaechen-tab-{{instance.area_type}}-area-list .slot'
+    {% else%}
+      hx-swap-oob='beforeend:#komponenten-tab-{{instance.model_name}}-list .slot'
+    {% endif %}
+
   {% comment %}
   data uniqueid is used to check if this was inserted already in the flaechen_list
   {% endcomment %}
-  data-uniqueid='area-button-list{{instance.internal_id}}'
+  data-uniqueid='button-list-item-{{instance.internal_id}}'
 >
-
           <c-list.item
-            x-data
-            hx-swap-oob='true'
-            hx-include="closest form"
-            hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}"
-            @detail-sidebar-closed.document="isSelected=false"
-            @input="$nextTick(()=>$dispatch('getdetails'))"
-            hx-trigger='getdetails'
-            hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
-            id='area-button-list{{ instance.internal_id }}'
+            id='button-list-item-{{ instance.internal_id }}'
+            :defaultHxDetails=True
+            :selected=False
+            :item=instance
             value='{{ instance.internal_id }}'
-            :selected=False title='{{ instance.name }}'
-            :indicated=False
+            title='{{instance.name}} '
             radioName='internal_id'
-
             class='my-slide-in-from-bottom animate-once'
-            hx-on::after-settle="this.click()"
+            hx-on::load={{createItemCallback}}
   />
-
 </div>
 {% elif status == 'changed' %}
 
   {% if sendEvents %}
-  <c-list.item
-  hx-on::load="
-  const cEvent = new CustomEvent('{{instance.changed_event|assertValue}}',{detail:{updated_at:'{{instance.updated_at|date:"c"}}'}});
-  document.dispatchEvent(cEvent);
-  "
-  hx-swap-oob='true' id='area-button-list{{instance.internal_id}}'
-                @detail-sidebar-closed.document="isSelected=false"
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  %}"
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
+  <c-list.item hx-on::load=" const cEvent = new CustomEvent('{{instance.changed_event|assertValue}}',{detail:{updated_at:'{{instance.updated_at|date:"c"}}'}});
+  document.dispatchEvent(cEvent); "
+            id='button-list-item-{{ instance.internal_id }}'
+            :defaultHxDetails=True
+            hx-swap-oob="true"
+            :selected=False
+            :item=instance
 
-  value={{instance.internal_id}}  title={{instance.name}} :indicated=False radioName='internal_id' />
+            value='{{ instance.internal_id }}'
+            title='{{instance.name}} '
+            radioName='internal_id'
+           />
+
+
 {% else %}
   <c-list.item
-                @detail-sidebar-closed.document="isSelected=false"
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  %}"
-                hx-target="#detailSidebar"
-                hx-trigger="click"
-                hx-indicator="#detailSidebar"
-                hx-swap="innerHTML"
-  hx-swap-oob='true' id='area-button-list{{instance.internal_id}}' value={{instance.internal_id}}  title={{instance.name}} :indicated=False radioName='internal_id' />
+            id='button-list-item-{{ instance.internal_id }}'
+            :defaultHxDetails=True
+            hx-swap-oob="true"
+            :selected=False
+            :item=instance
+
+            value='{{ instance.internal_id }}'
+            title='{{instance.name}} '
+            radioName='internal_id'
+           />
   {% endif %}
 {% elif status == 'deleted' %}
 <div hx-swap-oob='outerHTML'
@@ -77,11 +77,10 @@ For focused elements which are not rendered all the time, a event can be sent
   document.dispatchEvent(cEvent);
   "
   {% endif %}
-     id='area-button-list{{instance.internal_id}}'>
+     id='button-list-item-{{instance.internal_id}}'>
   This item was deleted
   <button x-data type="button" @click="$el.parentElement.remove()">
     <c-icon.close />
   </button>
 </div>
-{% endif %}
 {% endif %}

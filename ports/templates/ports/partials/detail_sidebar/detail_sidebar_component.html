@@ -1,5 +1,6 @@
 {% load constants %}
 
+
 <form id="form_{{instance.internal_id}}">
   {{ form.internal_id }}
 
@@ -159,3 +160,7 @@
 {% if update %}
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
+
+{% if created %}
+  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
+ {% endif %}

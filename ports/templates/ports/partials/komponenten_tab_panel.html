@@ -25,7 +25,9 @@
                   >
               {% for item in generators %}
             <c-list.item
-              id='generator-button-list{{ item.internal_id }}'
+              id='button-list-item-{{ item.internal_id }}'
+              hx-swap-oob='{{updateOob|default:"false"}}'
+
               :defaultHxDetails=True
               :selected=False
               :indicated=False
@@ -45,7 +47,9 @@
               >
               {% for item in heaters %}
               <c-list.item
-                id='heating-button-list{{ item.internal_id }}'
+                id='button-list-item-{{ item.internal_id }}'
+                hx-swap-oob='{{updateOob|default:"false"}}'
+
                 :defaultHxDetails=True
                 :selected=False
                 :indicated=False
@@ -65,7 +69,8 @@
 
               {% for item in solars %}
                 <c-list.item
-                  id='solar-button-list{{ item.internal_id }}'
+                  id='button-list-item-{{ item.internal_id }}'
+                  hx-swap-oob='{{updateOob|default:"false"}}'
                   :defaultHxDetails=True
                   :selected=False
                   :indicated=False

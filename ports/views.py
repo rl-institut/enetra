@@ -400,6 +400,7 @@ class DetailsView(View):
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
+            "updateOob": "true",
             "electric_models": [
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
@@ -525,8 +526,8 @@ class DetailsView(View):
             new_instance = Area.create_new(self.scenario, **data)
             new_instance.save()
             self.context["instance"] = new_instance
-            self.context["created"] = True
-            return render(self.request, self.template, self.context)
+            # Created areas are selected immediately
+            self.context["createItemCallback"] = "this.click()"
         elif self.Model == Load or ElectricComponent in self.Model.mro():
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
@@ -553,10 +554,11 @@ class DetailsView(View):
                     self.Form, instance=self.instances[0]
                 )(instance=self.instance)
                 self.context["area_internal_ids"] = ",".join(area_internal_ids)
-            self.context["created"] = True
-            return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
+
+        self.context["created"] = True
+        return render(self.request, self.template, self.context)
 
     def delete(self, request, *args, **kwargs):
         # NOTE: data is send as hx-include, so not part of POST
