@@ -18,7 +18,7 @@ function getZoom() {
 }
 
 function getLayerNames() {
-  return ['map-layer-editable','map-layer-selected', 'map-layer-area']
+  return ['map-layer-editable', 'map-layer-selected', 'map-layer-area']
 }
 function getEditLayerName() {
   return 'map-layer-editable'
@@ -69,7 +69,8 @@ function getGeoJsons() {
     // Get the values as GeoJSON from the inputs
     // input mus be inside a container with a class of draw-map-element layername as class.
     // Can be anything with a value of geosjon
-    const inputs = document.querySelectorAll('.map-draw-element.' + name + ' > textarea, .map-draw-element.' + name + ' > input');
+    const inputs = document.querySelectorAll('.map-draw-element.' + name + ' textarea, .map-draw-element.' + name + '  input');
+    // const inputs = document.querySelectorAll('.map-draw-element.' + name + '> textarea, .map-draw-element.' + name + ' > input');
     if (inputs.length == 0) {
       console.log(`No inputs found for layer ${name}`)
     }

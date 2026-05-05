@@ -57,14 +57,13 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
 
                 <c-tail-input :field=form.internal_id
                   rows='3'
-                  id='geom_{{form.area.internal_id}}'
                   type='text'
                   class='border-black border-2 bg-gray-200'
                   :name='form.internal_id.name'
                 />
                 <c-tail-input :field=form.geom
                   rows='3'
-                  id='geom_{{form.area.internal_id}}'
+                  id='geom_{{form.instance.internal_id}}'
                   type='text'
                   class='border-black border-2 bg-gray-200'
                   :name='form.geom.name'
