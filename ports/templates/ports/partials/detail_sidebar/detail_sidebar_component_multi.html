@@ -150,7 +150,7 @@
         <button
           class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a]"
           type="button"
-          hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  %}"
+          hx-post="{% url 'ports:details' model=instances.0.model_name  %}"
             hx-vals='{"internal_ids":"{{internal_ids}}"}'
             hx-select="#form_{{instances.0.internal_id}}"
             hx-target="closest form"
@@ -173,6 +173,7 @@
 </form>
 
 {% if update %}
+
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
 

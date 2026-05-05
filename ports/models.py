@@ -436,6 +436,10 @@ class ElectricComponent(ScenarioItem):
         return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
 
     @classmethod
+    def get_default_args(cls) -> dict:
+        return {}
+
+    @classmethod
     def create_new(cls, scenario: Scenario, area_internal_ids: list[str | uuid.UUID], **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
@@ -446,6 +450,7 @@ class ElectricComponent(ScenarioItem):
             count += 1
             new_name = f"Neue Komponente {count}"
             extra_args = {"area": area}
+            extra_args |= cls.get_default_args()
             components.append(
                 cls(
                     scenario=scenario,
@@ -489,6 +494,10 @@ class CHP(ElectricComponent):
     carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
     efficiency_thermal = models.FloatField(_("Thermische Effizienz"), default=1.0)
 
+    @classmethod
+    def get_default_args(cls) -> dict:
+        return {"carrier": cls.CarrierChoices.GAS}
+
 
 class FuelCell(ElectricComponent):
     """Transform H2 into electricity"""
@@ -519,6 +528,10 @@ class Heatpump(ElectricComponent):
 
     heatsource = models.CharField(choices=HeatChoices)
     mode = models.IntegerField(choices=ModeChoices)
+
+    @classmethod
+    def get_default_args(cls) -> dict:
+        return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
 
 
 class Solar(ElectricComponent):
