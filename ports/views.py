@@ -31,6 +31,7 @@ from django_oemof import simulation
 
 from ports import models
 from ports.create_placeholder_scenario import create_scenario
+from ports.forms import AreaItemFormFactory
 from ports.forms import ScenarioItemFormFactory
 
 from .models import Area
@@ -254,6 +255,12 @@ def get_home_context():
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
     data["Area"] = Area
+    area_forms = []
+    for a in data["building_areas"]:
+        area_forms.append(AreaItemFormFactory()(instance=a))
+    for a in data["open_areas"]:
+        area_forms.append(AreaItemFormFactory()(instance=a))
+    data["area_forms"] = area_forms
 
     return data
 

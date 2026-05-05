@@ -13,6 +13,19 @@ from ports.models import Load
 from ports.models import ScenarioItem
 
 
+def AreaItemFormFactory():
+    return modelform_factory(
+        Area,
+        fields=["internal_id", "geom"],
+        field_classes={"geom": GeoJSONPolygonField},
+        widgets={
+            # "internal_id": forms.HiddenInput(),
+            "internal_id": forms.TextInput(),
+            "geom": GeoJSONWidget(),
+        },
+    )
+
+
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements

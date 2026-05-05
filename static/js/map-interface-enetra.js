@@ -18,7 +18,7 @@ function getZoom() {
 }
 
 function getLayerNames() {
-  return ['map-layer-editable', 'map-layer-area']
+  return ['map-layer-editable','map-layer-selected', 'map-layer-area']
 }
 function getEditLayerName() {
   return 'map-layer-editable'
@@ -28,6 +28,9 @@ function getStyle(name, id) {
   // https://leafletjs.com/reference.html#path-option
   if (name.includes('edit')) {
     return { 'fillColor': 'red', 'fillOpacity': 0.8 }
+  }
+  if (name.includes('selected')) {
+    return { 'fillColor': 'green', 'fillOpacity': 0.8 }
   }
   return { 'fillColor': 'blue', 'fillOpacity': 0.8 }
 }
