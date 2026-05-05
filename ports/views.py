@@ -421,10 +421,10 @@ class DetailsView(View):
         self.internal_id = self.data.get("internal_id")
 
         # NOTE: created is set through the url resolver
+        self.multi = len(self.internal_ids) > 1
         if self.created:
             pass
-        elif len(self.internal_ids) > 1:
-            self.multi = True
+        elif self.multi:
             self.instances = self.Model.objects.filter(
                 scenario=self.scenario, internal_id__in=self.internal_ids
             )
