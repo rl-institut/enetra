@@ -45,40 +45,56 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
           <button class="text-[#0e7490] text-[14px] font-bold">+ Freifläche</button>
           <div class="map-elements" >
           {% for form  in area_forms %}
-          <c-map-element.index :key="form.instance.internal_id" layer='map-layer-area'>
-              <label>{{form.instance.name}}</label>
+            <!-- TODO: Replace with partial request -->
+            <form
+              hx-post='{% url "ports:patch_area" scenario_internal_id=form.instance.scenario.internal_id %}'
+              hx-swap='none'
+            >
+              {% csrf_token %}
+              <button>Submit</button>
+              <c-map-element.index :key="form.instance.internal_id" layer='map-layer-area'>
+                <label>{{form.instance.name}}</label>
 
-              <c-tail-input :field=form.geom
-                      rows='3'
-                      id='geom_{{form.area.internal_id}}'
-                      type='text'
-                      class='border-black border-2 bg-gray-200'
-                      name='geom'
-              />
-            <c-map-element.popup>
-              Im the content of the popup
-              Im not sure we will use this? maybe
-            </c-map-element.popup>
-            <div class="hidden">
-              <!-- Put a label on the map. works inside a c-map-element -->
-              <c-map-element.marker name='Mein Gebäude'>
-                <!-- Put a marker icon on the map -->
-                <c-map-element.marker-icon>
-                  <c-icon.technical-building />
-                  <!-- Give the icon a popup -->
-                  <c-slot name='popup'>
-                    <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
-                    <c-map-element-popup>
-                      <c-slot name='icon'>
-                        <c-icon.technical-building />
+                <c-tail-input :field=form.internal_id
+                  rows='3'
+                  id='geom_{{form.area.internal_id}}'
+                  type='text'
+                  class='border-black border-2 bg-gray-200'
+                  :name='form.internal_id.name'
+                />
+                <c-tail-input :field=form.geom
+                  rows='3'
+                  id='geom_{{form.area.internal_id}}'
+                  type='text'
+                  class='border-black border-2 bg-gray-200'
+                  :name='form.geom.name'
+                />
+                <c-map-element.popup>
+                  Im the content of the popup
+                  Im not sure we will use this? maybe
+                </c-map-element.popup>
+                <div class="hidden">
+                  <!-- Put a label on the map. works inside a c-map-element -->
+                  <c-map-element.marker name='Mein Gebäude'>
+                    <!-- Put a marker icon on the map -->
+                    <c-map-element.marker-icon>
+                      <c-icon.technical-building />
+                      <!-- Give the icon a popup -->
+                      <c-slot name='popup'>
+                        <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
+                        <c-map-element-popup>
+                          <c-slot name='icon'>
+                            <c-icon.technical-building />
+                          </c-slot>
+                        </c-map-element-popup>
                       </c-slot>
-                    </c-map-element-popup>
-                  </c-slot>
-                </c-map-element.marker-icon>
-                <c-icon.load-building />
-              </c-map-element.marker>
-            </div>
-          </c-map-element>
+                    </c-map-element.marker-icon>
+                    <c-icon.load-building />
+                  </c-map-element.marker>
+                </div>
+              </c-map-element>
+            </form>
+
           {% endfor %}
           </div>
         </div>

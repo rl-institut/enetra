@@ -41,6 +41,11 @@ urlpatterns = [
         name="changes_count",
     ),
     path(
+        "patch_area/<uuid:scenario_internal_id>/",
+        views.patch_area,
+        name="patch_area",
+    ),
+    path(
         "changes/<uuid:scenario_internal_id>/",
         views.changes,
         name="changes",

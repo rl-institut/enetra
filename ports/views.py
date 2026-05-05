@@ -22,6 +22,7 @@ from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
+from django.shortcuts import redirect  # noqa
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -60,6 +61,19 @@ def get_authentification(
 def test(request):
     context = {}
     return render(request, "ports/test.html", context)
+
+
+def patch_area(request, scenario_internal_id: UUID):
+    internal_id = request.POST.get("internal_id")
+    area = Area.objects.get(scenario__internal_id=scenario_internal_id, internal_id=internal_id)
+    form = AreaItemFormFactory()(instance=area, data=request.POST)
+    try:
+        if form.is_valid():
+            form.save()
+            return HttpResponse(b"success")
+    except ValueError:
+        pass
+    return HttpResponse(b"failed")
 
 
 def changes_count(request, scenario_internal_id: UUID):
