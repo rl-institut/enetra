@@ -269,13 +269,17 @@ def get_home_context():
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
     data["Area"] = Area
+
+    building_areas = list(
+        Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING)
+    )
+    open_areas = list(Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN))
+    data["building_areas"] = building_areas
+    data["open_areas"] = open_areas
     area_forms = []
-    for a in data["building_areas"]:
-        area_forms.append(AreaItemFormFactory()(instance=a))
-    for a in data["open_areas"]:
+    for a in open_areas + building_areas:
         area_forms.append(AreaItemFormFactory()(instance=a))
     data["area_forms"] = area_forms
-
     return data
 
 
@@ -548,7 +552,9 @@ class DetailsView(View):
             return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def create(self, request, *args, **kwargs):
         if self.instance:
@@ -566,6 +572,7 @@ class DetailsView(View):
             self.context["instance"] = new_instance
             # Created areas are selected immediately
             self.context["createItemCallback"] = "this.click()"
+            self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
         elif self.Model == Load or ElectricComponent in self.Model.mro():
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
@@ -600,8 +607,12 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
+        self.context |= get_home_context()
+        self.context["update"] = True
         self.context["created"] = True
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def delete(self, request, *args, **kwargs):
         form = self.Form(data=request.GET)
@@ -613,6 +624,8 @@ class DetailsView(View):
             "ports/partials/update_delete_create_scenario_item.html",
             self.context,
         )
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def multi_get(self, request, *args, **kwargs):
         if self.instance:
@@ -667,7 +680,9 @@ class DetailsView(View):
         self.context |= get_home_context()
         self.context["update"] = True
 
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def post(self, request, *args, **kwargs):
         if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
@@ -689,7 +704,9 @@ class DetailsView(View):
 
         self.context |= get_home_context()
         self.context["update"] = True
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
 
 # Create your views here.

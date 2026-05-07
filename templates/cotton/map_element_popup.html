@@ -1,8 +1,12 @@
+<c-vars instance ></c-vars>
 <div style="display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px">
-  {{ icon }}
+            margin-bottom: 8px"
+            class="cursor-pointer bg-red-200 pointer-events-auto"
+
+>
+              {{ icon }}
   <div>
     <div style="font-family: 'Inter', sans-serif;
                 font-weight: 600;
@@ -16,18 +20,25 @@
               font-family: 'Inter', sans-serif;
               font-weight: 600;
               font-size: 12px;
-              color: #0891b2">Öffnen</div>
+              color: #0891b2"
+            x-data='{}'
+            @click="$dispatch('select-instance-{{instance.internal_id}}')"
+            >Öffnen</div>
 </div>
 <div style="height: 1px; background: #e2e8f0; margin: 12px 0;"></div>
+
 <div style="font-family: 'Inter', sans-serif;
             font-size: 12px;
             color: #64748b;
             line-height: 1.6">
+{% if content %}
+{{content}}
+{% else %}
   <div style="display: flex;
               justify-content: space-between;
               margin-bottom: 4px">
     <span>Vorlage:</span>
-    <span style="color: #1e293b; font-weight: 500;">Dieselgenerator</span>
+                        <span style="color: #1e293b; font-weight: 500;">{{instance.model_name}}</span>
   </div>
   <div style="display: flex;
               justify-content: space-between;
@@ -45,10 +56,19 @@
               justify-content: space-between;
               margin-bottom: 4px">
     <span>Kapazität:</span>
-    <span style="color: #1e293b; font-weight: 500;">3.000 kW</span>
+                        <span style="color: #1e293b; font-weight: 500;">
+                                   {% if  instance.power %}
+                                    {{instance.power}} kW
+                                   {% else %}
+                                    Keine Angabe
+                                   {% endif %}
+
+
+                        </span>
   </div>
   <div style="display: flex; justify-content: space-between;">
     <span>Effizienz:</span>
     <span style="color: #1e293b; font-weight: 500;">50 %</span>
   </div>
+{% endif %}
 </div>

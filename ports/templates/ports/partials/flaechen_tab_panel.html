@@ -20,6 +20,8 @@
         {% comment %}
         the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
         {% endcomment %}
+
+      {% partialdef list-item-and-form inline %}
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
@@ -37,8 +39,21 @@
           </c-list.item>
         {% endfor %}
       </c-list>
-
     </form>
+
+    <div id="geom_forms_container">
+      {% for geom_form in area_forms %}
+
+          <div id="geom_form_container_{{geom_form.instance.internal_id}}"
+              hx-swap-oob='{{updateOob|default:"false"}}'
+          >
+          {{geom_form.instance.load_set.count}}
+          {% include 'ports/partials/map_element.html' with form=geom_form %}
+          </div>
+      {% endfor %}
+    </div>
+
+
       <button type='button'
               class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
@@ -60,7 +75,7 @@
     <form>
       <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
       >
-        {% for item in open_areas %}
+        {% for item in open_areas%}
           {% comment %}
         hx-get this template with the item injected
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html

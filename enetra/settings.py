@@ -86,9 +86,13 @@ INSTALLED_APPS = [
     "widget_tweaks",
 ]
 
+if DEBUG:
+    INSTALLED_APPS.insert(0, "whitenoise.runserver_nostatic")
+    WHITENOISE_MAX_AGE = 0
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -98,6 +102,7 @@ MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
+
 
 if DEBUG_TOOLBAR:
     print("DEBUG TOOLBAR ENABLED")

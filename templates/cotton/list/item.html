@@ -22,7 +22,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
         x-data
         @detail-sidebar-closed.document="isSelected=false"
         @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
-
+        @select-instance-{{item.internal_id}}.window="$el.click()"
         hx-include="closest form"
         hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
         hx-trigger='getdetails'

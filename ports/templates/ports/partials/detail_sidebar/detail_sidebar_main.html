@@ -64,7 +64,7 @@
       {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
       {% include "ports/partials/detail_item_ellipsis.html" %}
       <button type="button"
-              @click="$dispatch('hide-detail-sidebar')"
+        @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
@@ -84,7 +84,11 @@
           Es wurde noch keine {{ instance.get_area_type_display }} auf der Karte gezeichnet.
         </p>
         <button type="button"
-                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap">
+                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
+                active:scale-95 active:translate-y-[1px] active:shadow-inner
+        "
+                @click="$dispatch('create-polygon', {key:'geom_{{instance.internal_id}}'})"
+      >
           <c-icon.location-marker class="w-[16px] h-[16px]" />
           {{ instance.get_area_type_display }} zeichnen
         </button>

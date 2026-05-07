@@ -10,76 +10,54 @@ For focused elements which are not rendered all the time, a event can be sent
 {% if status == 'created' %}
     {% comment %}
     When inserting a newly created area, the content depends on the state of the list.
+    For Areas the server responds with a createItemCallback which clicks the areaitem
     Since currently the state is not transfered to the server, the item is clicked after settle.
     this fetches the correct data and inserts it
 
     {% endcomment %}
 
-<div
+  <div
     {% if instance.model_name == "area"  %}
       hx-swap-oob='beforeend:#flaechen-tab-{{instance.area_type}}-area-list .slot'
     {% else%}
       hx-swap-oob='beforeend:#komponenten-tab-{{instance.model_name}}-list .slot'
     {% endif %}
 
-  {% comment %}
-  data uniqueid is used to check if this was inserted already in the flaechen_list
-  {% endcomment %}
-  data-uniqueid='button-list-item-{{instance.internal_id}}'
->
-          <c-list.item
-            id='button-list-item-{{ instance.internal_id }}'
-            :defaultHxDetails=True
-            :selected=False
-            :item=instance
-            value='{{ instance.internal_id }}'
-            title='{{instance.name}} '
-            radioName='internal_id'
-            class='my-slide-in-from-bottom animate-once'
-            hx-on::load={{createItemCallback}}
-        >
-          <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
-          </c-slot>
-          </c-list.item>
-</div>
+    {% comment %}
+    data uniqueid is used to check if this was inserted already in the flaechen_list
+    {% endcomment %}
+    data-uniqueid='button-list-item-{{instance.internal_id}}'
+  >
+    {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance  %}
+  </div>
+  {% if geom_form %}
+      <div
+        hx-swap-oob='beforeend:#geom_forms_container'
+        data-uniqueid="geom_form_container_{{instance.internal_id}}"
+      >
+          <div id="geom_form_container_{{instance.internal_id}}"
+          >
+          {% include 'ports/partials/map_element.html' with form=geom_form %}
+          </div>
+      </div>
+  {% endif %}
 {% elif status == 'changed' %}
 
-  {% if sendEvents %}
-  <c-list.item hx-on::load=" const cEvent = new CustomEvent('{{instance.changed_event|assertValue}}',{detail:{updated_at:'{{instance.updated_at|date:"c"}}'}});
-  document.dispatchEvent(cEvent); "
-            id='button-list-item-{{ instance.internal_id }}'
-            :defaultHxDetails=True
-            hx-swap-oob="true"
-            :selected=False
-            :item=instance
+  {% if geom_form %}
+          <div id="geom_form_container_{{instance.internal_id}}"
+          >
+          {% include 'ports/partials/map_element.html' with form=geom_form %}
+          </div>
+  {% endif %}
 
-            value='{{ instance.internal_id }}'
-            title='{{instance.name}} '
-            radioName='internal_id'
-        >
-          <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
-          </c-slot>
-          </c-list.item>
+  {% if sendEvents %}
+
+  {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance createItemCallback=" const cEvent = new CustomEvent('{{instance.changed_event|assertValue}}',{detail:{updated_at:'{{instance.updated_at|date:'c'}}'}});
+  document.dispatchEvent(cEvent);"  %}
 
 
 {% else %}
-  <c-list.item
-            id='button-list-item-{{ instance.internal_id }}'
-            :defaultHxDetails=True
-            hx-swap-oob="true"
-            :selected=False
-            :item=instance
-
-            value='{{ instance.internal_id }}'
-            title='{{instance.name}} '
-            radioName='internal_id'
-        >
-          <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
-          </c-slot>
-          </c-list.item>
+  {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance
   {% endif %}
 {% elif status == 'deleted' %}
 <div hx-swap-oob='outerHTML'
@@ -94,5 +72,10 @@ For focused elements which are not rendered all the time, a event can be sent
   <button x-data type="button" @click="$el.parentElement.remove()">
     <c-icon.close />
   </button>
+</div>
+
+<div id="geom_form_container_{{instance.internal_id}}" hx-swap-oob="outerHTML"
+>
+    deleted
 </div>
 {% endif %}

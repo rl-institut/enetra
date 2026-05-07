@@ -3,18 +3,22 @@
 {% comment %}
 the map container needs leaflet.js leaflet.css leaflet.draw and the interface to interact with the page via events
 {% endcomment %}
-<div class="w-full h-full relative isolate min-h-[400px]">
+<div class="w-full h-full relative isolate min-h-[400px] ">
   <div id='mapElement' class="w-full h-full"></div>
   <!-- {/* Map Controls Container - Bottom Right */} -->
   <div class="absolute bottom-[20px] right-[20px] flex flex-col gap-[12px] z-[1000] pointer-events-auto">
+    {% comment %}
+
     <!-- {/* dBasemap Selector */} -->
     <div class="">
       <img src="/basemaps.svg" alt="Basemap Selector" class="w-[146px] h-[54px]">
     </div>
+    {% endcomment %}
+
     <!-- {/* Map Legend */} -->
     <div class="bg-white rounded-[8px] shadow-[0px_4px_8px_rgba(0,0,0,0.15)] p-[16px] min-w-[140px]">
       <!-- {/* Gebäudeflächen Section */} -->
-      <div class="temporary bg-orange-100 border-2 border-black p-2">
+      <div class="temporary bg-orange-100 border-2 border-black p-2 ">
         Map elements can have popups. They react to clicks without modifiers.
         <br>
         Map elements can be selected. This works by clicking their input below, or clicking them on the map with SHIFT modifier
@@ -43,59 +47,6 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
         </div>
         <div class="ml-[24px]">
           <button class="text-[#0e7490] text-[14px] font-bold">+ Freifläche</button>
-          <div class="map-elements" >
-          {% for form  in area_forms %}
-            <!-- TODO: Replace with partial request -->
-            <form
-              hx-post='{% url "ports:patch_area" scenario_internal_id=form.instance.scenario.internal_id %}'
-              hx-swap='none'
-            >
-              {% csrf_token %}
-              <button>Submit</button>
-              <c-map-element.index :key="form.instance.internal_id" layer='map-layer-area'>
-                <label>{{form.instance.name}}</label>
-
-                <c-tail-input :field=form.internal_id
-                  rows='3'
-                  type='text'
-                  class='border-black border-2 bg-gray-200'
-                  :name='form.internal_id.name'
-                />
-                <c-tail-input :field=form.geom
-                  rows='3'
-                  id='geom_{{form.instance.internal_id}}'
-                  type='text'
-                  class='border-black border-2 bg-gray-200'
-                  :name='form.geom.name'
-                />
-                <c-map-element.popup>
-                  Im the content of the popup
-                  Im not sure we will use this? maybe
-                </c-map-element.popup>
-                <div class="hidden">
-                  <!-- Put a label on the map. works inside a c-map-element -->
-                  <c-map-element.marker name='Mein Gebäude'>
-                    <!-- Put a marker icon on the map -->
-                    <c-map-element.marker-icon>
-                      <c-icon.technical-building />
-                      <!-- Give the icon a popup -->
-                      <c-slot name='popup'>
-                        <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
-                        <c-map-element-popup>
-                          <c-slot name='icon'>
-                            <c-icon.technical-building />
-                          </c-slot>
-                        </c-map-element-popup>
-                      </c-slot>
-                    </c-map-element.marker-icon>
-                    <c-icon.load-building />
-                  </c-map-element.marker>
-                </div>
-              </c-map-element>
-            </form>
-
-          {% endfor %}
-          </div>
         </div>
       </div>
     </div>
@@ -107,17 +58,17 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
 <script>
   const myMap = new MyMap('#mapElement', {
     getMaxZoom: () => 18,
-    getMinZoom: () => 8,
-    getZoom: () => 11,
+    getMinZoom: () => 3,
+    getZoom: () => 16,
     getBounds: () => ({
-      lat_min: 48.0,
-      lng_min: 10.0,
-      lat_max: 55.0,
-      lng_max: 14.0
+      // lat_min: 48.0,
+      // lng_min: 10.0,
+      // lat_max: 55.0,
+      // lng_max: 14.0
     }),
     getCenter: () => ({
-      lat: 52.5388,
-      lng: 13.3397
+      lat: 52.5381,
+      lng: 13.3322
     }),
     getLayerNames: getLayerNames,
     getEditLayerName: getEditLayerName,
