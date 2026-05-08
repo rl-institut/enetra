@@ -336,6 +336,9 @@
       max-width: 96rem;
     }
   }
+  .m-2 {
+    margin: calc(var(--spacing) * 2);
+  }
   .m-auto {
     margin: auto;
   }
@@ -484,6 +487,9 @@
   }
   .h-12 {
     height: calc(var(--spacing) * 12);
+  }
+  .h-30 {
+    height: calc(var(--spacing) * 30);
   }
   .h-\[6px\] {
     height: 6px;
@@ -791,6 +797,9 @@
   }
   .overflow-y-auto {
     overflow-y: auto;
+  }
+  .overflow-y-scroll {
+    overflow-y: scroll;
   }
   .rounded {
     border-radius: 0.25rem;

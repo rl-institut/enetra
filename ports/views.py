@@ -4,7 +4,6 @@ import traceback
 from collections.abc import Iterable
 from datetime import datetime
 from datetime import timedelta
-from typing import Any
 from typing import Literal
 from uuid import UUID
 from uuid import uuid4
@@ -12,8 +11,6 @@ from uuid import uuid4
 import numpy as np
 from django.apps.registry import apps
 from django.contrib.auth.models import User
-from django.db.models import Value
-from django.forms import ModelForm
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -24,7 +21,6 @@ from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import redirect  # noqa
 from django.shortcuts import render  # noqa
-from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
@@ -294,113 +290,6 @@ def home(request):
     return render(request, "ports/tool_base.html", context)
 
 
-def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):
-    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_uuid)
-    focused_form = request.GET.get("focusedForm", None)
-    if not get_authentification(scenario, request.user, "read"):
-        return HttpResponseForbidden("Not Allowed")
-    first_load = datetime.fromisoformat(first_load_str)
-    context = {"scenario": scenario, "first_load": first_load_str}
-    if scenario.items_updated_at <= first_load:
-        return render(request, "ports/partials/changelog.html", context)
-    else:
-        changed_items: list[ScenarioItem] = []
-        created_items: list[ScenarioItem] = []
-        port_models = apps.get_models("ports")
-        scenario_item_models = [model for model in port_models if issubclass(model, ScenarioItem)]
-        for model in scenario_item_models:
-            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load).annotate(
-                changed=Value(True)
-            )
-            changed_items = changed_items + list(objs)
-            objs = model.objects.filter(scenario=scenario, created_at__gt=first_load).annotate(
-                changed=Value(False)
-            )
-            created_items = created_items + list(objs)
-        changed_or_created_items = created_items + changed_items
-        changed_or_created_items.sort(key=lambda x: x.updated_at if x.changed else x.created_at)
-        context |= {"changed_or_created_items": changed_or_created_items}
-        change_log = render_to_string("ports/partials/changelog.html", context, request)
-
-    last_update = datetime.fromisoformat(last_update_str)
-    if scenario.items_updated_at <= last_update:
-        return HttpResponse(change_log)
-
-    changed, created = get_update_items(scenario, last_update, scenario_item_models)
-    oob_updates = render_oob_updates(created, changed, focused_form)
-    return HttpResponse(change_log + oob_updates)
-
-
-def get_update_items(scenario, last_update, scenario_item_models):
-    changed_items: list[ScenarioItem] = []
-    created_items: list[ScenarioItem] = []
-    for model in scenario_item_models:
-        objs = model.objects.filter(
-            scenario=scenario,
-            updated_at__gte=last_update,
-            created_at__lte=last_update,
-        )
-        changed_items = changed_items + list(objs)
-        objs = model.objects.filter(scenario=scenario, created_at__gt=last_update)
-        created_items = created_items + list(objs)
-    return changed_items, created_items
-
-
-def render_oob_updates(
-    created_items: Iterable[ScenarioItem],
-    update_items: Iterable[ScenarioItem],
-    focused_form: str | None = None,
-) -> str:
-    """Render ScenarioItems via oob to inject updates into a response"""
-    context = {}
-    for key, items in [
-        ("created_forms", created_items),
-        ("updated_forms", update_items),
-    ]:
-        forms: list[ModelForm[ScenarioItem]] = []
-        for item in items:
-            Form = ScenarioItemFormFactory(item._meta.model)
-            prefix = get_pre(item)
-            form = Form(instance=item, prefix=prefix)
-            if focused_form and focused_form == f"form_{prefix}":
-                context |= {"focused_form_changed": focused_form}
-                continue
-            forms.append(form)
-        context |= {key: forms}
-    oob_changed_items = render_to_string("ports/partials/oob_form_swap.html", context)
-    return oob_changed_items
-
-
-def leaflet(request):
-    s, _ = Scenario.objects.get_or_create(name="Test Scenario")
-    a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
-    a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
-    context: dict[str, Any] = {"scenario": s}
-
-    Form = ScenarioItemFormFactory(Area)
-    context["areas"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
-    ]
-    return render(request, "ports/leaflet.html", context)
-
-
-def dynamic_forms(request):
-    s, _ = Scenario.objects.get_or_create(name="Test Scenario")
-    a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
-    a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
-    context: dict[str, Any] = {"scenario": s}
-    Form = ScenarioItemFormFactory(Solar)
-    context["solars"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Solar.objects.filter(scenario=s)
-    ]
-
-    Form = ScenarioItemFormFactory(Area)
-    context["areas"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
-    ]
-    return render(request, "ports/dynamic_forms.html", context)
-
-
 def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
     # When cruding single instances, there is no need for a prefix
     # The map widget gets inserted by id, so this is needed
@@ -433,7 +322,6 @@ class DetailsView(View):
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
-            "updateOob": "true",
             "electric_models": [
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
@@ -607,7 +495,6 @@ class DetailsView(View):
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
         self.context |= get_home_context()
-        self.context["update"] = True
         self.context["created"] = True
         response = render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"

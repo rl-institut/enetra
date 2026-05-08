@@ -19,6 +19,12 @@
 
         {% comment %}
         the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
+
+        NOTE:
+        trying to control the oob-swap via hx-swap-oob does not work with the hx-preserved input
+        hx-swap-oob='none'
+        if swaps should be skipped, dont pass them to the template
+        for live checking of duplicates the uniqueid can be used
         {% endcomment %}
 
       {% partialdef list-item-and-form inline %}
@@ -41,11 +47,11 @@
       </c-list>
     </form>
 
-    <div id="geom_forms_container">
+    <div id="geom_forms_container" class="h-30 border-2 m-2 overflow-y-scroll overflow-clip">
       {% for geom_form in area_forms %}
 
           <div id="geom_form_container_{{geom_form.instance.internal_id}}"
-              hx-swap-oob='{{updateOob|default:"false"}}'
+              hx-swap-oob='true'
           >
           {{geom_form.instance.load_set.count}}
           {% include 'ports/partials/map_element.html' with form=geom_form %}
