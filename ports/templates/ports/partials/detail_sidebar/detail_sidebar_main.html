@@ -32,7 +32,7 @@
           x-on:{{instance.deleted_event}}.document='show=true;'
            x-show="show">
         <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
-        Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht um die Änderungen sehen zu können.
+        Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht, um die Änderungen sehen zu können.
         </c-alert>
       </div>
 
@@ -149,8 +149,8 @@
             <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
-        <netzanschluss class="block">
-        <div class="flex flex-col gap-[16px] pt-[8px]">
+        <netzanschluss class="block" inert>
+        <div class="flex flex-col gap-[16px] pt-[8px">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -160,7 +160,8 @@
             NETZANSCHLÜSSE
             <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
           </h3>
-          <div class="flex flex-col gap-[8px]">
+            not implemented/ made inert
+          <div class="flex flex-col gap-[8px] ">
             <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
             <c-select.index selectedValue="HV" inputName="AnschlussType">
               <c-select.button selectValue="HV">
@@ -187,6 +188,7 @@
               <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
             </label>
           </div>
+
           </netzanschluss>
         </div>
       </div>

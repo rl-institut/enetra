@@ -303,10 +303,11 @@ class Area(ScenarioItem):
         cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area", **kwargs
     ) -> type[ModelForm]:
         FormClass.base_fields["usage"].required = True
-        print(instance and instance.area_type)
-        print(kwargs.get("area_type"))
         area_type = (instance and instance.area_type) or kwargs.get("area_type")
-        assert area_type
+        if not area_type:
+            raise MissingFormValueException(
+                "The area form needs an area_type to show the correct choices. The area_type can be provided by the instance or as kwarg"
+            )
         if area_type == Area.AreaTypeChoices.BUILDING:
             FormClass.base_fields["usage"].choices = Area.BuildingUsageChoices
         else:
@@ -322,7 +323,7 @@ class Area(ScenarioItem):
         for att in allowed_attributes:
             extra_args[att] = kwargs.get(att)
         count = cls.objects.filter(scenario=scenario, area_type=extra_args["area_type"]).count()
-        new_name = f"Neues Fläche {count + 1}"
+        new_name = f"Neue Fläche {count + 1}"
 
         instance = cls(
             scenario=scenario,
@@ -613,3 +614,8 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
         path = Path(instance.file.path)
         if path.exists():
             path.unlink()
+
+
+# Custom Exceptions
+class MissingFormValueException(Exception):
+    pass

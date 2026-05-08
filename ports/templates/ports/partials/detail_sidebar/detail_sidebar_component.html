@@ -14,7 +14,7 @@
   >
     <c-alert class="" variant="warning" title="Änderungsbenachrichtigung">
       Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die
-      Ansicht um die Änderungen sehen zu können.
+      Ansicht, um die Änderungen sehen zu können.
     </c-alert>
   </div>
 
@@ -41,7 +41,7 @@
           hx-indicator="#detailSidebar"
           hx-swap="innerHTML"
 
-            type="button"
+        type="button"
         class="flex cursor-pointer items-center gap-[8px] transition-opacity hover:opacity-60"
       >
         <c-icon.arrow_left />
@@ -147,7 +147,14 @@
         </button>
 
         <button
-          onClick="handleViewChange('main')"
+          hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"
+          hx-vals='{"internal_id": "{{instance.area.internal_id}}"}'
+          hx-target="#detailSidebar"
+          hx-trigger="click"
+          hx-indicator="#detailSidebar"
+          hx-swap="innerHTML"
+
+          type="button"
           class="flex w-full items-center justify-center gap-[8px] py-[8px] text-[14px] font-semibold text-[#64748b] transition-opacity hover:opacity-80"
         >
           <c-icon.close class="h-[16px] w-[16px]" />

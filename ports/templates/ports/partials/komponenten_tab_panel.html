@@ -17,72 +17,54 @@
       <div class="bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1]">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Komponenten</h4>
       </div>
-      <!-- {/* Generator */} -->
       <div class="border-b border-[#cbd5e1] bg-white  ">
-        <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
-            <form>
-          <c-list.index id='komponenten-tab-generator-list' count title="Generator" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
-                  >
-              {% for item in generators %}
-            <c-list.item
-              id='button-list-item-{{ item.internal_id }}'
-              hx-swap-oob='{{updateOob|default:"false"}}'
 
-              :defaultHxDetails=True
-              :selected=False
-              :indicated=False
-              :item=item
-              value='{{ item.internal_id }}'
-              title='{{item.name}}'
-              radioName='internal_id'
-          />
-              {% endfor %}
-          </c-list>
-          </form>
+        {% partialdef komponenten-list-section %}
+          <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
+              <form>
+                <c-list.index id={{listId}} count title='{{title}}' @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                >
+                  {% for item in items %}
+                  <c-list.item
+                    id='button-list-item-{{ item.internal_id }}'
+                    hx-swap-oob='{{updateOob|default:"false"}}'
 
-        </div>
-        <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
-            <form>
-      <c-list.index id='komponenten-tab-heating-list' count title="Heizsystem konventionell" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
-              >
-              {% for item in heaters %}
-              <c-list.item
-                id='button-list-item-{{ item.internal_id }}'
-                hx-swap-oob='{{updateOob|default:"false"}}'
+                    :defaultHxDetails=True
+                    :selected=False
+                    :indicated=False
+                    :item=item
+                    value='{{ item.internal_id }}'
+                    title='{{item.name}}'
+                    radioName='internal_id'
+                  />
+                  {% endfor %}
+                </c-list>
+              </form>
+          </div>
+        {% endpartialdef %}
 
-                :defaultHxDetails=True
-                :selected=False
-                :indicated=False
-                :item=item
-                value='{{ item.internal_id }}'
-                title='{{item.name}}'
-                radioName='internal_id'
-            />
-              {% endfor %}
-          </c-list>
-            </form>
-        </div>
-        <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
-            <form>
-            <c-list.index id='komponenten-tab-solar-list' count title="Photovoltaik" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
-              >
+        {% with listId="komponenten-tab-generator-list" title="Generatoren" items=generators %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
 
-              {% for item in solars %}
-                <c-list.item
-                  id='button-list-item-{{ item.internal_id }}'
-                  hx-swap-oob='{{updateOob|default:"false"}}'
-                  :defaultHxDetails=True
-                  :selected=False
-                  :indicated=False
-                  :item=item
-                  value='{{ item.internal_id }}'
-                  title='{{item.name}}'
-                  radioName='internal_id'
-              />
-              {% endfor %}
-          </c-list>
-            </form>
-        </div>
+        {% with listId="komponenten-tab-heating-list" title="Heizsysteme konventionell" items=heatings %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-chp-list" title="Blockheizkraftwerke" items=chps %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-fuelcell-list" title="Brennstoffzellen" items=fuelcells %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-electrolyzer-list" title="Elektrolyseure" items=electrolyzers %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-heatpump-list" title="Wärmepumpen" items=heatpumps %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-solar-list" title="Photovoltaik" items=solars %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
       </div>
     </div>
   </div>

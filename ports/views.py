@@ -17,6 +17,7 @@ from django.forms import ModelForm
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
+from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
@@ -36,8 +37,6 @@ from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
-from .models import Generator
-from .models import Heating
 from .models import Load
 from .models import Scenario
 from .models import ScenarioItem
@@ -241,9 +240,19 @@ def get_home_context():
         scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
     )
     data["open_areas"] = Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN)
-    data["solars"] = Solar.objects.filter(scenario=scenario)
-    data["generators"] = Generator.objects.filter(scenario=scenario)
-    data["heaters"] = Heating.objects.filter(scenario=scenario)
+
+    electric_components = dict()
+    for m in apps.get_models():
+        if issubclass(m, ElectricComponent):
+            # create queries for all electriccomponenent models like
+            # key is model_name + "s" ,e.g. solars, heatings, generators
+            key = f"{m._meta.model_name}s"
+            query = m.objects.filter(scenario=scenario)
+            data[key] = query
+            electric_components[key] = query
+
+    # put the queries in a dict to, so we can directly iterate over them
+    data["electric_components"] = electric_components
     data["Area"] = Area
 
     return data
@@ -515,7 +524,10 @@ class DetailsView(View):
         return render(self.request, self.template, self.context)
 
     def create(self, request, *args, **kwargs):
-        assert not self.instance
+        if self.instance:
+            return HttpResponseBadRequest(
+                b"The creation of an object is not possible with an instance"
+            )
         # Create a new item and pass it back in the default state
         self.Form(data={"internal_id": uuid4()})
         # do NOT pass the request.POST directly which could lead to unauthorized injections
@@ -572,7 +584,10 @@ class DetailsView(View):
         )
 
     def multi_get(self, request, *args, **kwargs):
-        assert not self.instance
+        if self.instance:
+            return HttpResponseBadRequest(
+                b"The fetching of multiple objects is not possible with a single instance"
+            )
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
         if self.Model == Area or ElectricComponent in self.Model.mro():
             merged_data = model_to_dict(self.instances[0])
@@ -591,7 +606,10 @@ class DetailsView(View):
     def multi_post(self, request, *args, **kwargs):
         if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
             raise NotImplementedError("This model is not implemented for multi posting yet")
-        assert not self.instance
+        if self.instance:
+            return HttpResponseBadRequest(
+                b"The patching of multiple objects is not possible with an instance"
+            )
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
         try:
             form = self.Form(data=request.POST)
@@ -616,7 +634,8 @@ class DetailsView(View):
     def post(self, request, *args, **kwargs):
         if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
             raise NotImplementedError("This model is not implemented for posting yet")
-        assert self.instance
+        if not self.instance:
+            return HttpResponseBadRequest(b"The patching of an object needs an instance")
         try:
             self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
