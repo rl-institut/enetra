@@ -391,7 +391,7 @@ class DetailsView(View):
     Handles get and post for single instances but also for batched instanced.
     """
 
-    template = "ports/partials/create_form.html"
+    template = ""
     created = False
     multi = False
     scenario: models.Scenario | None = None
@@ -449,15 +449,21 @@ class DetailsView(View):
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
         self.Form = ScenarioItemFormFactory(self.Model, multi=self.multi, scenario=self.scenario)
+        self.template = self.get_template()
+
+    def get_template(self) -> str:
         suffix = ""
         if self.multi:
             suffix = "_multi"
         if self.Model == Area:
-            self.template = f"ports/partials/detail_sidebar/detail_sidebar_main{suffix}.html"
+            template = f"ports/partials/detail_sidebar/detail_sidebar_main{suffix}.html"
         elif self.Model == Load:
-            self.template = f"ports/partials/detail_sidebar/detail_sidebar_load_detail{suffix}.html"
+            template = f"ports/partials/detail_sidebar/detail_sidebar_load_detail{suffix}.html"
         elif ElectricComponent in self.Model.mro():
-            self.template = f"ports/partials/detail_sidebar/detail_sidebar_component{suffix}.html"
+            template = f"ports/partials/detail_sidebar/detail_sidebar_component{suffix}.html"
+        else:
+            raise NotImplementedError(f"{self.Model} is not implemented")
+        return template
 
     def dispatch(self, request, *args, **kwargs):
         # FIXME
@@ -531,7 +537,6 @@ class DetailsView(View):
         # Create a new item and pass it back in the default state
         self.Form(data={"internal_id": uuid4()})
         # do NOT pass the request.POST directly which could lead to unauthorized injections
-        multi = False
         # NOTE: POST.get(k) handles unpacking of values e.g. value=="foo" instead of ["foo"]
         data = {k: request.POST.get(k) for k in request.POST}
         if self.Model == Area:
@@ -545,10 +550,12 @@ class DetailsView(View):
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
             new_items = self.Model.create_new(self.scenario, **data)
-            multi = len(area_internal_ids) > 1
-            self.Form = ScenarioItemFormFactory(self.Model, multi=multi, scenario=self.scenario)
+            self.multi = len(area_internal_ids) > 1
+            self.Form = ScenarioItemFormFactory(
+                self.Model, multi=self.multi, scenario=self.scenario
+            )
             self.instances = self.Model.objects.bulk_create(new_items)
-            if not multi:
+            if not self.multi:
                 self.instance = self.instances[0]
                 self.instances = []
                 self.context["instance"] = self.instance
@@ -557,6 +564,9 @@ class DetailsView(View):
                 )
 
             else:
+                # Template choice earlier works for direct instance access.
+                # For creation this is decided here, since self.multi might have been overwritten
+                self.template = self.get_template()
                 self.context["instances"] = self.instances
                 self.context["instance"] = None
                 self.context["internal_ids"] = ",".join(
@@ -625,7 +635,14 @@ class DetailsView(View):
 
         if self.Model == Load or ElectricComponent in self.Model.mro():
             # Multi post request for Load needs references to areas
-            self.context["area_internal_ids"] = self.request.POST.get("area_internal_ids")
+            self.context["area_internal_ids"] = ",".join(
+                str(y)
+                for y in (
+                    Area.objects.filter(
+                        id__in=[x.area_id for x in self.context["instances"]]
+                    ).values_list("internal_id", flat=True)
+                )
+            )
         self.context |= get_home_context()
         self.context["update"] = True
 
