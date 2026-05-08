@@ -295,10 +295,6 @@ STATICFILES_DIRS = [
     BASE_DIR / "static/img",
     BASE_DIR / UPLOAD_PATH,
 ]
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 
 # Default primary key field type

@@ -83,7 +83,7 @@ def changes_count(request, scenario_internal_id: UUID):
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
-        HttpResponseForbidden("No access")
+        return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
     updated_at = scenario.updated_at
@@ -152,7 +152,7 @@ def changes(request, scenario_internal_id: UUID):
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
-        HttpResponseForbidden("No access")
+        return HttpResponseForbidden("No access")
     days = int(request.GET.get("days", "90"))
     otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
     query_time = timezone.now().astimezone() - timedelta(days=days)
@@ -246,9 +246,9 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
-def get_home_context():
+def get_home_context(scenario: Scenario | None = None):
     data = {}
-    scenario = Scenario.objects.last()
+    scenario = scenario or Scenario.objects.last()
     data["scenario"] = scenario
     data["scenarios"] = Scenario.objects.all()
     data["building_areas"] = Area.objects.filter(
@@ -270,10 +270,9 @@ def get_home_context():
     data["electric_components"] = electric_components
     data["Area"] = Area
 
-    building_areas = list(
-        Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING)
-    )
-    open_areas = list(Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN))
+    all_areas = list(Area.objects.filter(scenario=scenario))
+    building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
+    open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
     data["building_areas"] = building_areas
     data["open_areas"] = open_areas
     area_forms = []

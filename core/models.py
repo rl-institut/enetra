@@ -33,7 +33,7 @@ class Progress(models.Model):
 
     task = models.ForeignKey(Task, null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(null=False, auto_now_add=True, db_default=Now())
-    status = models.CharField(choices=models.TextChoices.choices)
+    status = models.CharField(choices=Status.choices)
     total_work = models.IntegerField(default=1, null=False)
     current_work = models.IntegerField(default=0, null=False)
 

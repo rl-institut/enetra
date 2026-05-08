@@ -7,8 +7,9 @@ class PortsConfig(AppConfig):
 
     def ready(self):
         # import models to ensure they are loaded
-        from .models import ScenarioItem
-
-        # connect pre_delete for every subclass of BaseModel
-        for subclass in ScenarioItem.__subclasses__():
-            subclass._connect_signals()
+        pass
+        # from .models import ScenarioItem
+        #
+        # # connect pre_delete for every subclass of BaseModel
+        # for subclass in ScenarioItem.__subclasses__():
+        #     subclass._connect_signals()
