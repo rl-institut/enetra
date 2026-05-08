@@ -91,6 +91,7 @@ jobs:
           uv run manage.py test
         env:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DJANGO_ADMIN_PASSWORD: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
           # Replace with your own database info
           DATABASE_URL: postgis://postgres:postgres@localhost/DbName
