@@ -26,11 +26,15 @@
             :selected=False
             :indicated=False
             :item=item
-            hx-swap-oob='{{updateOob|default:"false"}}'
+            hx-swap-oob=True
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
-        />
+        >
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" %}
+          </c-slot>
+          </c-list.item>
         {% endfor %}
       </c-list>
 
@@ -67,16 +71,20 @@
             :selected=False
             :indicated=False
             :item=item
-            hx-oob-swap="{{updateOob|default:"false"}}"
+            hx-oob-swap=True
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
-        />
+        >
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" %}
+          </c-slot>
+          </c-list.item>
         {% endfor %}
       </c-list>
     </form>
       <button type='button'
-              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursorpointer hover:text[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
               hx-vals='{"area_type": "{{ Area.AreaTypeChoices.OPEN|assertValue }}" }'
               hx-indicator="#detailSidebar"

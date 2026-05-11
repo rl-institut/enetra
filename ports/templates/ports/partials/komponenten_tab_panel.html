@@ -27,7 +27,7 @@
                   {% for item in items %}
                   <c-list.item
                     id='button-list-item-{{ item.internal_id }}'
-                    hx-swap-oob='{{updateOob|default:"false"}}'
+                    hx-swap-oob=True
 
                     :defaultHxDetails=True
                     :selected=False
@@ -36,9 +36,14 @@
                     value='{{ item.internal_id }}'
                     title='{{item.name}}'
                     radioName='internal_id'
-                  />
-                  {% endfor %}
-                </c-list>
+                >
+                  <c-slot name="singleModeIcon">
+                    {% include "ports/partials/list_item_ellipsis.html" %}
+                  </c-slot>
+                </c-list.item>
+
+                {% endfor %}
+              </c-list>
               </form>
           </div>
         {% endpartialdef %}

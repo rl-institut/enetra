@@ -583,13 +583,13 @@ class DetailsView(View):
         return render(self.request, self.template, self.context)
 
     def delete(self, request, *args, **kwargs):
-        # NOTE: data is send as hx-include, so not part of POST
         form = self.Form(data=request.GET)
         form.is_valid()
         self.instance.delete()
+        self.context["status"] = "deleted"
         return render(
             self.request,
-            "ports/partials/detail_sidebar/detail_deleted.html",
+            "ports/partials/update_delete_create_scenario_item.html",
             self.context,
         )
 

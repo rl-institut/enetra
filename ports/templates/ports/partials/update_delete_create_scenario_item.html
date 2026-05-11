@@ -37,7 +37,11 @@ For focused elements which are not rendered all the time, a event can be sent
             radioName='internal_id'
             class='my-slide-in-from-bottom animate-once'
             hx-on::load={{createItemCallback}}
-  />
+        >
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
+          </c-slot>
+          </c-list.item>
 </div>
 {% elif status == 'changed' %}
 
@@ -53,7 +57,11 @@ For focused elements which are not rendered all the time, a event can be sent
             value='{{ instance.internal_id }}'
             title='{{instance.name}} '
             radioName='internal_id'
-           />
+        >
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
+          </c-slot>
+          </c-list.item>
 
 
 {% else %}
@@ -67,7 +75,11 @@ For focused elements which are not rendered all the time, a event can be sent
             value='{{ instance.internal_id }}'
             title='{{instance.name}} '
             radioName='internal_id'
-           />
+        >
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" with item=instance %}
+          </c-slot>
+          </c-list.item>
   {% endif %}
 {% elif status == 'deleted' %}
 <div hx-swap-oob='outerHTML'

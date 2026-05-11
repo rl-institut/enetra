@@ -32,3 +32,13 @@ function deselectOtherLists(element) {
     }
     )
 }
+
+function hideOtherDropDown(selector) {
+    const this_element = document.querySelector(selector);
+    const all_lists = document.querySelectorAll('.drop-down');
+    all_lists.forEach((list) => {
+        if (list == this_element) return;
+        list.dispatchEvent(new CustomEvent("hide"))
+    }
+    )
+}

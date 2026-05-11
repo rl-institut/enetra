@@ -21,7 +21,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
        {% if defaultHxDetails %}
         x-data
         @detail-sidebar-closed.document="isSelected=false"
-        @click="$nextTick(()=>$dispatch('getdetails'))"
+        @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
 
         hx-include="closest form"
         hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
@@ -29,7 +29,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
         hx-swap="innerHTML"
-        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
       {% endif %}
 
 >
@@ -84,12 +84,14 @@ wrap everyting in a label so everything toggles the radio/checkbox
     {% endcomment %}
     {% if indicated %}<div class="w-[6px] h-[6px] rounded-full bg-[#ff9500] flex-shrink-0"></div>{% endif %}
   </div>
-  <div class="overflow-clip relative shrink-0 size-[12px]">
+  <div class="relative shrink-0 size-[12px]">
     <div class="absolute inset-[0.37%_0.1%_-0.27%_0.28%]">
-      <img alt=""
-           class="block max-w-none size-full"
-           :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
-           :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`'>
+      <div x-show="isBulkMode" x-cloak>
+        {{bulkModeIcon}}
+      </div>
+      <div x-show="!isBulkMode" x-cloak>
+        {{singleModeIcon}}
+      </div>
     </div>
   </div>
 </label>
