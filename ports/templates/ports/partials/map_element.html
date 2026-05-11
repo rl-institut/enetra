@@ -31,13 +31,13 @@
     {% for component in  form.instance.generator_set.all %}
         <!-- Put a marker icon on the map -->
         <c-map-element.marker-icon>
-          <c-icon.technical-building class='w-[28px] h-[28px]'/>
+          <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
           <!-- Give the icon a popup -->
           <c-slot name='popup'>
             <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
             <c-map-element-popup :instance=component >
               <c-slot name='icon'>
-                <c-icon.technical-building class='w-[28px] h-[28px]'/>
+                <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
               </c-slot>
             </c-map-element-popup>
           </c-slot>

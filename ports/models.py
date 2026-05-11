@@ -158,6 +158,10 @@ class ScenarioItem(models.Model):
     def deleted_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-deleted"
 
+    def icon(self) -> str:
+        """The cotton template used as icon for this model"""
+        return "icon.circle_full"
+
     @classmethod
     def create_new(cls, scenario: Scenario, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
@@ -436,6 +440,46 @@ class ElectricComponent(ScenarioItem):
                 generic_field_names |= {f.name for f in parent._meta.get_fields()}
         return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
 
+    def area_verbose(self):
+        if not self.area:
+            return "Keine Angabe"
+        return f"{self.area} m^2"
+
+    def power_kw_verbose(self):
+        if not self.power_kw:
+            return "Keine Angabe"
+        return f"{self.power_kw} kW"
+
+    def efficiency_verbose(self):
+        if not self.efficiency:
+            return "Keine Angabe"
+        return f"{(self.efficiency * 100):.2f} %"
+
+    def power_installed_verbose(self):
+        if not self.power_installed:
+            return "Keine Angabe"
+        return f"{self.power_installed} kW"
+
+    def power_min_verbose(self):
+        if not self.power_min:
+            return "Keine Angabe"
+        return f"{self.power_min} kW"
+
+    def power_max_verbose(self):
+        if not self.power_max:
+            return "Keine Angabe"
+        return f"{self.power_max} kW"
+
+    def capex_verbose(self):
+        if not self.capex:
+            return "Keine Angabe"
+        return f"{self.capex} €"
+
+    def opex_verbose(self):
+        if not self.opex:
+            return "Keine Angabe"
+        return f"{self.opex} €/a"
+
     @classmethod
     def get_default_args(cls) -> dict:
         return {}
@@ -472,6 +516,11 @@ class Generator(ElectricComponent):
 
     carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
 
+    def carrier_verbose(self):
+        if not self.carrier:
+            return "Keine Angabe"
+        return self.get_carrier_display()
+
 
 class Heating(ElectricComponent):
     """Transforms energy source to heat"""
@@ -482,6 +531,11 @@ class Heating(ElectricComponent):
         ELECTRICITY = "electricity", "Strom"
 
     carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
+
+    def carrier_verbose(self):
+        if not self.carrier:
+            return "Keine Angabe"
+        return self.get_carrier_display()
 
 
 class CHP(ElectricComponent):
@@ -498,6 +552,11 @@ class CHP(ElectricComponent):
     @classmethod
     def get_default_args(cls) -> dict:
         return {"carrier": cls.CarrierChoices.GAS}
+
+    def carrier_verbose(self):
+        if not self.carrier:
+            return "Keine Angabe"
+        return self.get_carrier_display()
 
 
 class FuelCell(ElectricComponent):
@@ -576,6 +635,11 @@ class Storage(ScenarioItem):
     capacity_min = models.FloatField(default=None, null=True, blank=True)
     capacity_max = models.FloatField(default=None, null=True, blank=True)
     capex = models.FloatField(default=None, null=True, blank=True)  # €/kWh, €/l
+
+    def carrier_verbose(self):
+        if not self.carrier:
+            return "Keine Angabe"
+        return self.get_carrier_display()
 
 
 # --------------------------------------------------------------------------------
