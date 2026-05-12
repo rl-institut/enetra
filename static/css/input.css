@@ -99,6 +99,7 @@
 
 /* When a request is inflight this sets the style of htmx-indicators */
 /* display none to remove it completely from the layout flow */
+.htmx-indicator-inherited,
 .htmx-indicator {
     opacity: 0;
     visibility: hidden;
@@ -106,8 +107,16 @@
 }
 
 /* 1. this matches all htmx-indicators which are children of htmx-request */
+.htmx-request .htmx-indicator-inherited,
+.htmx-request.htmx-indicator-inherited {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease-in;
+    display: inline-block;
+}
+
+/* 1. this matches all htmx-indicators which are children of htmx-request */
 /* 2 .this only matches elements with both classes */
-.htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator {
     opacity: 1;
     visibility: visible;

@@ -4,26 +4,21 @@
   hx-select="#form_{{instance.internal_id}}"
   hx-target="#form_{{instance.internal_id}}"
   hx-swap="outerHTML"
-  class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a]"
+  class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
   hx-disabled-elt="this"
-  hx-indicator="this"
+  hx-indicator="find span"
+
+  {% if success %}
+    x-data='{result: "✓ Gespeichert"}' x-init="setTimeout(()=>result='Speichern', 2000)"
+    {% elif errors %}
+    x-data='{result: "Fehlgeschlagen"}' x-init="setTimeout(()=>result='Speichern', 2000)"
+    {% else %}
+    x-data='{result: "Speichern"}'
+    {% endif %}
+  @htmx:before-request="result='Speichern'"
 >
   <span class='htmx-indicator loader align-middle'></span>
-  {% if success %}
-  <div x-data='{show: true}' x-init="setTimeout(()=>show=false, 2000)">
-    <span class='animate-in fade-in duration-1000 my-hide align-middle min-w-fit' x-show="show"
-    >✓ Gespeichert</span>
-    <span class='my-hide align-middle' x-show="!show">Speichern</span>
-  </div>
-  {% elif errors %}
-  <div x-data='{show: true}' x-init="setTimeout(()=>show=false, 2000)">
-    <span class='animate-in fade-in duration-1000 my-hide align-middle' x-show="show"
-    >Fehlgeschlagen</span>
-    <span class='my-hide align-middle' x-show="!show">Speichern</span>
-  </div>
-  {% else %}
-  <span class='my-hide align-middle' >Speichern</span>
-  {% endif %}
+    <span class='my-hide animate-in fade-in duration-1000 my-hide align-middle min-w-fit' x-text="result" ></span>
 </button>
 
 {% comment %}
