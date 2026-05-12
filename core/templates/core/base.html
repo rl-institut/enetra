@@ -12,8 +12,6 @@
       {% block title %}ENETRA{% endblock %}
     </title>
     {% include 'core/imports.html' %}
-    <!-- Use stlyesheet after imports so the geist font is availabe -->
-    <link rel="stylesheet" href="{% static 'output.css' %}">
     {% block header %}{% endblock %}
     <!-- This makes htmx use outerHTML by default -->
     <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML"}'>

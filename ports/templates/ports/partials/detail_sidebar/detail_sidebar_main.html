@@ -1,6 +1,18 @@
 {% load partials %}
 {% load constants %}
 
+{% if not request.headers.Hx_Request %}
+  {% comment %}
+   this injects css/and js in the response for debugging/styling the partial response
+  {% endcomment %}
+  <html>
+  <head>
+    {% include 'core/imports.html' %}
+    {% include "ports/imports_app.html" %}
+  </head>
+  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="font-sans antialiased">
+{% endif %}
+
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
 {% if created %}
@@ -15,6 +27,7 @@
 >
   {{ form.internal_id }}
   <input name="area_internal_ids" class='hidden' value='{{internal_id}}'>
+
 
   {% comment %}
   TODO:
@@ -35,18 +48,6 @@
         Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht, um die Änderungen sehen zu können.
         </c-alert>
       </div>
-
-
-    {% if success %}
-      <div x-data="{show:true }"
-           class="animate-in fade-in duration-1000"
-           x-init="setTimeout(()=>show=false, 1000)"
-           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
-           x-show="show">
-        <c-alert class="" variant="success" title={{ success }}>
-        </c-alert>
-      </div>
-    {% endif %}
     {{ errors }}
     <div class="flex items-center justify-between gap-[8px] mb-[8px]">
       <div class="flex items-center gap-[8px] flex-1">
@@ -59,10 +60,8 @@
             <h2 class="font-semibold text-[20px] text-[#1e293b]">Freifläche</h2>
           {% endif %}
 
-        <button type="button"
-                class="flex-shrink-0 hover:opacity-60 transition-opacity">
-        </button>
       </div>
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
       {% include "ports/partials/detail_item_ellipsis.html" %}
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"
@@ -182,9 +181,14 @@ In case of an update the list element is swapped
 {% endcomment %}
 
 {% if update %}
+  {% include 'ports/partials/flaechen_tab_panel.html' %}
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
 
+  {% if not request.headers.Hx_Request %}
+  </body>
+  </html>
+{% endif %}
 
 {% comment %}
 

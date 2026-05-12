@@ -1,7 +1,9 @@
 {% load constants %}
 
 
-<form id="form_{{instance.internal_id}}">
+<form
+  id="form_{{instance.internal_id}}"
+>
   {{ form.internal_id }}
 
   <div class="htmx-indicator bg-red-500 loader"></div>
@@ -18,17 +20,6 @@
     </c-alert>
   </div>
 
-  {% if success %}
-  <div
-    x-data="{show:true }"
-    class="animate-in fade-in duration-1000"
-    x-init="setTimeout(()=>show=false, 1000)"
-    x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
-    x-show="show"
-  >
-    <c-alert class="" variant="success" :title=success > </c-alert>
-  </div>
-  {% endif %} {{ errors }}
   <details-sidebar-header
     class="sticky top-0 z-[9999] block border-b border-[#e2e8f0] bg-white p-[24px]"
   >
@@ -37,6 +28,7 @@
         hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"
           hx-vals='{"internal_id": "{{instance.area.internal_id}}"}'
           hx-target="#detailSidebar"
+          hx-select="unset"
           hx-trigger="click"
           hx-indicator="#detailSidebar"
           hx-swap="innerHTML"
@@ -139,17 +131,9 @@
           Die Werte werden nur für diese Fläche übernommen.
         </p>
 
-        <button
-          class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a]"
-          type="button"
-          hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  %}?internal_id={{instance.internal_id}}"
-            hx-select="#form_{{instance.internal_id}}"
-            hx-target="closest form"
-            hx-swap="outerHTML"
-            hx-indicator="#detailSidebar"
-        >
-          Speichern
-        </button>
+
+      {{ errors }}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
 
         <button
           hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"

@@ -1,7 +1,8 @@
 {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
-<div x-data="{showDropDown: false}" class="relative">
+<div x-data="{showDropDown: false}" class="relative"
+>
   <button>
-  <c-icon.three_dots class=" h-7 w-7" @click.prevent.stop="showDropDown = !showDropDown; hideOtherDropDown('#detail-ellipsis-drop-down-{{ instance.internal_id }}');" @click.outside="showDropDown = false" />
+  <c-icon.three_dots class=" h-7 w-7 cursor-pointer" @click.prevent.stop="showDropDown = !showDropDown; hideOtherDropDown('#detail-ellipsis-drop-down-{{ instance.internal_id }}');" @click.outside="showDropDown = false" />
   </button>
   <div  x-show="showDropDown" x-cloak>
     <ul id="detail-ellipsis-drop-down-{{ instance.internal_id }}"
@@ -28,7 +29,13 @@
       <li>
         <button type="button"
                 hx-post="{{ form_url }}"
-                class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+
+                hx-select="#form_{{instance.internal_id}}"
+                hx-target="#form_{{instance.internal_id}}"
+                hx-swap="outerHTML"
+                class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+                hx-disabled
+        >
           POST
         </button>
       </li>

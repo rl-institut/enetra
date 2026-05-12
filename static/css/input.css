@@ -76,6 +76,7 @@
 .my-slide-in-from-top {
     animation: slideFromTop 0.4s ease-out forwards;
 }
+
 .slide-in {
     animation: slideFromLeft 0.4s ease-out forwards;
 }
@@ -97,9 +98,11 @@
 }
 
 /* When a request is inflight this sets the style of htmx-indicators */
+/* display none to remove it completely from the layout flow */
 .htmx-indicator {
     opacity: 0;
     visibility: hidden;
+    display: none;
 }
 
 /* 1. this matches all htmx-indicators which are children of htmx-request */
@@ -109,6 +112,7 @@
     opacity: 1;
     visibility: visible;
     transition: opacity 200ms ease-in;
+    display: inline-block;
 }
 
 /* Fix for the OSMWidget */

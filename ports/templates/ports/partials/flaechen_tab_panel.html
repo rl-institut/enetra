@@ -84,7 +84,7 @@
       </c-list>
     </form>
       <button type='button'
-              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursorpointer hover:text[#0891b2] transition-colors"
+              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
               hx-vals='{"area_type": "{{ Area.AreaTypeChoices.OPEN|assertValue }}" }'
               hx-indicator="#detailSidebar"
