@@ -3,6 +3,8 @@ Tests for DetailsView — GET, POST, DELETE, and CREATE for
 single and multi-instance modes across Area, Load, and Generator.
 """
 
+from uuid import uuid4
+
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase
@@ -168,6 +170,13 @@ class DetailsViewGetTest(DetailsViewBase):
             "ports/partials/detail_sidebar/detail_deleted.html",
         )
 
+    def test_get_invalid_instance(self):
+        url = self.details_url("load")
+        # generates warning in log.
+        # WARNING 2026-05-12 11:59:08,496 Not Found: /details/{uuid}/load/
+        response = self.client.get(url, {"internal_ids": str(uuid4())})
+        self.assertEqual(response.status_code, 404)
+
 
 class DetailsViewPostTest(DetailsViewBase):
     def test_post_load_single_valid(self):
@@ -180,8 +189,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_load_detail.html",
@@ -199,8 +208,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_main.html",
@@ -219,8 +228,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_component.html",
@@ -240,8 +249,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("errors", response.context)
-        self.assertNotIn("success", response.context)
+        assert response.context.get("errors")
+        assert not response.context.get("success")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_component.html",
@@ -260,8 +269,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("errors", response.context)
-        self.assertNotIn("success", response.context)
+        assert response.context.get("errors")
+        assert not response.context.get("success")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_load_detail.html",
@@ -281,8 +290,8 @@ class DetailsViewPostTest(DetailsViewBase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
         assert response.context, response.context
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_load_detail_multi.html",
@@ -304,8 +313,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_main_multi.html",
@@ -326,8 +335,8 @@ class DetailsViewPostTest(DetailsViewBase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("success", response.context)
-        self.assertNotIn("errors", response.context)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
             "ports/partials/detail_sidebar/detail_sidebar_component_multi.html",
@@ -353,7 +362,7 @@ class DetailsViewDeleteTest(DetailsViewBase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
             response,
-            "ports/partials/detail_sidebar/detail_deleted.html",
+            "ports/partials/update_delete_create_scenario_item.html",
         )
         self.assertFalse(Load.objects.filter(internal_id=internal_id).exists())
 
@@ -370,7 +379,7 @@ class DetailsViewDeleteTest(DetailsViewBase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
             response,
-            "ports/partials/detail_sidebar/detail_deleted.html",
+            "ports/partials/update_delete_create_scenario_item.html",
         )
         self.assertFalse(Generator.objects.filter(internal_id=internal_id).exists())
 
