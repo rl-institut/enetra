@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registrieren – Enetra</title>
+    {% include "core/imports.html" %}
+  </head>
+  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col items-center justify-center px-4 py-12">
+
+    <div class="w-full max-w-sm flex flex-col items-center gap-8">
+
+      <!-- Logo -->
+      <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-6 object-contain" />
+
+      <!-- Card -->
+      <div class="w-full p-8 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-6">
+
+        <!-- Heading -->
+        <div class="flex flex-col gap-1">
+          <h1 class="text-2xl font-bold text-slate-800">Konto erstellen</h1>
+          <p class="text-sm text-slate-500">Füllen Sie das Formular aus, um loszulegen</p>
+        </div>
+
+        <!-- Form -->
+        <form class="flex flex-col gap-4">
+
+          <!-- First + Last name -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-semibold text-slate-800">Vorname</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                <input type="text" placeholder="Anna" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+              </div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-semibold text-slate-800">Nachname</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                <input type="text" placeholder="Müller" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-semibold text-slate-800">E-Mail</label>
+            <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+              <input type="email" placeholder="name@beispiel.de" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+            <label class="text-sm font-semibold text-slate-800">Passwort</label>
+            <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
+              <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+              <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
+                <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
+                <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm password -->
+          <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+            <label class="text-sm font-semibold text-slate-800">Passwort bestätigen</label>
+            <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
+              <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+              <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
+                <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
+                <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div class="flex items-start gap-2">
+            <input type="checkbox" id="terms" class="w-4 h-4 mt-0.5 accent-cyan-700 cursor-pointer shrink-0" />
+            <label for="terms" class="text-sm text-slate-600 cursor-pointer select-none leading-normal">
+              Ich akzeptiere die <a href="#" class="text-cyan-700 hover:underline">Nutzungsbedingungen</a> und <a href="#" class="text-cyan-700 hover:underline">Datenschutzrichtlinie</a>
+            </label>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="select-none w-full px-6 py-2.5 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex justify-center items-center cursor-pointer">
+            <span class="text-sm font-semibold text-white">Registrieren</span>
+          </button>
+
+        </form>
+
+        <!-- Login link -->
+        <p class="text-center text-sm text-slate-500">
+          Bereits ein Konto?
+          <a href="{% url 'core:login' %}" class="text-cyan-700 font-semibold hover:underline">Anmelden</a>
+        </p>
+
+      </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+  </body>
+</html>

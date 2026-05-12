@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Einstellungen – Enetra</title>
+    {% include "core/imports.html" %}
+  </head>
+  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
+      <a href="{% url 'core:landing_page' %}">
+        <img src="{% static 'img/enetra-logo.png' %}" alt="Enetra" class="h-5 w-32 object-contain" />
+      </a>
+      <nav class="flex gap-6 items-center">
+        <a href="projects.html" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
+        <div class="flex gap-2 items-center">
+          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
+          <span class="text-sm font-semibold text-slate-800">Mein Konto</span>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-6 lg:px-12 py-12 flex-1">
+      <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
+
+        <!-- Page Header -->
+        <div class="select-none flex flex-col gap-2">
+          <h1 class="text-[40px] font-bold leading-normal text-slate-800">Einstellungen</h1>
+          <p class="text-base text-slate-500">Verwalten Sie Ihr Konto und Ihre Sicherheitseinstellungen</p>
+        </div>
+
+        <!-- Konto -->
+        <div class="border-t-2 border-slate-200 flex flex-col gap-6 pt-8">
+          <h2 class="select-none text-xl font-bold text-slate-800">Konto</h2>
+          <div class="max-w-lg flex flex-col gap-4">
+
+            <!-- Name -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="flex flex-col gap-1.5">
+                <label class="select-none text-sm font-semibold text-slate-800">Vorname</label>
+                <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                  <input type="text" value="Anna" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="select-none text-sm font-semibold text-slate-800">Nachname</label>
+                <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                  <input type="text" value="Schmidt" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="flex flex-col gap-1.5">
+              <label class="select-none text-sm font-semibold text-slate-800">E-Mail</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                <input type="email" value="anna.schmidt@westhafen.de" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
+              </div>
+            </div>
+
+            <div class="flex">
+              <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+                <span class="text-sm font-semibold text-white">Speichern</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Passwort ändern -->
+        <div class="border-t border-slate-200 flex flex-col gap-6 pt-8">
+          <h2 class="select-none text-xl font-bold text-slate-800">Passwort ändern</h2>
+          <div class="max-w-lg flex flex-col gap-4">
+
+            <!-- Current password -->
+            <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+              <label class="select-none text-sm font-semibold text-slate-800">Aktuelles Passwort</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
+                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
+                  <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
+                  <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- New password -->
+            <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+              <label class="select-none text-sm font-semibold text-slate-800">Neues Passwort</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
+                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
+                  <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
+                  <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Confirm new password -->
+            <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+              <label class="select-none text-sm font-semibold text-slate-800">Neues Passwort bestätigen</label>
+              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
+                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
+                  <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
+                  <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex">
+              <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+                <span class="text-sm font-semibold text-white">Passwort ändern</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Gefahrenzone -->
+        <div class="border-t border-slate-200 flex flex-col gap-6 pt-8">
+          <h2 class="select-none text-xl font-bold text-red-700">Gefahrenzone</h2>
+          <div class="max-w-lg p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-red-200 flex items-center justify-between gap-6">
+            <div class="flex flex-col gap-1">
+              <span class="select-none text-sm font-semibold text-slate-800">Konto löschen</span>
+              <span class="select-none text-sm text-slate-500">Alle Daten werden unwiderruflich gelöscht.</span>
+            </div>
+            <button class="select-none px-6 py-2 text-red-700 rounded-full outline outline-1 outline-offset-[-1px] outline-red-300 hover:bg-red-600 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer shrink-0">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span class="text-sm font-semibold">Konto löschen</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
+      <img src="{% static 'img/enetra-logo.png' %}" alt="Enetra" class="h-4 object-contain" />
+      <nav class="flex gap-6 items-center">
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
+      </nav>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+  </body>
+</html>
