@@ -9,9 +9,8 @@
   />
   </button>
   <div
-x-show='show' x-cloak c
-  >
-  <ul  lass="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50"
+  x-show='show' x-cloak >
+    <ul  class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50"
     id="list-drop-down-{{item.internal_id}}"
     @hide="show=false"
 
@@ -32,8 +31,6 @@ x-show='show' x-cloak c
       hx-swap='none'
       type="button"
       hx-on::trigger="event.stopPropagation(); event.preventDefault();"
-
-
     >Löschen</button></li>
   </ul>
 </div>
