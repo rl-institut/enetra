@@ -62,6 +62,11 @@ urlpatterns = [
         name="einstellungen",
     ),
     path(
+        "project_overview/",
+        lambda x: render(x, template_name="core/project-overview.html"),
+        name="project_overview",
+    ),
+    path(
         "szenarienvergleich/",
         lambda x: render(x, template_name="core/szenarienvergleich.html"),
         name="szenarienvergleich",

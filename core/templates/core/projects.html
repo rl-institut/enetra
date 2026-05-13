@@ -75,7 +75,7 @@
             <div class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-6">
               <div class="pb-4 border-b border-slate-200 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
-                  <a href="project-overview.html" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Westhafen</a>
+                  <a href='{% url "core:project_overview" %}' class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Westhafen</a>
                   <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
                       <i data-lucide="ellipsis" class="w-4 h-4"></i>
@@ -122,7 +122,7 @@
             <div class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-6">
               <div class="pb-4 border-b border-slate-200 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
-                  <a href='{% url "core:project-overview" %}' class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Westhafen Test</a>
+                  <a href='{% url "core:project_overview" %}' class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Westhafen Test</a>
                   <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
                       <i data-lucide="ellipsis" class="w-4 h-4"></i>
@@ -169,7 +169,7 @@
                 <!-- Westhafen row -->
                 <tr class="hover:bg-slate-50 transition-colors duration-100">
                   <td class="px-6 py-4">
-                    <a href='{% url "core:project-overview" %}' class="select-none font-semibold text-cyan-700 hover:underline">Westhafen</a>
+                    <a href='{% url "core:project_overview" %}' class="select-none font-semibold text-cyan-700 hover:underline">Westhafen</a>
                   </td>
                   <td class="px-6 py-4">
                     <div class="select-none flex items-center gap-2 text-slate-500">
@@ -192,7 +192,7 @@
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex items-center justify-end gap-3">
-                      <a href='{% url "core:project-overview" %}' class="select-none flex items-center gap-2 px-4 py-1.5 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 cursor-pointer whitespace-nowrap">
+                      <a href='{% url "core:project_overview" %}' class="select-none flex items-center gap-2 px-4 py-1.5 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 cursor-pointer whitespace-nowrap">
                         <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
                         <span class="text-xs font-semibold">Szenarienvergleich</span>
                       </a>
@@ -220,7 +220,7 @@
                 <!-- Westhafen Test row -->
                 <tr class="hover:bg-slate-50 transition-colors duration-100">
                   <td class="px-6 py-4">
-                    <a href='{% url "core:project-overview" %}' class="select-none font-semibold text-cyan-700 hover:underline">Westhafen Test</a>
+                    <a href='{% url "core:project_overview" %}' class="select-none font-semibold text-cyan-700 hover:underline">Westhafen Test</a>
                   </td>
                   <td class="px-6 py-4">
                     <div class="select-none flex items-center gap-2 text-slate-500">

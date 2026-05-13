@@ -1,0 +1,182 @@
+<c-vars
+  map_id="flaechen-map"
+  scenario_event=""
+  initial_scenario="2"
+/>
+
+<style>
+  .map-label-icon {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+</style>
+
+<div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200">
+
+  <!-- Card header -->
+  <div class="select-none relative z-[1001] flex items-center justify-between px-6 py-4">
+    <div class="flex items-center gap-4">
+      <span class="text-base font-bold text-slate-800 uppercase">Flächenübersicht</span>
+      <!-- Metric dropdown -->
+      <div class="relative" x-data="{ open: false, selected: 'Stromerzeugung' }">
+        <button @click="open = !open" class="select-none h-10 bg-white hover:bg-slate-50 transition-colors duration-150 px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-300 flex items-center gap-2 cursor-pointer">
+          <span class="text-sm text-slate-800" x-text="selected"></span>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-slate-800"></i>
+        </button>
+        <div x-show="open" @click.outside="open = false" class="absolute left-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-[1002] min-w-full py-1">
+          <button @click="selected = 'Stromerzeugung'; open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150">Stromerzeugung</button>
+          <button @click="selected = 'Wärmeerzeugung'; open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150">Wärmeerzeugung</button>
+          <button @click="selected = 'CO₂-Emissionen'; open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150">CO₂-Emissionen</button>
+        </div>
+      </div>
+    </div>
+    <!-- Ellipsis menu -->
+    <div class="relative" x-data="{ open: false }">
+      <button @click="open = !open" class="select-none cursor-pointer text-slate-400 hover:text-slate-600 transition-colors duration-150">
+        <i data-lucide="ellipsis" class="w-5 h-5"></i>
+      </button>
+      <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-[1002] py-1 w-48">
+        <button @click="open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 flex items-center gap-3">
+          <i data-lucide="download" class="w-4 h-4 shrink-0"></i> CSV herunterladen
+        </button>
+        <button @click="open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 flex items-center gap-3">
+          <i data-lucide="table" class="w-4 h-4 shrink-0"></i> Excel herunterladen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card body: map + side panel (slot) -->
+  <div class="flex border-t border-slate-200">
+    <div id="{{ map_id }}" class="flex-1 rounded-bl-lg" style="height: 480px;"></div>
+    {{ slot }}
+  </div>
+
+</div>
+
+<script>
+(function(mapId, scenarioEvent, initialScenario) {
+
+  const map = L.map(mapId, { zoomControl: true }).setView([52.537, 13.335], 17);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  }).addTo(map);
+
+  const polygonData = [
+    { name: 'Freifläche 3', category: 'area',     variant: 'viewOnly', values: { 1: 1050, 2: 970,  3: 820,  4: 600  }, coords: [[52.53820911852274,13.336963750628302],[52.538392579685755,13.335657660186769],[52.53820021262153,13.335575663477437],[52.538013188278775,13.336887610826778],[52.53820911852274,13.336963750628302]] },
+    { name: 'Freifläche 1', category: 'area',     variant: 'default',  values: { 1: 0,    2: 0,    3: 0,    4: 0    }, coords: [[52.536532,13.336697],[52.536789,13.334836],[52.536513,13.33473],[52.536222,13.336747],[52.536532,13.336697]] },
+    { name: 'Freifläche 2', category: 'area',     variant: 'viewOnly', values: { 1: 0,    2: 0,    3: 0,    4: 0    }, coords: [[52.53705757704769,13.332920159563765],[52.53679582510043,13.334647879390019],[52.53653407159268,13.334580938215938],[52.53679776400946,13.332712960691614]] },
+    { name: 'Lagerhalle 1', category: 'building', variant: 'default',  values: { 1: 480,  2: 438,  3: 390,  4: 290  }, coords: [[52.536576,13.33873],[52.536819,13.33697],[52.536617,13.336901],[52.536334,13.338668],[52.536576,13.33873]] },
+    { name: 'Hauptbüros',   category: 'building', variant: 'viewOnly', values: { 1: 0,    2: 0,    3: 0,    4: 0    }, coords: [[52.537172,13.334709],[52.537315,13.333645],[52.537085,13.33356],[52.53694,13.334625],[52.537172,13.334709]] },
+    { name: 'Lagerhalle 2', category: 'building', variant: 'default',  values: { 1: 340,  2: 389,  3: 310,  4: 250  }, coords: [[52.537553639359025,13.3390283106798],[52.53769435445921,13.338006280267033],[52.53747882861581,13.337909641288174],[52.53734345647075,13.338893601800182],[52.537553639359025,13.3390283106798]] },
+    { name: 'Büros',        category: 'building', variant: 'viewOnly', values: { 1: 85,   2: 98,   3: 124,  4: 75   }, coords: [[52.537127,13.335034],[52.536902,13.336686],[52.536636,13.336590],[52.536851,13.334918]] },
+    { name: 'Lagerhalle 4', category: 'building', variant: 'default',  values: { 1: 95,   2: 200,  3: 100,  4: 83   }, coords: [[52.53808024975064,13.33531497102652],[52.53783086458164,13.337086303402451],[52.53761210449515,13.337005379588323],[52.537866959891154,13.33523045059843]] },
+  ];
+
+  // Per-scenario color palettes: each entry is [minValue, strokeColor, fillColor]
+  const palettes = {
+    1: [ [700, '#78350F','#92400E'], [425, '#92400E','#B45309'], [350, '#B45309','#D97706'], [150, '#D97706','#F59E0B'], [0, '#F59E0B','#FCD34D'] ], // Ziel 2035 – amber
+    2: [ [700, '#164E63','#0E7490'], [425, '#0E7490','#0891B2'], [350, '#0891B2','#06B6D4'], [150, '#06B6D4','#22D3EE'], [0, '#22D3EE','#67E8F9'] ], // Wasserstoff – cyan
+    3: [ [700, '#14532D','#166534'], [425, '#166534','#15803D'], [350, '#15803D','#16A34A'], [150, '#16A34A','#22C55E'], [0, '#22C55E','#4ADE80'] ], // PV-Integration – green
+    4: [ [700, '#7C2D12','#9A3412'], [425, '#9A3412','#C2410C'], [350, '#C2410C','#EA580C'], [150, '#EA580C','#F97316'], [0, '#F97316','#FED7AA'] ], // Ziel 2030 – orange
+  };
+
+  function valueToStyle(value, scenarioId) {
+    if (value === 0) return { color: '#CBD5E1', fillColor: '#E2E8F0', fillOpacity: 0.6, weight: 0 };
+    const [, stroke, fill] = palettes[scenarioId].find(([threshold]) => value >= threshold);
+    return { color: stroke, fillColor: fill, fillOpacity: 0.85, weight: 1.5 };
+  }
+
+  function centroid(coords) {
+    const pts = coords.filter((c, i) =>
+      !(i > 0 && c[0] === coords[0][0] && c[1] === coords[0][1])
+    );
+    return [
+      pts.reduce((s, c) => s + c[0], 0) / pts.length,
+      pts.reduce((s, c) => s + c[1], 0) / pts.length,
+    ];
+  }
+
+  function makeLabelIcon(name, opacity) {
+    const shadow = '-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff';
+    return L.divIcon({
+      html: `<span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:500;font-size:14px;color:#000;text-shadow:${shadow};white-space:nowrap;transform:translate(-50%,-50%);opacity:${opacity}">${name}</span>`,
+      className: 'map-label-icon',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+  }
+
+  const layers = [];
+  let selected = null;
+  let activeScenario = initialScenario;
+
+  function resetStyles() {
+    selected = null;
+    layers.forEach(entry => {
+      entry.poly.setStyle(entry.style);
+      entry.label.getElement().querySelector('span').style.opacity = entry.data.variant === 'default' ? 1 : 0.6;
+    });
+  }
+
+  function selectPoly(target) {
+    selected = target;
+    layers.forEach(entry => {
+      const span = entry.label.getElement().querySelector('span');
+      if (entry.poly === target.poly) {
+        entry.poly.setStyle({ ...entry.style, color: '#5B21B6', weight: 4 });
+        span.style.opacity = 1;
+      } else if (entry.data.variant === 'default') {
+        entry.poly.setStyle({ ...entry.style, fillOpacity: 0.6 });
+        span.style.opacity = 0.6;
+      } else {
+        entry.poly.setStyle({ ...entry.style, fillOpacity: 0.4 });
+        span.style.opacity = 0.4;
+      }
+    });
+  }
+
+  function updateMapForScenario(scenarioId) {
+    activeScenario = scenarioId;
+    selected = null;
+    layers.forEach(entry => {
+      const newStyle = valueToStyle(entry.data.values[scenarioId], scenarioId);
+      entry.style = newStyle;
+      entry.poly.setStyle(newStyle);
+      entry.label.getElement().querySelector('span').style.opacity = entry.data.variant === 'default' ? 1 : 0.6;
+    });
+  }
+
+  if (scenarioEvent) {
+    document.addEventListener(scenarioEvent, e => updateMapForScenario(e.detail));
+  }
+
+  polygonData.forEach(data => {
+    const style = valueToStyle(data.values[activeScenario], activeScenario);
+    const poly  = L.polygon(data.coords, style).addTo(map);
+    const defaultOpacity = data.variant === 'default' ? 1 : 0.6;
+    const label = L.marker(centroid(data.coords), {
+      icon: makeLabelIcon(data.name, defaultOpacity),
+      interactive: false,
+      zIndexOffset: 500,
+    }).addTo(map);
+
+    const entry = { poly, label, data, style };
+    layers.push(entry);
+
+    if (data.variant === 'default') {
+      poly.on('click', ev => {
+        L.DomEvent.stopPropagation(ev);
+        selected && selected.poly === poly ? resetStyles() : selectPoly(entry);
+      });
+    }
+  });
+
+  map.on('click', resetStyles);
+
+})('{{ map_id }}', '{{ scenario_event }}', {{ initial_scenario }});
+</script>
