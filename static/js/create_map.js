@@ -175,6 +175,12 @@ class MyMap {
 
     });
 
+    if (this.isEditing) {
+      this.map.dragging.disable();
+    } else {
+      this.map.dragging.enable();
+    }
+
     // turn on markers and hovers, but only if no layer is in editable mode
     // since editing is not easy with hovers/icons etc
     if (!this.isEditing) {
@@ -225,6 +231,8 @@ class MyMap {
 
   }
 
+
+
   toggleEditable() {
     this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
       if (layer.editing.enabled()) {
@@ -235,8 +243,65 @@ class MyMap {
     });
   }
 
+  _applyToEditableVertices(layer, transformFn) {
+    const handler = layer.editing._verticesHandlers?.[0];
+    if (handler?._markers) {
+      handler._markers.forEach((marker) => {
+        if (!marker._origLatLng) return;
+        const [newLat, newLng] = transformFn(marker._origLatLng.lat, marker._origLatLng.lng);
+        L.extend(marker._origLatLng, { lat: newLat, lng: newLng });
+        marker.setLatLng([newLat, newLng]);
+      });
+      layer.redraw();
+      handler.updateMarkers();
+    } else {
+      layer.setLatLngs([layer.getLatLngs()[0].map(ll => transformFn(ll.lat, ll.lng))]);
+    }
+  }
+
+  shiftEditablePolygonLatLngs(d_lat, d_lng) {
+    this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
+      this._applyToEditableVertices(layer, (lat, lng) => [lat + d_lat, lng + d_lng]);
+    });
+  }
+
+  rotateEditablePolygonLatLngs(angle) {
+    this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
+      const center = layer.getCenter();
+      const rad = (angle * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      this._applyToEditableVertices(layer, (lat, lng) => {
+        const dlat = lat - center.lat;
+        const dlng = lng - center.lng;
+        return [center.lat + dlat * cos - dlng * sin, center.lng + dlat * sin + dlng * cos];
+      });
+    });
+  }
+
+
+
   _bindEvents() {
     const editLayerName = this._getEditLayerName();
+    let mouseStart = null;
+
+    this.map.on('mousedown', (e) => {
+      if (!this.isEditing) return;
+      mouseStart = e.latlng;
+    });
+
+    this.map.on('mousemove', (e) => {
+      if (!mouseStart) return;
+      const dlat = mouseStart.lat - e.latlng.lat;
+      const dlng = mouseStart.lng - e.latlng.lng;
+      this.shiftEditablePolygonLatLngs(-dlat, -dlng);
+      mouseStart = e.latlng;
+    });
+
+    this.map.on('mouseup', () => {
+      if (!mouseStart) return;
+      mouseStart = null;
+    });
 
     const dispatchLayerChanges = (event) => {
       const layers = []; this.featureGroups[editLayerName].eachLayer((layer) => layers.push(layer));
