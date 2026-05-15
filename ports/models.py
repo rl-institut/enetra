@@ -158,6 +158,9 @@ class ScenarioItem(models.Model):
     def deleted_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-deleted"
 
+    def layer_name(self):
+        return f"{self._meta.model_name}"
+
     def icon(self) -> str:
         """The cotton template used as icon for this model"""
         return "icon.circle_full"
@@ -301,6 +304,9 @@ class Area(ScenarioItem):
         blank=True,
         default=None,
     )
+
+    def layer_name(self):
+        return f"{self.area_type}-{self._meta.model_name}"
 
     @classmethod
     def adjust_Form(

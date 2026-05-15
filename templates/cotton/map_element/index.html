@@ -12,11 +12,13 @@ Add data-storage for allowed interaction?
 
 @item-selected="if (event.detail.value=='{{key}}') selected=true"
 {% endcomment %}
+
+<!-- @click='selected =!selected;$dispatch("map-redraw")' -->
 <div
-    x-data='{selected: {{selected|lower}}}'
+    x-data='{selected: {{selected|lower}}, highlighted: false}'
     @item-selected.window="if (event.detail.value=='{{key}}') selected=true; $dispatch('map-redraw')"
     @item-unselected.window="if (event.detail.value=='{{key}}') selected=false; $dispatch('map-redraw')"
-    @click='selected =!selected;$dispatch("map-redraw")'
+    @click.ctrl ="highlighted = !highlighted; $dispatch('map-redraw')"
     @map-layer-shift-clicked='selected =!selected; console.log("map-layer-shift-clicked caught. toggled the selection of the element");'
     @input="$dispatch('geom-changed');console.log('geom changed')"
     @keyup.escape.window='selected=false; $dispatch("map-redraw")'
@@ -29,7 +31,12 @@ Add data-storage for allowed interaction?
     map-draw-element
     inline-block
     '
-    :class='selected ? "border-6 border-orange-500 map-layer-editable" : "{{layer}}"'
+    :class='
+    (selected && "border-6 border-orange-500 map-layer-editable") ||
+    (highlighted && "border-6 border-green-500 map-layer-selected") ||
+            ("{{layer}}")'
 >
+    <div x-text="highlighted"></div>
+    <div x-text="selected"></div>
 {{slot}}
 </div>

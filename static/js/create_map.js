@@ -75,24 +75,24 @@ class MyMap {
 
     // Do we need a Toolbar?
     // NOTE: selectedPathOptions dont work since we style each layer separately
-    var drawControl = new L.Control.Draw({
-      edit: {
-        featureGroup: this.featureGroups[editLayerName],
-        remove: false,
-        poly: { allowIntersection: false },
-      },
-      draw: {
-        marker: false,
-        circle: false,
-        polyline: false,
-        rectangle: false,
-        polygon: {
-          allowIntersection: true,
-          showArea: true,
-        },
-      },
-    })
-    this.map.addControl(drawControl);
+    // var drawControl = new L.Control.Draw({
+    //   edit: {
+    //     featureGroup: this.featureGroups[editLayerName],
+    //     remove: false,
+    //     poly: { allowIntersection: false },
+    //   },
+    //   draw: {
+    //     marker: false,
+    //     circle: false,
+    //     polyline: false,
+    //     rectangle: false,
+    //     polygon: {
+    //       allowIntersection: true,
+    //       showArea: true,
+    //     },
+    //   },
+    // })
+    // this.map.addControl(drawControl);
 
 
     // Do we want custom edit handlers?

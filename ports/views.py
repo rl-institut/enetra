@@ -38,7 +38,6 @@ from .models import ElectricComponent
 from .models import Load
 from .models import Scenario
 from .models import ScenarioItem
-from .models import Solar
 
 logger = logging.getLogger("django-ports")
 
@@ -56,7 +55,15 @@ def get_authentification(
 
 def test(request):
     context = {}
-    return render(request, "ports/test.html", context)
+    scenario = Scenario.objects.last()
+    all_areas = list(Area.objects.filter(scenario=scenario))
+    building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
+    open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
+    area_forms = []
+    for a in open_areas + building_areas:
+        area_forms.append(AreaItemFormFactory()(instance=a))
+    context["area_forms"] = area_forms
+    return render(request, "ports/map_test.html", context)
 
 
 def patch_area(request, scenario_internal_id: UUID):
@@ -505,7 +512,7 @@ class DetailsView(View):
         form.is_valid()
         self.instance.delete()
         self.context["status"] = "deleted"
-        return render(
+        response = render(
             self.request,
             "ports/partials/update_delete_create_scenario_item.html",
             self.context,

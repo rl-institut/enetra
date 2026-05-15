@@ -1,0 +1,38 @@
+
+{% extends "core/base.html" %}
+
+{% load partials %}
+{% load static %}
+
+{% comment %}
+  Based on
+  https://github.com/bmlancien/enetra-app-prototype/blob/main/app/page.tsx
+{% endcomment %}
+{% block header %}
+  {% include "ports/imports_app.html" %}
+{% endblock header %}
+{% block sideBar %}
+  <div>
+  somewhere in the dom there have to be map_elements
+
+      {% for geom_form in area_forms %}
+
+      {% include 'ports/partials/map_element.html' with form=geom_form %}
+
+      {% endfor %}
+
+
+
+  </div>
+{% endblock sideBar %}
+{% block sideBarFooter %}
+no footer
+{% endblock sideBarFooter %}
+{% block mainContent %}
+<c-map_container>
+
+  <c-slot name="legend">
+    some legend
+  </c-slot>
+</c-map_container>
+{% endblock mainContent %}
