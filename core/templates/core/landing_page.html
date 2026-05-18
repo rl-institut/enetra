@@ -71,12 +71,22 @@
 
         <!-- Desktop nav -->
         <nav aria-label="Hauptnavigation" class="hidden lg:flex items-center gap-8">
-          <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's</a>
+          <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's{{request.user}}</a>
           <a href="#ueber-das-projekt" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Über das Projekt</a>
+          {% if not request.user.is_authenticated %}
           <a href="{% url 'core:login' %}" class="flex items-center gap-2 text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">
             <i data-lucide="circle-user" class="w-4 h-4"></i>
             Anmelden
           </a>
+          {% else %}
+          <form action="{% url 'core:logout' %}", method="post">
+            {% csrf_token %}
+          <button class="flex items-center gap-2 text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">
+            <i data-lucide="circle-user" class="w-4 h-4"></i>
+            Abmelden
+          </button>
+          </form>
+          {% endif %}
         </nav>
 
         <!-- Mobile hamburger button -->
@@ -330,7 +340,7 @@
                 </div>
               </div>
               <div class="flex flex-wrap gap-4 items-center">
-                <a href="{% url 'core:register' %}" class="select-none px-8 py-3 bg-cyan-700 text-white rounded-full text-base font-bold uppercase tracking-[0.32px] border border-white hover:bg-cyan-800 transition-colors duration-150 shrink-0">
+                <a href="{% url 'core:signup' %}" class="select-none px-8 py-3 bg-cyan-700 text-white rounded-full text-base font-bold uppercase tracking-[0.32px] border border-white hover:bg-cyan-800 transition-colors duration-150 shrink-0">
                   Zum Tool registrieren
                 </a>
                 <a href="{% url 'core:login' %}" class="select-none px-8 py-3 bg-white text-cyan-700 rounded-full text-base uppercase tracking-[0.32px] border border-cyan-700 hover:bg-cyan-50 transition-colors duration-150 shrink-0">
