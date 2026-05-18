@@ -57,7 +57,7 @@ function getStyle(name, id) {
     pane: 'overlayPane', // any registered map pane name
     attribution: null,
   }
-  console.log(name)
+
   let overrides = {}
   if (name.includes('edit')) overrides = { color: '#ea580c', fillColor: '#fdba74', dashArray: '8,5', fillOpacity: 0.45, weight: 2 } // orange — active editing
   else if (name.includes('selected')) overrides = { color: '#0284c7', fillColor: '#7dd3fc', fillOpacity: 0.45, weight: 2 } // sky blue — selected

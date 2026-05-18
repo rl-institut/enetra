@@ -7,6 +7,11 @@ function debounce(func, timeout = 300) {
 }
 
 class MyMap {
+  static Mode = Object.freeze({
+    EDIT: "edit",
+    ROTATE: 'rotate',
+    MOVE: "move"
+  });
   constructor(selector, settings = {}) {
     this.selector = selector;
     this.settings = settings;
@@ -15,6 +20,8 @@ class MyMap {
     this.drawnItems = null;
     this.featureGroups = {};
     this.isEditing = null;
+    this.editingMode = MyMap.Mode.EDIT
+
 
     this._initMap();
     this._initLayers();
@@ -58,6 +65,15 @@ class MyMap {
     this.osm.addTo(this.map);
   }
 
+  setMode(mode) {
+    console.assert(
+      Object.values(MyMap.Mode).includes(mode),
+      "Invalid status"
+    );
+    this.editingMode = mode;
+    this.drawElements();
+
+  }
   _initLayers() {
 
     this.drawnItems = L.featureGroup().addTo(this.map);
@@ -73,27 +89,54 @@ class MyMap {
 
     const editLayerName = this._getEditLayerName();
 
-    // Do we need a Toolbar?
-    // NOTE: selectedPathOptions dont work since we style each layer separately
-    // var drawControl = new L.Control.Draw({
-    //   edit: {
-    //     featureGroup: this.featureGroups[editLayerName],
-    //     remove: false,
-    //     poly: { allowIntersection: false },
-    //   },
-    //   draw: {
-    //     marker: false,
-    //     circle: false,
-    //     polyline: false,
-    //     rectangle: false,
-    //     polygon: {
-    //       allowIntersection: true,
-    //       showArea: true,
-    //     },
-    //   },
-    // })
-    // this.map.addControl(drawControl);
+    this.map.pm.addControls({
+      position: "topleft",
+      drawMarker: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawPolygon: false,
+      drawCircle: false,
+      drawText: false,
+      drawCircleMarker: false,
+      editMode: false,
+      dragMode: false,
+      cutPolygon: false,
+      removalMode: false,
+      rotateMode: false
+    });
 
+    // editMode and rotateMode as name would collide with default buttons
+    this.map.pm.Toolbar.createCustomControl({
+      name: "moveModeCustom",
+      block: "custom",
+      title: "Move Polygon",
+      className: "leaflet-pm-icon-drag",
+      toggle: false,
+      onClick: () => {
+        this.setMode(MyMap.Mode.MOVE);
+      },
+    });
+
+    this.map.pm.Toolbar.createCustomControl({
+      name: "rotatelModeCustom",
+      block: "custom",
+      title: "Rotate Polygon",
+      className: "leaflet-pm-icon-rotate",
+      toggle: false,
+      onClick: () => {
+        this.setMode(MyMap.Mode.ROTATE);
+      },
+    });
+    this.map.pm.Toolbar.createCustomControl({
+      name: "editModeCustom",
+      block: "custom",
+      title: "Edit Polygon Verticies",
+      className: "leaflet-pm-icon-edit",
+      toggle: false,
+      onClick: () => {
+        this.setMode(MyMap.Mode.EDIT);
+      },
+    });
 
     // Do we want custom edit handlers?
     // changing the default css could also be an option
@@ -163,15 +206,26 @@ class MyMap {
         console.log('id: ' + id + ' top clicked. Layer: ' + e.layer);
       });
 
-      if (layer_name === editLayerName) {
-        layer.editing.enable();
-        this.isEditing = true;
-      }
 
       layers[id] = layer;
       layer.id = id;
       layer.geojson = geojson;
       this.featureGroups[layer_name].addLayer(layer);
+
+      if (layer_name === editLayerName) {
+        console.log(layer)
+        if (this.editingMode === "rotate") {
+          layer.pm.enableRotate();
+        } else if (this.editingMode === "move") {
+          layer.pm.enableLayerDrag();
+        } else {
+          layer.pm.enable({
+            allowEditing: true
+          }
+          )
+        }
+      }
+      this.isEditing = true;
 
     });
 
@@ -235,10 +289,15 @@ class MyMap {
 
   toggleEditable() {
     this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
-      if (layer.editing.enabled()) {
-        layer.editing.disable();
+      if (layer.pm.enabled()) {
+        layer.pm.disable();
       } else {
-        layer.editing.enable();
+        layer.pm.enable(
+          {
+            allowDragging: true,
+            allowEditing: false
+          }
+        );
       }
     });
   }
@@ -285,46 +344,38 @@ class MyMap {
     const editLayerName = this._getEditLayerName();
     let mouseStart = null;
 
-    this.map.on('mousedown', (e) => {
-      if (!this.isEditing) return;
-      mouseStart = e.latlng;
-    });
+    // this.map.on('mousedown', (e) => {
+    //   if (!this.isEditing) return;
+    //   mouseStart = e.latlng;
+    // });
+    //
+    // this.map.on('mousemove', (e) => {
+    //   if (!mouseStart) return;
+    //   const dlat = mouseStart.lat - e.latlng.lat;
+    //   const dlng = mouseStart.lng - e.latlng.lng;
+    //   this.shiftEditablePolygonLatLngs(-dlat, -dlng);
+    //   mouseStart = e.latlng;
+    // });
+    //
+    // this.map.on('mouseup', () => {
+    //   if (!mouseStart) return;
+    //   mouseStart = null;
+    // });
 
-    this.map.on('mousemove', (e) => {
-      if (!mouseStart) return;
-      const dlat = mouseStart.lat - e.latlng.lat;
-      const dlng = mouseStart.lng - e.latlng.lng;
-      this.shiftEditablePolygonLatLngs(-dlat, -dlng);
-      mouseStart = e.latlng;
-    });
-
-    this.map.on('mouseup', () => {
-      if (!mouseStart) return;
-      mouseStart = null;
-    });
-
+    // When changes are excepted call this function to pass changed map geometries to inputs
+    // via event/event listener
     const dispatchLayerChanges = (event) => {
       const layers = []; this.featureGroups[editLayerName].eachLayer((layer) => layers.push(layer));
 
       this.map._container.dispatchEvent(new CustomEvent('map-elements-edited', {
         detail: { layers, originalEvent: event },
       }));
-
     }
-
     document.addEventListener('finish-create-polygon', (event) => {
 
       dispatchLayerChanges(event)
     });
 
-    [
-      // lets patch the input only when editing finishes
-      // 'draw:editvertex', 'draw:editresize', 'draw:editmove',
-      L.Draw.Event.EDITED].forEach((eventName) => {
-        this.map.addEventListener(eventName, (event) => {
-          dispatchLayerChanges(event)
-        });
-      });
 
     this.map.on(L.Draw.Event.CREATED, (event) => {
       this.map._container.dispatchEvent(new CustomEvent('some-map-element-created', {
