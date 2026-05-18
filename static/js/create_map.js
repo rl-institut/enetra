@@ -213,7 +213,7 @@ class MyMap {
       this.featureGroups[layer_name].addLayer(layer);
 
       if (layer_name === editLayerName) {
-        console.log(layer)
+        this.isEditing = true;
         if (this.editingMode === "rotate") {
           layer.pm.enableRotate();
         } else if (this.editingMode === "move") {
@@ -225,15 +225,9 @@ class MyMap {
           )
         }
       }
-      this.isEditing = true;
 
     });
 
-    if (this.isEditing) {
-      this.map.dragging.disable();
-    } else {
-      this.map.dragging.enable();
-    }
 
     // turn on markers and hovers, but only if no layer is in editable mode
     // since editing is not easy with hovers/icons etc
