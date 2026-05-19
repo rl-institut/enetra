@@ -144,7 +144,7 @@
           </c-slot>
         </c-detail-sidebar-section>
         {% endcomment %}
-        <netzanschluss class="block">
+        <netzanschluss class="block" inert>
         <div class="flex flex-col gap-[16px] pt-[8px]">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
@@ -155,6 +155,7 @@
             NETZANSCHLÜSSE
             <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
           </h3>
+            not implemented/ made inert
           <div class="flex flex-col gap-[8px]">
             <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
             <c-select.index selectedValue="HV" inputName="AnschlussType">
