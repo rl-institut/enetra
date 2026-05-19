@@ -58,7 +58,9 @@
       <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
         ENERGIETECHNIK
       </h2>
-      {% include "ports/partials/detail_item_ellipsis.html" %}
+      {% with hx_target="#form_"|add:internal_id %}
+      {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
+      {% endwith %}
       </div>
 
 
@@ -133,7 +135,9 @@
 
 
       {{ errors }}
-      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
+      {% with hx_target="#form_"|add:internal_id %}
+        {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
+      {% endwith %}
 
         <button
           hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"

@@ -61,8 +61,11 @@
           {% endif %}
 
       </div>
-      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
-      {% include "ports/partials/detail_item_ellipsis.html" %}
+
+      {% with hx_target="#form_"|add:internal_id %}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
+      {% endwith %}
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">

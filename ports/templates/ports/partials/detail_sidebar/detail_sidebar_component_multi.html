@@ -1,7 +1,8 @@
 {% load constants %}
 
 
-<form id="form_{{instances.0.internal_id}}">
+{% with internal_id=instances.0.internal_id|stringformat:"s" %}
+<form id="form_{{internal_id}}">
 
   <div class="htmx-indicator bg-red-500 loader"></div>
   <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
@@ -59,6 +60,7 @@
 
       {% endif %}
       <button
+        type='button'
         @click="isOpen=false"
         class="flex-shrink-0 transition-opacity hover:opacity-60"
       >
@@ -70,15 +72,20 @@
 
   <details-sidebar-content>
     <div class="px-4 py-4">
-      <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-        ENERGIETECHNIK
-      </h2>
+      <div class="flex items-center justify-between mb-[24px]">
+        <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
+          ENERGIETECHNIK
+        </h2>
+
+        {% with hx_target="#form_"|add:internal_id %}
+          {% include "ports/partials/detail_item_ellipsis.html" with instance=instances.0 scenario=scenario hx_target=hx_target %}
+        {% endwith %}
+      </div>
 
       <div class="flex flex-col gap-[16px]">
         <div class="flex flex-col gap-[8px]">
           <label class="text-[14px] font-semibold text-[#1e293b]"
-            >Komponente aus Vorlage</label
-          >
+          >Komponente aus Vorlage</label>
           <c-select.index classButton="border-[#cbd5e1]!" selectedValue="1">
             <c-select.button selectValue="1"> Dieselgenerator </c-select.button>
           </c-select.index>
@@ -176,6 +183,7 @@
     </div>
   </details-sidebar-content>
 </form>
+{% endwith %}
 
 {% if update %}
 
