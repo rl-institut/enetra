@@ -19,7 +19,16 @@
 
         {% comment %}
         the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
+
+        NOTE:
+        trying to control the oob-swap via hx-swap-oob does not work with the hx-preserved input
+        hx-swap-oob='none'
+        if swaps should be skipped, dont pass them to the template
+        for live checking of duplicates the uniqueid can be used
         {% endcomment %}
+
+      {% partialdef list-item-and-form inline %}
+
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
@@ -35,10 +44,11 @@
             {% include "ports/partials/list_item_ellipsis.html" %}
           </c-slot>
           </c-list.item>
+      {% endpartialdef %}
         {% endfor %}
       </c-list>
-
     </form>
+
       <button type='button'
               class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
@@ -65,21 +75,7 @@
         hx-get this template with the item injected
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
           {% endcomment %}
-          <c-list.item
-            id='button-list-item-{{ item.internal_id }}'
-            :defaultHxDetails=True
-            :selected=False
-            :indicated=False
-            :item=item
-            hx-oob-swap='true'
-            value='{{ item.internal_id }}'
-            title='{{item.name}}'
-            radioName='internal_id'
-        >
-          <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" %}
-          </c-slot>
-          </c-list.item>
+      {% partial list-item-and-form %}
         {% endfor %}
       </c-list>
     </form>
