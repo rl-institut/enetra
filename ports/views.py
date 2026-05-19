@@ -536,9 +536,10 @@ class DetailsView(View):
             )
         # Create a new item and pass it back in the default state
         self.Form(data={"internal_id": uuid4()})
-        # do NOT pass the request.POST directly which could lead to unauthorized injections
-        # NOTE: POST.get(k) handles unpacking of values e.g. value=="foo" instead of ["foo"]
-        data = {k: request.POST.get(k) for k in request.POST}
+        # do NOT pass the request.POST directly into a query
+        # which could lead to unauthorized injections
+        # ScenarioItem.create_new sanitizes input for allowed attributes
+        data = request.POST.dict()
         if self.Model == Area:
             new_instance = Area.create_new(self.scenario, **data)
             new_instance.save()
