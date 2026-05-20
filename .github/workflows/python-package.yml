@@ -8,7 +8,6 @@ on:
       - dev
 
 jobs:
-  # Label of the runner job
   dev-tools:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -38,48 +37,35 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [ "3.10" ]
-    # You must use a Linux environment when using service containers or container jobs
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Service containers to run with `runner-job`
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/enetra-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     services:
-      # Label used to access the service container
       postgres:
-        # Docker Hub image
         image: postgis/postgis
-        # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: DbName
-        # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          # Maps tcp port 5432 on service container to the host
           - 5432:5432
 
     steps:
       - name: Create postgis extensions
         run: |
-          PGPASSWORD=postgres psql -h localhost -d DbName -U postgres -c 'create extension postgis_raster;'
-      # Downloads a copy of the code in your repository before running CI tests
+          PGPASSWORD=postgres psql -h postgres -d DbName -U postgres -c 'create extension postgis_raster;'
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Set Up Gdal
-        run: |
-          sudo apt-get update
-          sudo apt-get install gdal-bin
-          echo ogrinfo --version
-
       - name: setup-chromedriver
         uses: nanasess/setup-chromedriver@v2.2.0
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -95,15 +81,12 @@ jobs:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_ADMIN_PASSWORD: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
-          # Replace with your own database info
-          DATABASE_URL: postgis://postgres:postgres@localhost/DbName
+          DATABASE_URL: postgis://postgres:postgres@postgres/DbName
           CELERY_TASK_ALWAYS_EAGER: True
           CELERY_BROKER_URL: pyamqp://guest@localhost//
           TILING_SERVICE_TOKEN: ${{ secrets.TILING_SERVICE_TOKEN }}
           TILING_SERVICE_STYLE_ID: basic-v2
           DJANGO_SETTINGS_MODULE: enetra.settings
-          # The hostname used to communicate with the PostgreSQL service container
-          POSTGRES_HOST: localhost
-          # The default PostgreSQL port
+          POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
           DJANGO_SECURE_SSL_REDIRECT: False

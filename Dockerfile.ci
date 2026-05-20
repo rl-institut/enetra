@@ -1,0 +1,19 @@
+FROM python:3.10-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev \
+    git \
+    wget \
+    gnupg \
+    ca-certificates \
+    postgresql-client \
+ && wget -qO- https://dl.google.com/linux/linux_signing_key.pub \
+    | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+ && echo "deb [signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+    > /etc/apt/sources.list.d/google-chrome.list \
+ && apt-get update && apt-get install -y --no-install-recommends \
+    google-chrome-stable \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
