@@ -37,7 +37,7 @@
     <div class="flex flex-col gap-[16px]">
 
       <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Name</label>
+        <label class="inline font-semibold text-[14px] text-[#1e293b]">Name</label>
         <c-field-required :field="form.name" />
 
       <c-input :field=form.name x-data=""
@@ -47,9 +47,11 @@
       </div>
 
       <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+          <div>
+            <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+            <c-field-required :field="form.template" />
+          </div>
 
-        <c-field-required :field="form.template" />
       <c-input :field=form.template x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
         </c-input>
@@ -57,8 +59,10 @@
       </div>
 
 <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
-        <c-field-required :field="form.factor" />
+          <div>
+            <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
+            <c-field-required :field="form.factor" />
+          </div>
       <c-input :field=form.factor x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Multiplikator eingeben">
         </c-input>

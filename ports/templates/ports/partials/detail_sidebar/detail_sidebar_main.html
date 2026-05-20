@@ -78,7 +78,10 @@
     {% comment %}
      Do we need this special emitting of value changes?
     {% endcomment %}
+            <div>
+
             <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label> <c-field-required :field=form.name />
+            </div>
       <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch('{{ itemchange_event|default:'itemChanged' }}', {value: $el.value});" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
       </c-input>
     </div>
@@ -101,7 +104,10 @@
 
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
-      <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label><c-field-required :field=form.name />
+            <div>
+      <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label>
+              <c-field-required :field=form.name />
+            </div>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
           <c-select.button selectValue={{ value }}>

@@ -90,10 +90,13 @@ if DEBUG:
     INSTALLED_APPS.insert(0, "whitenoise.runserver_nostatic")
     WHITENOISE_MAX_AGE = 0
 
+# LocaleMiddleware takes care of translating django default messages
+# based on language query param, or Accept-Language header
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
