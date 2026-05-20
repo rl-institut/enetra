@@ -46,21 +46,17 @@ def signup(request):
             login(request, user, "django.contrib.auth.backends.ModelBackend")
             return redirect(reverse("core:landing_page"))
         else:
+            token = signing.dumps(user.username)
+            signup_url = request.build_absolute_uri(reverse("core:signup") + f"?token={token}")
             user.email_user(
                 subject=_("Enetra Registrierung"),
                 message=render_to_string(
                     "core/registration/email_signup.txt",
-                    {
-                        "host_url": settings.DJANGO_HOST_URL,
-                        "token": signing.dumps(user.username),
-                    },
+                    {"host_url": settings.DJANGO_HOST_URL, "signup_url": signup_url},
                 ),
                 html_message=render_to_string(
                     "core/registration/email_signup.html",
-                    {
-                        "host_url": settings.DJANGO_HOST_URL,
-                        "token": signing.dumps(user.username),
-                    },
+                    {"host_url": settings.DJANGO_HOST_URL, "signup_url": signup_url},
                 ),
                 fail_silently=True,
             )

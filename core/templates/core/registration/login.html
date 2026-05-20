@@ -33,7 +33,7 @@
         </div>
 
         <!-- Form -->
-        <form class="flex flex-col gap-4" method="post">
+        <form class="flex flex-col gap-4" method="post" action="{% url 'core:login' %}">
           {% csrf_token %}
           {{form.errors}}
 
