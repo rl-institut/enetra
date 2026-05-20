@@ -1,0 +1,47 @@
+{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+<div x-data="{showDropDown: false}" class="relative"
+>
+  <button>
+  <c-icon.three_dots class=" h-7 w-7 cursor-pointer" @click.prevent.stop="showDropDown = !showDropDown; hideOtherDropDown('#detail-ellipsis-drop-down-{{ instance.internal_id }}');" @click.outside="showDropDown = false" />
+  </button>
+  <div  x-show="showDropDown" x-cloak>
+        <ul id="detail-ellipsis-drop-down-{{ instance.internal_id }}"
+          @hide="showDropDown=false;"
+        class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50">
+      <li>
+        <button hx-delete="{{ form_url }}"
+                hx-confirm="Wollen Sie {{ instance.name }} wirklich löschen?"
+                hx-swap="none"
+                type="button"
+                @htmx:after-request="$dispatch('hide-detail-sidebar');htmx.find('#form_{{ instance.internal_id }}').remove(); "
+                class=" w-full mt-3 text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+          DELETE
+        </button>
+      </li>
+      <li>
+        <button type="button"
+                hx-get="{{ form_url }}"
+                hx-select="{{hx_target}}"
+                hx-target="{{hx_target}}"
+                hx-include="{{hx_target}}"
+                hx-swap="outerHTML"
+                class="w-full mt-3 text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
+          REFRESH
+        </button>
+      </li>
+      <li>
+        <button type="button"
+                hx-post="{{ form_url }}"
+
+                hx-select="{{hx_target}}"
+                hx-target="{{hx_target}}"
+                hx-swap="outerHTML"
+                class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+                hx-disabled
+        >
+          POST
+        </button>
+      </li>
+    </ul>
+  </div>
+</div>

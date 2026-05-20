@@ -76,12 +76,19 @@
 .my-slide-in-from-top {
     animation: slideFromTop 0.4s ease-out forwards;
 }
+
 .slide-in {
     animation: slideFromLeft 0.4s ease-out forwards;
 }
 
 .htmx-request .my-hide,
 .htmx-request.my-hide {
+    filter: blur(2px);
+}
+
+.htmx-slide-in .htmx-settling,
+.htmx-slide-in.htmx-settling {
+    animation: slideFromBottom 0.4s ease-out forwards;
     display: none;
 }
 
@@ -91,18 +98,30 @@
 }
 
 /* When a request is inflight this sets the style of htmx-indicators */
+/* display none to remove it completely from the layout flow */
+.htmx-indicator-inherited,
 .htmx-indicator {
     opacity: 0;
     visibility: hidden;
+    display: none;
+}
+
+/* 1. this matches all htmx-indicators which are children of htmx-request */
+.htmx-request .htmx-indicator-inherited,
+.htmx-request.htmx-indicator-inherited {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 200ms ease-in;
+    display: inline-block;
 }
 
 /* 1. this matches all htmx-indicators which are children of htmx-request */
 /* 2 .this only matches elements with both classes */
-.htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator {
     opacity: 1;
     visibility: visible;
     transition: opacity 200ms ease-in;
+    display: inline-block;
 }
 
 /* Fix for the OSMWidget */

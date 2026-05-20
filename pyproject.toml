@@ -35,6 +35,8 @@ dependencies = [
     "django-template-partials>=25.2",
     # For shell plus
     "django-extensions>=4.1",
+    # for profiling and debugging
+    "django-debug-toolbar>=6.2.0",
     # Object level permission framework
     "django-guardian>=3.2.0",
     # Pretty AdminInterface

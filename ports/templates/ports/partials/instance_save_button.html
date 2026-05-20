@@ -1,0 +1,27 @@
+
+<button type="button"
+  hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}"
+  hx-select="{{hx_target}}"
+  hx-target="{{hx_target}}"
+  hx-swap="outerHTML"
+  class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
+  hx-disabled-elt="this"
+  hx-indicator="find span"
+
+  {% if success %}
+    x-data='{result: "✓ Gespeichert"}' x-init="setTimeout(()=>result='Speichern', 2000)"
+    {% elif errors %}
+    x-data='{result: "Fehlgeschlagen"}' x-init="setTimeout(()=>result='Speichern', 2000)"
+    {% else %}
+    x-data='{result: "Speichern"}'
+    {% endif %}
+  @htmx:before-request="result='Speichern'"
+>
+  <span class='htmx-indicator loader align-middle'></span>
+    <span class='my-hide animate-in fade-in duration-1000 my-hide align-middle min-w-fit' x-text="result" ></span>
+</button>
+
+{% comment %}
+use more animation, e.g. fade out?
+x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
+{% endcomment %}

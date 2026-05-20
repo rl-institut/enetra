@@ -32,12 +32,22 @@ urlpatterns = [
     ),
     path(
         "details_create/<uuid:scenario_internal_id>/<str:model>/",
-        views.DetailsView.as_view(),
+        views.DetailsView.as_view(created=True),
         name="details_create",
     ),
     path(
-        "details/<uuid:scenario_internal_id>/<str:model>/<uuid:internal_id>/",
-        views.DetailsView.as_view(),
+        "changes_count/<uuid:scenario_internal_id>/",
+        views.changes_count,
+        name="changes_count",
+    ),
+    path(
+        "changes/<uuid:scenario_internal_id>/",
+        views.changes,
+        name="changes",
+    ),
+    path(
+        "details/<uuid:scenario_internal_id>/<str:model>/",
+        views.DetailsView.as_view(created=False),
         name="details",
     ),
     path(

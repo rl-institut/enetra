@@ -1,39 +1,81 @@
-<c-vars class :border=True callback title></c-vars>
+<c-vars indicated selected  class :border=True callback title :defaultHxDetails=False item ></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
 {% comment %}
-  isSelected is populated by the input
+  selected is populated by the input
+wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<div class="
-  cotton-list-item
-  {% if border %}border border-[#cbd5e1] border-solid {% endif %}
-  content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px]
-  {{class}}
-  "
-     :class="isSelected ? 'bg-[#ECFEFF]' : 'bg-white hover:bg-[#f8fafc]'"
-     x-data="{isSelected: null}"
-     @click="if (isBulkMode) isSelected = !isSelected; console.log('{{title}} clicked'); {{callback}}"
-     {{ attrs }}
-  >
-  <template x-if="isBulkMode">
-    <div class="relative shrink-0 size-[16px] flex items-center justify-center">
-      <input type="checkbox"
-             x-model.fill="isSelected"
-             {% if selected == True %}checked{% endif %}
-             class="size-[14px] cursor-pointer accent-[#0E7490]" />
-    </div>
-  </template>
+<label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} "
+       x-data="{isSelected: $el.querySelector('input').checked }"
+       x-on:htmx:load="
+        isSelected=$el.querySelector('input').checked;
+        if (!isBulkMode){
+          if(isSelected)selected=$el.querySelector('input').value
+        }
+        "
+       @checked="isSelected=true; event.preventDefault()"
+       @unchecked="isSelected=false; event.preventDefault()"
+       {{ attrs }}
+
+       {% if defaultHxDetails %}
+        x-data
+        @detail-sidebar-closed.document="isSelected=false"
+        @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
+
+        hx-include="closest form"
+        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
+        hx-trigger='getdetails'
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML"
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+      {% endif %}
+
+>
+  <div class="relative shrink-0 size-[16px] flex items-center justify-center">
+
+    <input :type="isBulkMode ? 'checkbox' : 'radio'"
+            {% comment %}
+             With hx-preserve we ignore swapped in content but keep the preswaped input. this is
+             handy to keep checked and select status.
+            This raises some issues with alpine state managment. using x-effect to toggle isSelected
+            directly did not work in combination with hx-preserve
+            Instead we dispatch an event to toggle the alpine state a level above.
+            {% endcomment %}
+           id="input_{{ value }}_{{ radioName }}"
+           hx-preserve
+            {% if selected %}
+            checked
+          {% endif %}
+          {% comment %}
+          onClick handles the dispatch when the element is interacted with directly
+          x-effect handles when the selection is changed from the outside, e.g. radiobutton is switched.
+          {% endcomment %}
+          x-on:click="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
+          "
+           x-effect="ischecked = $el.value==selected;
+              if (!isBulkMode) {
+                if (ischecked) {$dispatch('checked')}
+                else {$dispatch('unchecked')}
+            } "
+           :name="isBulkMode ?'{{value }}' : '{{ radioName }}'"
+           value="{{ value }}"
+           class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />
+  </div>
   {% comment %}
     Should the image be shown even without bulkselection?
   {% endcomment %}
   <div class="relative shrink-0 size-[12px]">
     <img alt=""
          class="block max-w-none size-full"
-         :src="isSelected ? '{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}' : '{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}'"
-         :style="isSelected && `filter: 'brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)'`" />
+         :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
+         :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`' />
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
+    {% comment %}
+     shrink-0 stops the element from wrapping? This is bad behaviour if we allow long names.
+    {% endcomment %}
     <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px]"
        :class="isSelected ? 'text-[#0E7490]' : 'text-[#64748b]'">{{ title }}</p>
     {% comment %}
@@ -42,12 +84,14 @@
     {% endcomment %}
     {% if indicated %}<div class="w-[6px] h-[6px] rounded-full bg-[#ff9500] flex-shrink-0"></div>{% endif %}
   </div>
-  <div class="overflow-clip relative shrink-0 size-[12px]">
+  <div class="relative shrink-0 size-[12px]">
     <div class="absolute inset-[0.37%_0.1%_-0.27%_0.28%]">
-      <img alt=""
-           class="block max-w-none size-full"
-           :src="isSelected ? '{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}' : '{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}'"
-           :style="isSelected && `filter: 'brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)'`">
+      <div x-show="isBulkMode" x-cloak>
+        {{bulkModeIcon}}
+      </div>
+      <div x-show="!isBulkMode" x-cloak>
+        {{singleModeIcon}}
+      </div>
     </div>
   </div>
-</div>
+</label>
