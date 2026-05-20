@@ -3,10 +3,16 @@
 
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
+{% with internal_id=instances.0.internal_id|stringformat:"s" %}
 {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name as form_url %}
 <form hx-indicator="this"
   id="form_{{internal_id}}"
 >
+  {% comment %}
+  using internal_ids directly might make more sense, but since internal_ids is a comma seperated list
+  it cant be used as a valid css selector
+  casting to string is necessary since add| with uuid does not play nicely
+  {% endcomment %}
   <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
   <input name="area_internal_ids" class='hidden' value='{{internal_ids}}'>
     {% comment %}
@@ -47,15 +53,6 @@
     Errors
     {{ errors }}
     {% endif %}
-    <button type="button"
-      hx-post="{{form_url}}?internal_ids={{request.GET.internal_ids}}"
-            hx-select="#form_{{internal_id}}"
-            hx-vals='{"area_type": "{{instances.0.area_type|assertValue}}" }'
-            hx-target="closest form"
-            hx-swap="outerHTML"
-            class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
-      POST
-    </button>
     <div class="flex items-center justify-between gap-[8px] mb-[8px]">
       <div class="flex items-center gap-[8px] flex-1">
         <div class="flex shrink-0 text-[#a78bfa] ">
@@ -68,23 +65,25 @@
           {% endif %}
             <ul>
          {% for item in instances %}
+          <div class="max-w-10">
           <li class="font-semibold  text-[#1e293b] text-xs">{{item.name}}</li>
+          </div>
           {% endfor %}
 
 
         </ul>
 
-        <button type="button"
-                class="flex-shrink-0 hover:opacity-60 transition-opacity">
-        </button>
-          <c-icon.three-dots />
+      {% with hx_target="#form_"|add:internal_id %}
+        {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instances.0 scenario=scenario hx_target=hx_target %}
+      {% endwith %}
+    </div>
       </div>
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
-    </div>
 
     Multi select cant change names or geometry
     <!-- {/* Building/Area Type Dropdown */} -->
@@ -144,7 +143,7 @@
           </c-slot>
         </c-detail-sidebar-section>
         {% endcomment %}
-        <netzanschluss class="block">
+        <netzanschluss class="block" inert>
         <div class="flex flex-col gap-[16px] pt-[8px]">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
@@ -155,6 +154,7 @@
             NETZANSCHLÜSSE
             <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
           </h3>
+            not implemented/ made inert
           <div class="flex flex-col gap-[8px]">
             <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
             <c-select.index selectedValue="HV" inputName="AnschlussType">
@@ -194,6 +194,9 @@ In case of a created element the list is appended through 'beforeend'
 In case of an update the list element is swapped
 
 {% endcomment %}
+
+{% endwith %}
+
 
 {% if update %}
   {% include 'ports/partials/flaechen_tab_panel.html' %}

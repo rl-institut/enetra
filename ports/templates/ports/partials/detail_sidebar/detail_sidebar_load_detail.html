@@ -28,7 +28,10 @@
   <div class="px-[24px] py-[24px]">
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
-      {% include "ports/partials/detail_item_ellipsis.html" %}
+
+      {% with hx_target="#form_"|add:internal_id %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
+      {% endwith %}
     </div>
 
     <div class="flex flex-col gap-[16px]">
@@ -106,7 +109,10 @@
       </div>
 
       {{ errors }}
-      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors %}
+
+      {% with hx_target="#form_"|add:internal_id %}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
+      {% endwith %}
 
       <button
           x-data

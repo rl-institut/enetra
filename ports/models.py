@@ -422,19 +422,19 @@ class ElectricComponent(ScenarioItem):
     """Abstract electric component, defines shared characteristics"""
 
     area = models.ForeignKey(Area, verbose_name=_("Fläche"), on_delete=models.CASCADE)
-    power_kw = models.FloatField(_("Leistung"), default=None, null=True, blank=True)
-    efficiency = models.FloatField(_("Effizienz"), default=1.0)
+    power_kw = models.FloatField(verbose_name=_("Leistung"), default=None, null=True, blank=True)
+    efficiency = models.FloatField(verbose_name=_("Effizienz"), default=1.0)
     power_installed = models.FloatField(
-        _("Installierte Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Installierte Leistung"), default=None, null=True, blank=True
     )  # kWh
     power_min = models.FloatField(
-        _("Minimale Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Minimale Leistung"), default=None, null=True, blank=True
     )  # kWh
     power_max = models.FloatField(
-        _("Maximale Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Maximale Leistung"), default=None, null=True, blank=True
     )  # kWh
-    capex = models.FloatField(_("CAPEX"), default=None, null=True, blank=True)  # €
-    opex = models.FloatField(_("OPEX"), default=None, null=True, blank=True)  # €/a
+    capex = models.FloatField(verbose_name=_("CAPEX"), default=None, null=True, blank=True)  # €
+    opex = models.FloatField(verbose_name=_("OPEX"), default=None, null=True, blank=True)  # €/a
 
     class Meta:
         abstract = True  # abstract table
@@ -520,7 +520,7 @@ class Generator(ElectricComponent):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
 
-    carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
+    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
 
     def carrier_verbose(self):
         if not self.carrier:
@@ -536,7 +536,7 @@ class Heating(ElectricComponent):
         OIL = "oil", "Öl"
         ELECTRICITY = "electricity", "Strom"
 
-    carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
+    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
 
     def carrier_verbose(self):
         if not self.carrier:
@@ -552,8 +552,8 @@ class CHP(ElectricComponent):
         OIL = "oil", "Öl"
         GAS = "gas", "Gas"
 
-    carrier = models.CharField(_("Energieträger"), choices=CarrierChoices)
-    efficiency_thermal = models.FloatField(_("Thermische Effizienz"), default=1.0)
+    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
+    efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -576,7 +576,7 @@ class Electrolyzer(ElectricComponent):
     """Transform electricity into H2"""
 
     # carrier is always electricity
-    efficiency_thermal = models.FloatField(_("Thermische Effizienz"), default=1.0)
+    efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
 
 
 class Heatpump(ElectricComponent):
