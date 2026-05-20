@@ -204,6 +204,7 @@ class MyMap {
       });
       layer.on('click', (e) => {
         console.log('id: ' + id + ' top clicked. Layer: ' + e.layer);
+
       });
 
 
@@ -378,31 +379,27 @@ class MyMap {
     });
     // Query all layers on Shift click event
     this.map.on('click', (e) => {
-      if (!e.originalEvent.shiftKey) return;
-      console.log('map shift-clicked at ' + e.latlng);
+
       const point = turf.point([e.latlng.lng, e.latlng.lat]); // note: turf uses [lng, lat]
       // we can iterate over all map layers directly but map.eachLayer also gives the base layers
       // which we want to avoid
       const layerNames = this.settings.getLayerNames?.() ?? getLayerNames();
       layerNames.forEach((lname) => {
-        console.log('searching ' + lname);
         const featureGroup = this.featureGroups[lname];
         featureGroup.eachLayer((layer) => {
           const inside = turf.booleanPointInPolygon(point, layer.geojson);
           if (inside) {
-            console.log('inside ' + layer.id);
-            const event = new CustomEvent('map-layer-shift-clicked', { bubbles: true });
+            var event;
+            if (e.originalEvent.shiftKey) {
+              event = new CustomEvent('map-layer-shift-clicked', { detail: { value: layer.id }, bubbles: true });
+            } else {
+              event = new CustomEvent('map-layer-clicked', { detail: { value: layer.id }, bubbles: true });
+            }
             document.getElementById(layer.id).dispatchEvent(event);
-          } else {
-            console.log(layer.id + ' not inside');
-
-          };
-
-
+          }
         });
       });
 
-      setTimeout(() => document.dispatchEvent(new Event('map-redraw')), 10);
     });
   }
 }

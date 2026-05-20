@@ -28,7 +28,7 @@ For focused elements which are not rendered all the time, a event can be sent
     {% endcomment %}
     data-uniqueid='button-list-item-{{instance.internal_id}}'
   >
-    {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance class='my-slide-in-from-bottom animate-once' %}
+    {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance class='my-slide-in-from-bottom animate-once' createItemCallback=createItemCallback %}
   </div>
   {% if geom_form %}
       <div

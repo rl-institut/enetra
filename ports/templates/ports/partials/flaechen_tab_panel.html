@@ -39,6 +39,7 @@
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
+            hx-on::load="{{ createItemCallback }}"
         >
           <c-slot name="singleModeIcon">
             {% include "ports/partials/list_item_ellipsis.html" %}

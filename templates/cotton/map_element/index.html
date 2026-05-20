@@ -19,7 +19,7 @@ Add data-storage for allowed interaction?
     @item-unselected.window="if (event.detail.value=='{{key}}') highlighted=false; $dispatch('map-redraw')"
     @item-selected.window="if (event.detail.value=='{{key}}') highlighted=true; $dispatch('map-redraw')"
     @click.ctrl ="highlighted = !highlighted; $dispatch('map-redraw')"
-    @map-layer-shift-clicked='selected =!selected; console.log("map-layer-shift-clicked caught. toggled the selection of the element");'
+    @map-layer-shift-clicked="selected =!selected; $dispatch('map-redraw')"
     @input="$dispatch('geom-changed');console.log('geom changed')"
     @keyup.escape.window='selected=false; $dispatch("map-redraw")'
     @keyup.enter.window='selected=false; $dispatch("map-redraw")'
