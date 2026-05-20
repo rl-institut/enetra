@@ -16,13 +16,14 @@ Add data-storage for allowed interaction?
 <!-- @click='selected =!selected;$dispatch("map-redraw")' -->
 <div
     x-data='{selected: {{selected|lower}}, highlighted: false}'
-    @item-selected.window="if (event.detail.value=='{{key}}') selected=true; $dispatch('map-redraw')"
-    @item-unselected.window="if (event.detail.value=='{{key}}') selected=false; $dispatch('map-redraw')"
+    @item-unselected.window="if (event.detail.value=='{{key}}') highlighted=false; $dispatch('map-redraw')"
+    @item-selected.window="if (event.detail.value=='{{key}}') highlighted=true; $dispatch('map-redraw')"
     @click.ctrl ="highlighted = !highlighted; $dispatch('map-redraw')"
     @map-layer-shift-clicked='selected =!selected; console.log("map-layer-shift-clicked caught. toggled the selection of the element");'
     @input="$dispatch('geom-changed');console.log('geom changed')"
     @keyup.escape.window='selected=false; $dispatch("map-redraw")'
     @keyup.enter.window='selected=false; $dispatch("map-redraw")'
+
     class='
     {% comment %}
     contents

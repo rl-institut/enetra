@@ -69,6 +69,13 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             super().__init__(*args, **kwargs)
             self.fields.pop("internal_id")
             self.fields.pop("name")
+            # For multi forms no fields are required.
+            # this allows partial overwriting.
+            # e.g. efficiency would normally be required
+            # 2 components with differing efficiency could not be saved,
+            # without overwriting the efficiency with a common value
+            for field in self.fields.values():
+                field.required = False
 
         def save(self):
             qs = self.cleaned_data["internal_ids"]

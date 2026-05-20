@@ -90,7 +90,7 @@ class MyMap {
     const editLayerName = this._getEditLayerName();
 
     this.map.pm.addControls({
-      position: "topleft",
+      position: "topright",
       drawMarker: false,
       drawPolyline: false,
       drawRectangle: false,

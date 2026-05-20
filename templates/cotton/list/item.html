@@ -14,7 +14,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
           if(isSelected)selected=$el.querySelector('input').value
         }
         "
-      @checked="isSelected=true; event.preventDefault(); $dispatch('item-selected',{ value:'{{value}}'} );"
+       @checked="isSelected=true; event.preventDefault(); $dispatch('item-selected',{ value:'{{value}}'} );"
        @unchecked="isSelected=false; event.preventDefault();$dispatch('item-unselected',{ value:'{{value}}'} );"
        {{ attrs }}
 

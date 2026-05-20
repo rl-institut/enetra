@@ -1,5 +1,8 @@
 {% load constants %}
-<form hx-indicator='this'>
+{% with internal_id=instances.0.internal_id|stringformat:"s" %}
+<form hx-indicator='this'
+  id="form_{{internal_id}}"
+>
 
   <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
@@ -26,17 +29,7 @@
 </details-sidebar-header>
 
 <details-sidebar-content>
-    {% if success %}
-      <div x-data="{show:true }"
-           class='animate-in fade-in duration-1000'
-           x-init='setTimeout(()=>show=false, 1000)'
-           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
-           x-show="show">
-        <c-alert class="" variant="success" title={{ success }}>
-        </c-alert>
-      </div>
-    {% endif %}
-    {{ errors }}
+  {{ errors }}
 
   <div class="px-[24px] py-[24px]">
     <div class="flex items-center justify-between mb-[24px]">
@@ -113,15 +106,10 @@
         </div>
       </div>
 
-      <button
-          hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  %}"
-            hx-vals='{"internal_ids": "{{internal_ids}}"}'
-            hx-target="closest form"
-            hx-swap="outerHTML"
-            type="button"
-        class="w-full bg-[#0e7490] text-white font-semibold text-[14px] hover:bg-[#0c647a] transition-colors py-2 rounded-full">
-        Speichern
-      </button>
+        {% with hx_target="#form_"|add:internal_id %}
+        {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target %}
+        {% endwith %}
+
 
       <button
         x-data
@@ -136,3 +124,4 @@
   </div>
 </details-sidebar-content>
 </form>
+{% endwith %}

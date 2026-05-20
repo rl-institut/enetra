@@ -39,16 +39,6 @@
       </div>
 
 
-    {% if success %}
-      <div x-data="{show:true }"
-           class="animate-in fade-in duration-1000"
-           x-init="setTimeout(()=>show=false, 1000)"
-           x-transition:leave="animate-out fade-out duration-500 fill-mode-forwards"
-           x-show="show">
-        <c-alert class="" variant="success" title={{ success }}>
-        </c-alert>
-      </div>
-    {% endif %}
     {% if errors %}
     Errors
     {{ errors }}
