@@ -64,6 +64,7 @@
     </div>
 
 
+    {% partialdef add-gebaeudeflaeche-button inline %}
       <button type='button'
               class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
@@ -72,6 +73,7 @@
               hx-swap="none"
               hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
     >+ Gebäudefläche</button>
+    {% endpartialdef %}
     </div>
     <div>{% include "ports/partials/andere_beteiligte.html" %}</div>
     <div>
@@ -94,6 +96,7 @@
         {% endfor %}
       </c-list>
     </form>
+    {% partialdef add-freiflaeche-button inline %}
       <button type='button'
               class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
@@ -102,6 +105,7 @@
               hx-swap="none"
               hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));">
           + Freifläche</button>
+    {% endpartialdef %}
     </div>
     <div class="pt-0">
       <p class="font-['Inter:Semi_Bold',sans-serif] text-[14px] text-[#64748b]">Andere Beteiligte (0)</p>
