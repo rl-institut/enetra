@@ -22,11 +22,14 @@
     <!--  Map will use this template and inject the html -->
     <!--  wrap this in template so it exists only in the map -->
     <template class='map-content-only'>
-    <!-- <c-map-element.popup> -->
-    <!--   Im the content of the popup -->
-    <!--   Im not sure we will use this? maybe -->
-    <!--   Click the layer to show me -->
-    <!-- </c-map-element.popup> -->
+      {% comment %}
+       No popups for now
+    <c-map-element.popup>
+      Im the content of the popup
+      Im not sure we will use this? maybe
+      Click the layer to show me
+    </c-map-element.popup>
+      {% endcomment %}
     <div class="hidden">
       <!-- Put a label on the map. works inside a c-map-element -->
       <c-map-element.marker :name='form.instance.name'>

@@ -112,7 +112,7 @@
             <span
               class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]"
               >{{unit}}</span
-            >
+          <c-field-errors :field="field" />
           </div>
         </div>
         {% endpartialdef %}
@@ -144,6 +144,7 @@
           Die Werte werden nur für diese Fläche übernommen.
         </p>
 
+        {{form.non_field_errors}}
 
         {% with hx_target="#form_"|add:internal_id %}
         {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target %}
