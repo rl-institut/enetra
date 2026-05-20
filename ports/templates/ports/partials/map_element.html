@@ -8,8 +8,6 @@
 >
   {% csrf_token %}
   <c-map-element.index :key="form.instance.internal_id" layer='map-layer-{{form.instance.layer_name}}'>
-    {{form.instance.layer_name}}
-    <label class="">{{form.instance.name}}</label>
     <div class='hidden'>
     {{form.internal_id}}
     </div>
@@ -24,11 +22,11 @@
     <!--  Map will use this template and inject the html -->
     <!--  wrap this in template so it exists only in the map -->
     <template class='map-content-only'>
-    <c-map-element.popup>
-      Im the content of the popup
-      Im not sure we will use this? maybe
-      Click the layer to show me
-    </c-map-element.popup>
+    <!-- <c-map-element.popup> -->
+    <!--   Im the content of the popup -->
+    <!--   Im not sure we will use this? maybe -->
+    <!--   Click the layer to show me -->
+    <!-- </c-map-element.popup> -->
     <div class="hidden">
       <!-- Put a label on the map. works inside a c-map-element -->
       <c-map-element.marker :name='form.instance.name'>
