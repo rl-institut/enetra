@@ -398,9 +398,6 @@
   .-mt-2 {
     margin-top: calc(var(--spacing) * -2);
   }
-  .mt-0 {
-    margin-top: calc(var(--spacing) * 0);
-  }
   .mt-0\.5 {
     margin-top: calc(var(--spacing) * 0.5);
   }
@@ -628,9 +625,6 @@
   .\[width\:anchor-size\(width\)\] {
     width: anchor-size(width);
   }
-  .w-1 {
-    width: calc(var(--spacing) * 1);
-  }
   .w-1\/2 {
     width: calc(1/2 * 100%);
   }
@@ -799,9 +793,6 @@
   .flex-\[1_0_0\] {
     flex: 1 0 0;
   }
-  .flex-shrink {
-    flex-shrink: 1;
-  }
   .flex-shrink-0 {
     flex-shrink: 0;
   }
@@ -817,10 +808,6 @@
   }
   .translate-x-full {
     --tw-translate-x: 100%;
-    translate: var(--tw-translate-x) var(--tw-translate-y);
-  }
-  .-translate-y-1 {
-    --tw-translate-y: calc(var(--spacing) * -1);
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
   .-translate-y-1\/2 {
@@ -908,9 +895,6 @@
   .justify-end {
     justify-content: flex-end;
   }
-  .gap-0 {
-    gap: calc(var(--spacing) * 0);
-  }
   .gap-0\.5 {
     gap: calc(var(--spacing) * 0.5);
   }
@@ -987,9 +971,6 @@
       margin-inline-start: calc(calc(var(--spacing) * 6) * var(--tw-space-x-reverse));
       margin-inline-end: calc(calc(var(--spacing) * 6) * calc(1 - var(--tw-space-x-reverse)));
     }
-  }
-  .gap-y-1 {
-    row-gap: calc(var(--spacing) * 1);
   }
   .gap-y-1\.5 {
     row-gap: calc(var(--spacing) * 1.5);
@@ -1309,9 +1290,6 @@
   .bg-cyan-500 {
     background-color: var(--color-cyan-500);
   }
-  .bg-cyan-600 {
-    background-color: var(--color-cyan-600);
-  }
   .bg-cyan-600\/50 {
     background-color: color-mix(in srgb, oklch(60.9% 0.126 221.723) 50%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1471,9 +1449,6 @@
   .px-\[24px\] {
     padding-inline: 24px;
   }
-  .py-0 {
-    padding-block: calc(var(--spacing) * 0);
-  }
   .py-0\.5 {
     padding-block: calc(var(--spacing) * 0.5);
   }
@@ -1527,9 +1502,6 @@
   }
   .pt-0 {
     padding-top: calc(var(--spacing) * 0);
-  }
-  .pt-1 {
-    padding-top: calc(var(--spacing) * 1);
   }
   .pt-1\.5 {
     padding-top: calc(var(--spacing) * 1.5);
@@ -1796,9 +1768,6 @@
   }
   .text-nowrap {
     text-wrap: nowrap;
-  }
-  .text-wrap {
-    text-wrap: wrap;
   }
   .whitespace-nowrap {
     white-space: nowrap;

@@ -33,13 +33,14 @@ def signup(request):
         # posted data: create new user instance
         form = SignUpForm(request.POST)
         if not form.is_valid():
-            return render(request, "core/signup.html", {"form": form})
+            return render(request, "core/registration/signup.html", {"form": form})
         user = form.save()  # read necessary info from form
         user.refresh_from_db()
         user.username = user.email.lower()  # force lowercase for username
         # # user came here from invite: no further email needed
         # Work with invites?
         # user.is_active = form.cleaned_data["invited"]
+        user.is_active = False
         user.save()
         if user.is_active:
             login(request, user, "django.contrib.auth.backends.ModelBackend")
@@ -63,8 +64,7 @@ def signup(request):
                 ),
                 fail_silently=True,
             )
-            return HttpResponse(b"Success")
-            return render(request, "core/signup.html", {"email": user.email})
+            return render(request, "core/registration/signup_success.html", {"email": user.email})
 
     elif request.GET.get("token"):
         # token may be from signup process or invite
@@ -78,14 +78,14 @@ def signup(request):
             user.is_active = True
             user.save(update_fields=["is_active"])
             form = AuthForm(initial={"username": user.email})
-            return render(request, "core/login.html", {"form": form})
+            return render(request, "core/registration/login.html", {"form": form})
         except User.DoesNotExist:
             # token from invite: present registration form, fill in email from token
             form = SignUpForm(initial={"email": email, "invited": True})
-            return render(request, "core/signup.html", {"form": form})
+            return render(request, "core/registration/signup.html", {"form": form})
     else:
         # GET, no token: normal registration
-        return render(request, "core/signup.html", {"form": SignUpForm()})
+        return render(request, "core/registration/signup.html", {"form": SignUpForm()})
     raise Http404()
 
 

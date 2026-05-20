@@ -29,7 +29,7 @@ urlpatterns = [
         "login/",
         LoginView.as_view(
             authentication_form=forms.AuthForm,
-            template_name="core/login.html",
+            template_name="core/registration/login.html",
             redirect_authenticated_user=True,
         ),
         name="login",
@@ -43,12 +43,12 @@ urlpatterns = [
     ),
     path(
         "reset_password/",
-        lambda x: render(x, template_name="core/reset-password.html"),
+        lambda x: render(x, template_name="core/registration/reset-password.html"),
         name="reset_password",
     ),
     path(
         "forgot_password/",
-        lambda x: render(x, template_name="core/forgot-password.html"),
+        lambda x: render(x, template_name="core/registration/forgot-password.html"),
         name="forgot_password",
     ),
     path(
