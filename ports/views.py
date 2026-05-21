@@ -255,10 +255,6 @@ def get_home_context(scenario: Scenario | None = None):
     scenario = scenario or Scenario.objects.last()
     data["scenario"] = scenario
     data["scenarios"] = Scenario.objects.all()
-    data["building_areas"] = Area.objects.filter(
-        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
-    )
-    data["open_areas"] = Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN)
 
     electric_components = dict()
     for m in apps.get_models():
@@ -268,7 +264,7 @@ def get_home_context(scenario: Scenario | None = None):
             key = f"{m._meta.model_name}s"
             query = m.objects.filter(scenario=scenario)
             data[key] = query
-            electric_components[key] = query
+            electric_components[key] = list(query)
 
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
@@ -338,7 +334,8 @@ class DetailsView(View):
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
         }
-
+        for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
+            context[model._meta.object_name] = model
         return context
 
     def setup_view(self, request, *args, **kwargs) -> None:
