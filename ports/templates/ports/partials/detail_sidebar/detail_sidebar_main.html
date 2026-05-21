@@ -62,13 +62,12 @@
 
       </div>
 
-
       {% with hx_target="#form_"|add:internal_id %}
       {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
         {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
       {% endwith %}
       <button type="button"
-        @click="$dispatch('hide-detail-sidebar')"
+              @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
@@ -80,7 +79,6 @@
      Do we need this special emitting of value changes?
     {% endcomment %}
             <div>
-
             <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label> <c-field-required :field=form.name />
             </div>
       <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch('{{ itemchange_event|default:'itemChanged' }}', {value: $el.value});" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
@@ -94,7 +92,7 @@
         <button type="button"
                 class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
                 active:scale-95 active:translate-y-[1px] active:shadow-inner
-        "
+                "
                 @click="$dispatch('create-polygon', {key:'geom_{{instance.internal_id}}'})"
       >
           <c-icon.location-marker class="w-[16px] h-[16px]" />

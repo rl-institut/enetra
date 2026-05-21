@@ -29,7 +29,7 @@ class MyMap {
 
 
     this._bindEvents();
-    const debounced_draw = debounce(this.drawElements.bind(this), 10);
+    const debounced_draw = debounce(this.drawElements.bind(this),10);
     document.addEventListener('alpine:initialized', () => this.drawElements());
     document.addEventListener('map-redraw', () => debounced_draw());
     document.addEventListener('geom-changed', () => debounced_draw());

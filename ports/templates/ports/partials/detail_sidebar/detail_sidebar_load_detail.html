@@ -116,7 +116,7 @@
       </div>
 
 
-        {{form.non_field_errors}}
+      {{form.non_field_errors}}
       {% with hx_target="#form_"|add:internal_id %}
       {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
       {% endwith %}

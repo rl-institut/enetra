@@ -21,11 +21,11 @@
 
 
 {% for item in created_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True   %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True  %}
   {% endfor %}
 {% for item in deleted_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='deleted' sendEvents=True  %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='deleted' sendEvents=True %}
   {% endfor %}
 {% for item in changed_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='changed' sendEvents=True  %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='changed' sendEvents=True %}
   {% endfor %}

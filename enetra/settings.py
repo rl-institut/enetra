@@ -87,6 +87,7 @@ INSTALLED_APPS = [
 ]
 
 if DEBUG:
+    # To reduce issues with stale static resources
     INSTALLED_APPS.insert(0, "whitenoise.runserver_nostatic")
     WHITENOISE_MAX_AGE = 0
 
@@ -105,7 +106,6 @@ MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
-
 
 if DEBUG_TOOLBAR:
     print("DEBUG TOOLBAR ENABLED")

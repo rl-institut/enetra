@@ -11,7 +11,6 @@
       <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
     >
 
-
         {% comment %}
         hx-get the proper template in regards to bulkMode.
         hx behaviour is set through the defaultHxDetails flag

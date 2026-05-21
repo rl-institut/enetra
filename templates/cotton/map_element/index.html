@@ -9,11 +9,7 @@ Native html element which is used as state for the leaflet map
 class 'contents' makes the div "inivisble" for display
 Add data-storage for allowed interaction?
 Add data-storage for allowed interaction?
-
-@item-selected="if (event.detail.value=='{{key}}') selected=true"
 {% endcomment %}
-
-<!-- @click='selected =!selected;$dispatch("map-redraw")' -->
 <div
     x-data='{selected: {{selected|lower}}, highlighted: false}'
     @item-unselected.window="if (event.detail.value=='{{key}}') highlighted=false; $dispatch('map-redraw')"

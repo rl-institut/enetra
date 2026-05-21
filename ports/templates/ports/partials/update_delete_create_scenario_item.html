@@ -55,7 +55,7 @@ For focused elements which are not rendered all the time, a event can be sent
   {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance createItemCallback=" const cEvent = new CustomEvent('{{instance.changed_event|assertValue}}',{detail:{updated_at:'{{instance.updated_at|date:'c'}}'}}); document.dispatchEvent(cEvent);"  %}
 
 {% else %}
-  {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance  %}
+  {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" with item=instance %}
   {% endif %}
 {% elif status == 'deleted' %}
 <div hx-swap-oob='outerHTML'

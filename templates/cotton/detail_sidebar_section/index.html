@@ -45,11 +45,11 @@
           <button
             hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model=model  %}"
             hx-vals='{"area_internal_ids": "{{area_internal_ids}}"}'
-            hx-target="closest form"
+            hx-target="#detailSidebar"
             hx-trigger="click"
             hx-select="form"
             hx-indicator="#detailSidebar"
-            hx-swap="outerHTML"
+            hx-swap="innerHTML"
             type='button'
             class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
 
