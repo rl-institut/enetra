@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
@@ -273,7 +274,8 @@ def get_home_context(scenario: Scenario | None = None):
     data["electric_components"] = electric_components
     data["Area"] = Area
 
-    all_areas = list(Area.objects.filter(scenario=scenario))
+    # important:  prefetch all related models to avoid n+1 queries
+    all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
     building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
     open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
     data["building_areas"] = building_areas
@@ -305,6 +307,9 @@ def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
     return str(instance_or_uuid)[:5]
 
 
+s = None
+
+
 class DetailsView(View):
     """View which handles detail request for instances
 
@@ -325,7 +330,7 @@ class DetailsView(View):
             "scenario": self.scenario,
             "Model": self.Model,
             "model_name": self.Model._meta.model_name,
-            "internal_id": self.internal_id,
+            "internal_id": str(self.internal_id),
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
@@ -388,6 +393,8 @@ class DetailsView(View):
         # FIXME
         # TODO: Add authorization
         # Instantiate the class with its fixed attributes
+        global s
+        s = time.time()
         self.setup_view(request, *args, **kwargs)
 
         if not self.internal_ids and not self.internal_id and not self.created:
@@ -485,7 +492,7 @@ class DetailsView(View):
                 self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
                     instance=self.instance
                 )
-
+                self.context["internal_id"] = str(self.instance.internal_id)
             else:
                 # Template choice earlier works for direct instance access.
                 # For creation this is decided here, since self.multi might have been overwritten
@@ -596,9 +603,16 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
+        print("before home ctx")
+        print(time.time() - s)
         self.context |= get_home_context()
         self.context["update"] = True
+        print("before render")
+        print(time.time() - s)
         response = render(self.request, self.template, self.context)
+        print("after render")
+
+        print(time.time() - s)
         response["HX-Trigger"] = "map-redraw"
         return response
 

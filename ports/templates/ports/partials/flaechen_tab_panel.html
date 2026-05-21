@@ -10,12 +10,13 @@
     <form>
       <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
     >
-        {% for item in building_areas %}
-          {% comment %}
-            hx-get the proper template in regards to bulkMode.
-            hx behaviour is set through the defaultHxDetails flag
-            ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-          {% endcomment %}
+
+
+        {% comment %}
+        hx-get the proper template in regards to bulkMode.
+        hx behaviour is set through the defaultHxDetails flag
+        ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
+        {% endcomment %}
 
         {% comment %}
         the hx request is triggerd through a alpine NextTick, so the alpine input reflects the current state
@@ -26,8 +27,7 @@
         if swaps should be skipped, dont pass them to the template
         for live checking of duplicates the uniqueid can be used
         {% endcomment %}
-
-      {% partialdef list-item-and-form inline %}
+      {% partialdef list-item-and-form %}
 
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
@@ -46,6 +46,10 @@
           </c-slot>
           </c-list.item>
       {% endpartialdef %}
+        {% for item in building_areas %}
+
+        {% partial list-item-and-form %}
+
         {% endfor %}
       </c-list>
     </form>

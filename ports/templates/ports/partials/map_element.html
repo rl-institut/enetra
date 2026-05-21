@@ -1,6 +1,6 @@
 <form
   id="geom_form_{{form.instance.internal_id}}"
-  hx-post='{% url "ports:patch_area" scenario_internal_id=form.instance.scenario.internal_id %}'
+  hx-post='{% url "ports:patch_area" scenario_internal_id=scenario.internal_id %}'
   hx-swap='none'
   hx-on::trigger="console.log('triggerd submit')"
   hx-trigger="submit, change"
