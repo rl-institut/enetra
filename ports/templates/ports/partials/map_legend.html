@@ -1,5 +1,17 @@
+<div
+  x-data="{ toasts: [] }"
+  @geom-saved.window="const id = Date.now();
+                      toasts.push(id);
+                      setTimeout(() => toasts.splice(toasts.indexOf(id), 1), 1000)"
+  class=" flex flex-col gap-2"
+>
+  <template x-for="id in toasts" :key="id">
+    <div x-transition class="bg-green-600 text-white px-4 py-2 rounded shadow">
+      Gespeichert
+    </div>
+  </template>
+</div>
 
-<!-- {/* Map Legend */} -->
 <div class="bg-white rounded-[8px] shadow-[0px_4px_8px_rgba(0,0,0,0.15)] p-[16px] min-w-[140px]">
   <!-- {/* Gebäudeflächen Section */} -->
   <div class="mb-[8px]">

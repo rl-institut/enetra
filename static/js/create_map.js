@@ -29,7 +29,7 @@ class MyMap {
 
 
     this._bindEvents();
-    const debounced_draw = debounce(this.drawElements.bind(this),10);
+    const debounced_draw = debounce(this.drawElements.bind(this), 10);
     document.addEventListener('alpine:initialized', () => this.drawElements());
     document.addEventListener('map-redraw', () => debounced_draw());
     document.addEventListener('geom-changed', () => debounced_draw());
@@ -81,14 +81,37 @@ class MyMap {
     const layerNames = this.settings.getLayerNames?.() ?? getLayerNames();
     layerNames.forEach((lname) => {
       this.featureGroups[lname] = L.featureGroup().addTo(this.map);
-      this.featureGroups[lname].on('click', (e) => console.log(lname + ' clicked. Layer: ' + e.layer));
+      // this.featureGroups[lname].on('click', (e) => console.log(lname + ' clicked. Layer: ' + e.layer));
     });
   }
 
-  _initDrawControl() {
+  disableDraw() {
+    this.map.pm.disableDraw();
+    this.drawElements()
 
+  }
+
+  // When changes are excepted call this function to pass changed map geometries to inputs
+  // via event/event listener
+
+  dispatchLayerChanges(event) {
     const editLayerName = this._getEditLayerName();
+    const layers = []; this.featureGroups[editLayerName].eachLayer((layer) => layers.push(layer));
 
+    this.map._container.dispatchEvent(new CustomEvent('map-elements-edited', {
+      detail: { layers, originalEvent: event },
+    }));
+  }
+  finishDraw() {
+    console.log('foo')
+    if (this.map.pm.Draw.Polygon.enabled()) {
+      this.map.pm.Draw.Polygon._finishShape();
+    }
+
+    this.dispatchLayerChanges(event)
+  }
+  _initDrawControl() {
+    const editLayerName = this._getEditLayerName();
     this.map.pm.addControls({
       position: "topright",
       drawMarker: false,
@@ -137,21 +160,31 @@ class MyMap {
         this.setMode(MyMap.Mode.EDIT);
       },
     });
-
+    this.map.pm.Toolbar.createCustomControl({
+      name: "cancelEditModeCustom",
+      block: "custom",
+      title: "Änderung rückgängig machen",
+      className: "leaflet-pm-icon-delete",
+      toggle: false,
+      onClick: () => {
+        this.disableDraw();
+      },
+    });
+    this.map.pm.Toolbar.createCustomControl({
+      name: "saveCurrentChanges",
+      block: "custom",
+      title: "Änderung Speichern",
+      className: "leaflet-pm-icon-polygon",
+      toggle: false,
+      onClick: () => {
+        this.finishDraw();
+      },
+    });
     // Do we want custom edit handlers?
     // changing the default css could also be an option
     // .leaflet-editing-icon {
     //     border-radius: 50%;
     // }
-    const customIcon = L.divIcon(
-      getPolyVerticesEditOption()
-    );
-
-    L.Edit.PolyVerticesEdit.prototype.options = {
-      ...L.Edit.PolyVerticesEdit.prototype.options,
-      icon: customIcon,
-      touchIcon: customIcon,
-    };
 
     // // Make the polygon path dotted while editing
     // L.Edit.Poly.prototype.options = {
@@ -177,10 +210,10 @@ class MyMap {
     const popups = this.settings.getPopUps();
     const markers = this.settings.getMarkers();
 
-
-    console.log(geometries);
     const editLayerName = this._getEditLayerName();
 
+
+    this.map.pm.removeControls();
     // #Remove all markers
     this.map.eachLayer((layer) => {
       if (layer instanceof L.Marker) {
@@ -275,9 +308,12 @@ class MyMap {
           });
         }
       });
+
+      if (this.map.pm.controlsVisible()) this.map.pm.toggleControls();
+    } else {
+      // # enable draw controls
+      if (!this.map.pm.controlsVisible()) this.map.pm.toggleControls();
     }
-
-
   }
 
 
@@ -336,7 +372,6 @@ class MyMap {
 
 
   _bindEvents() {
-    const editLayerName = this._getEditLayerName();
     let mouseStart = null;
 
     // this.map.on('mousedown', (e) => {
@@ -357,25 +392,20 @@ class MyMap {
     //   mouseStart = null;
     // });
 
-    // When changes are excepted call this function to pass changed map geometries to inputs
-    // via event/event listener
-    const dispatchLayerChanges = (event) => {
-      const layers = []; this.featureGroups[editLayerName].eachLayer((layer) => layers.push(layer));
-
-      this.map._container.dispatchEvent(new CustomEvent('map-elements-edited', {
-        detail: { layers, originalEvent: event },
-      }));
-    }
     document.addEventListener('finish-create-polygon', (event) => {
-
-      dispatchLayerChanges(event)
+      this.finishDraw()
     });
 
 
-    this.map.on(L.Draw.Event.CREATED, (event) => {
+    document.addEventListener('stop-create-polygon', (event) => {
+      this.disableDraw();
+    });
+    this.map.on("pm:create", (event) => {
       this.map._container.dispatchEvent(new CustomEvent('some-map-element-created', {
         detail: { layer: event.layer, originalEvent: event },
       }));
+      event.layer.remove();
+      document.dispatchEvent(new CustomEvent('map-redraw'));
     });
     // Query all layers on Shift click event
     this.map.on('click', (e) => {

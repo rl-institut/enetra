@@ -4,7 +4,11 @@
   hx-swap='none'
   hx-on::trigger="console.log('triggerd submit')"
   hx-trigger="submit, change"
-  hx-on::after-request="htmx.trigger('body' ,'refresh_{{form.instance.internal_id}}');"
+  hx-on::after-request="htmx.trigger('body' ,'refresh-{{form.instance.internal_id}}');
+                        if(event.detail.xhr.status === 200) {
+                        htmx.trigger('body' ,'geom-saved');
+                        }
+  "
 >
   {% csrf_token %}
   <c-map-element.index :key="form.instance.internal_id" layer='map-layer-{{form.instance.layer_name}}'>

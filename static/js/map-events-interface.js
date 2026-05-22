@@ -4,55 +4,39 @@
 //
 
 
-var drawHandler = null;
 var createPolygonKey = null;
+
 document.addEventListener('create-polygon', (event) => {
-  if (drawHandler instanceof L.Draw.Polygon) {
-    drawHandler.disable()
-  }
+  myMap.map.pm.disableDraw();
   createPolygonKey = event.detail.key || null;
-  if (createPolygonKey == null) console.log("WARNING:polygon is created without key.")
-  drawHandler = new L.Draw.Polygon(myMap.map, {
-    allowIntersection: true,
-    showArea: true,
-    icon: new L.DivIcon({
-      iconSize: new L.Point(8, 8),
-      className: 'rounded leaflet-div-icon leaflet-editing-icon'
-    }),
-    touchIcon: new L.DivIcon({
-      iconSize: new L.Point(20, 20),
-      className: 'leaflet-div-icon leaflet-editing-icon'
-    }),
-    shapeOptions: {
+  if (createPolygonKey == null) console.log("WARNING: polygon is created without key.");
+  myMap.map.pm.enableDraw('Polygon', {
+    allowSelfIntersection: true,
+    pathOptions: {
       color: '#000000',
       fillColor: '#7F77DD',
       fillOpacity: 0.9,
       weight: 2,
       opacity: 1,
-    }
+    },
   });
-  drawHandler.enable()
-}
-)
-
-document.addEventListener('stop-create-polygon', (event) => {
-  if (drawHandler instanceof L.Draw.Polygon) {
-    drawHandler.disable()
-  }
-})
-
-document.addEventListener('finish-create-polygon', (event) => {
-  if (drawHandler instanceof L.Draw.Polygon) {
-    drawHandler.completeShape();
-    drawHandler = null;
-  }
-})
-
-document.addEventListener('keyup', (event) => {
-  if (event.key === 'Esc' && drawHandler != null) {
-    document.dispatchEvent(new CustomEvent('stop-create-polygon'));
-  }
 });
+
+
+// document.addEventListener('map-item-stop-edit', (event) => {
+//   console.log('foo')
+//   if (myMap.map.pm.globalDrawModeEnabled()) {
+//     console.log('bar')
+//     document.dispatchEvent(new CustomEvent('stop-create-polygon'));
+//   }
+// });
+
+// document.addEventListener('keyup', (event) => {
+//   if (event.key === 'Escape' && myMap.map.pm.globalDrawModeEnabled()) {
+//     console.log('bar')
+//     document.dispatchEvent(new CustomEvent('stop-create-polygon'));
+//   }
+// });
 
 document.addEventListener('keyup', (event) => {
   if (event.key === 'Enter') {
@@ -78,13 +62,11 @@ mapdiv.addEventListener('map-elements-edited', (event) => {
 })
 
 mapdiv.addEventListener('some-map-element-created', (event) => {
-  console.log(event.detail.layer.toGeoJSON().geometry);
   if (createPolygonKey != null) {
     event.detail.key = createPolygonKey
-    console.log('searching for ' + createPolygonKey)
     var target = document.getElementById(createPolygonKey)
     if (!target) {
-      console.log('not found')
+      console.log(target + ' not found')
       return
     }
     target.value = JSON.stringify(event.detail.layer.toGeoJSON().geometry);

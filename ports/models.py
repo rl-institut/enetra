@@ -16,6 +16,7 @@ from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
 from django.forms import ModelForm
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger("django_ports")
@@ -154,6 +155,12 @@ class ScenarioItem(models.Model):
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
+
+    def changed_callback(self):
+        date_str = self.updated_at.isoformat()
+        return mark_safe(
+            f"const cEvent = new CustomEvent('{self.changed_event()}',{{detail:{{updated_at:'{date_str}'}}}});document.dispatchEvent(cEvent);"
+        )
 
     def deleted_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-deleted"
