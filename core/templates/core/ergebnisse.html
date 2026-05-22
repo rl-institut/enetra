@@ -1,0 +1,485 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ergebnisse – Wasserstoff-Integration – Enetra</title>
+
+    {% include "core/imports.html" %}
+
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+  </head>
+  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
+      <a href="{% url 'core:landing_page' %}">
+        <img src="{% static 'img/enetra-logo.png' %}" alt="Enetra" class="h-5 w-32 object-contain" />
+      </a>
+      <nav class="flex gap-6 items-center">
+        <a href="projects.html" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
+        <div class="flex gap-2 items-center">
+          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
+          <span class="text-sm text-slate-800">Mein Konto</span>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-6 lg:px-12 py-12 flex-1">
+      <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
+
+        <!-- Back link -->
+        <a class="select-none flex items-center gap-2 w-fit text-slate-500 hover:text-slate-800 transition-colors duration-150" href="{% url 'core:project_overview' %}">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span class="text-sm font-semibold">Zum Projekt</span>
+        </a>
+
+        <!-- Page Header -->
+        <div class="select-none flex items-end justify-between gap-8">
+          <div class="flex flex-col gap-1">
+            <h1 class="text-[32px] leading-normal text-slate-800">
+              <span class="font-bold">Ergebnisse: </span><span class="font-light">Wasserstoff-Integration</span>
+            </h1>
+            <p class="text-sm text-slate-500">Zuletzt berechnet 28.04.2026, 11:42</p>
+          </div>
+          <div class="flex gap-2 items-center shrink-0">
+            <button class="select-none px-6 py-2 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span class="text-sm font-semibold">CSV</span>
+            </button>
+            <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+              <i data-lucide="download" class="w-4 h-4 text-white"></i>
+              <span class="text-sm font-semibold text-white">PDF herunterladen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Kennzahlen -->
+        <div class="flex flex-col gap-4">
+          <span class="select-none text-base font-bold text-slate-800 uppercase">Kennzahlen</span>
+          <div class="grid grid-cols-3 gap-6">
+
+            <!-- CO₂-Emissionen -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="leaf" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">CO₂-Emissionen</span>
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="font-bold text-slate-800 leading-none">
+                  <span class="text-[32px] leading-normal">142,2 </span><span class="text-sm font-normal leading-normal">t/Jahr</span>
+                </p>
+                <div class="flex items-center gap-2">
+                  <svg class="w-3 h-3 text-green-700 shrink-0" viewBox="0 0 12 12" fill="currentColor">
+                    <polygon points="6,10 0,2 12,2"/>
+                  </svg>
+                  <span class="text-[13px] font-bold text-green-700">68 % vs. Ist-Zustand</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Energiekosten -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="banknote" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Energiekosten</span>
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="font-bold text-slate-800 leading-none">
+                  <span class="text-[32px] leading-normal">187,3 </span><span class="text-sm font-normal leading-normal">€/Jahr</span>
+                </p>
+                <div class="flex items-center gap-2">
+                  <svg class="w-3 h-3 text-green-700 shrink-0" viewBox="0 0 12 12" fill="currentColor">
+                    <polygon points="6,10 0,2 12,2"/>
+                  </svg>
+                  <span class="text-[13px] font-bold text-green-700">41 % vs. Ist-Zustand</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Zielerreichung -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="flag" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Zielerreichung</span>
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="text-[32px] font-bold text-slate-800 leading-normal">05.2035</p>
+                <span class="text-[13px] font-bold text-slate-500">9,1 Jahre</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Ziele -->
+        <div class="flex flex-col gap-4">
+          <span class="select-none text-base font-bold text-slate-800 uppercase">Ziele</span>
+          <div class="grid grid-cols-3 gap-4">
+
+            <!-- Eigenversorgungsquote — marker shows 80 % target on 0–100 % scale -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-2">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Eigenversorgungsquote</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 shrink-0">Nicht erreicht</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div>
+                  <p class="font-bold text-slate-800"><span class="text-xl">73,7 </span><span class="text-sm font-normal text-slate-500">%</span></p>
+                  <span class="text-[13px] text-slate-500">Ziel: ≥ 80 %</span>
+                </div>
+                <div class="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div class="absolute inset-y-0 left-0 bg-amber-400 rounded-full" style="width: 73.7%"></div>
+                  <div class="absolute inset-y-0 w-px bg-slate-500" style="left: 80%"></div>
+                </div>
+                <p class="text-[11px] text-slate-400">6,3 Pp. unter Zielwert</p>
+              </div>
+            </div>
+
+            <!-- Erneuerbare Einspeisung — marker shows 50 % threshold, bar exceeds it -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-2">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Erneuerbare Einspeisung</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 shrink-0">Erreicht</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div>
+                  <p class="font-bold text-slate-800"><span class="text-xl">63,4 </span><span class="text-sm font-normal text-slate-500">%</span></p>
+                  <span class="text-[13px] text-slate-500">Ziel: ≥ 50 %</span>
+                </div>
+                <div class="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div class="absolute inset-y-0 left-0 bg-green-500 rounded-full" style="width: 63.4%"></div>
+                  <div class="absolute inset-y-0 w-px bg-slate-500" style="left: 50%"></div>
+                </div>
+                <p class="text-[11px] text-slate-400">13,4 Pp. über Zielwert</p>
+              </div>
+            </div>
+
+            <!-- Notfallversorgung — bar fills to 48/72 h (66.7 % of target) -->
+            <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-2">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Notfallversorgung</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 shrink-0">Nicht erreicht</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div>
+                  <p class="font-bold text-slate-800"><span class="text-xl">48 </span><span class="text-sm font-normal text-slate-500">Std.</span></p>
+                  <span class="text-[13px] text-slate-500">Ziel: 72 Std.</span>
+                </div>
+                <div class="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div class="absolute inset-y-0 left-0 bg-amber-400 rounded-full" style="width: 66.7%"></div>
+                </div>
+                <p class="text-[11px] text-slate-400">24 Stunden unter Zielwert</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Flächenübersicht -->
+        <c-flaechen-uebersicht.index >
+
+            <!-- Side panel -->
+            <div class="w-[351px] shrink-0 border-l border-slate-200 p-6 flex flex-col gap-6 rounded-br-lg" x-data="{ details: true }">
+
+              <!-- Total -->
+              <div class="flex flex-col gap-2">
+                <span class="select-none text-sm font-semibold text-slate-800">Gesamtstromerzeugung</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-cyan-500 shrink-0 self-center"></span>
+                  <span class="text-[20px] font-semibold text-slate-800 leading-normal">1.983</span>
+                  <span class="text-sm font-normal text-slate-500">MWh</span>
+                </div>
+              </div>
+
+              <!-- Location breakdown -->
+              <div class="flex flex-col gap-4">
+
+                <!-- Details toggle -->
+                <button @click="details = !details" class="select-none flex items-center justify-end gap-1.5 text-slate-500 hover:text-slate-800 transition-colors duration-150 cursor-pointer w-full">
+                  <span class="text-sm">Details</span>
+                  <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-150" :class="details ? '' : 'rotate-180'"></i>
+                </button>
+
+                <div x-show="details" class="flex flex-col gap-3">
+
+                  <!-- Freifläche 3 -->
+                  <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-800">Freifläche 3</span>
+                      <span class="text-sm font-semibold text-slate-800">970 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                    </div>
+                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 100%"></div>
+                    </div>
+                  </div>
+
+                  <!-- Lagerhalle 1 -->
+                  <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-800">Lagerhalle 1</span>
+                      <span class="text-sm font-semibold text-slate-800">438 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                    </div>
+                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 45%"></div>
+                    </div>
+                  </div>
+
+                  <!-- Lagerhalle 2 -->
+                  <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-800">Lagerhalle 2</span>
+                      <span class="text-sm font-semibold text-slate-800">389 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                    </div>
+                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 40%"></div>
+                    </div>
+                  </div>
+
+                  <!-- Lagerhalle 3 -->
+                  <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-800">Lagerhalle 3</span>
+                      <span class="text-sm font-semibold text-slate-800">200 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                    </div>
+                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 21%"></div>
+                    </div>
+                  </div>
+
+                  <!-- Büros -->
+                  <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-slate-800">Büros</span>
+                      <span class="text-sm font-semibold text-slate-800">98 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                    </div>
+                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 10%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </c-flaechen-uebersicht.index>
+        <!-- Kostenanalyse -->
+        <div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+
+          <!-- Card header -->
+          <div class="select-none flex items-center justify-between px-6 py-4">
+            <span class="text-base font-bold text-slate-800 uppercase">Kostenanalyse</span>
+            <div class="relative" x-data="{ open: false }">
+              <button @click="open = !open" class="select-none cursor-pointer text-slate-400 hover:text-slate-600 transition-colors duration-150">
+                <i data-lucide="ellipsis" class="w-5 h-5"></i>
+              </button>
+              <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-10 py-1 w-48">
+                <button @click="open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 flex items-center gap-3">
+                  <i data-lucide="download" class="w-4 h-4 shrink-0"></i> CSV herunterladen
+                </button>
+                <button @click="open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 flex items-center gap-3">
+                  <i data-lucide="table" class="w-4 h-4 shrink-0"></i> Excel herunterladen
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 pb-6 flex flex-col gap-6">
+
+            <!-- KPI mini-cards -->
+            <div class="grid grid-cols-3 gap-4">
+
+              <!-- Ist-Zustand -->
+              <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Ist-Zustand</span>
+                <div class="flex flex-col gap-0.5">
+                  <p class="font-bold text-slate-800 leading-none">
+                    <span class="text-[32px] leading-normal">316,2 </span><span class="text-sm font-normal leading-normal">Tsd. €/Jahr</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Szenario -->
+              <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Szenario</span>
+                <div class="flex flex-col gap-0.5">
+                  <p class="font-bold text-slate-800 leading-none">
+                    <span class="text-[32px] leading-normal">187,3 </span><span class="text-sm font-normal leading-normal">Tsd. €/Jahr</span>
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="px-3 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">Investition 890 Tsd. €</span>
+                </div>
+              </div>
+
+              <!-- Einsparung -->
+              <div class="p-4 bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-3">
+                <span class="select-none text-xs font-normal text-slate-500 uppercase tracking-wider">Einsparung</span>
+                <div class="flex flex-col gap-0.5">
+                  <p class="font-bold leading-none">
+                    <span class="text-[32px] leading-normal text-green-700">-128,9 </span><span class="text-sm font-normal leading-normal text-slate-500">Tsd. €/Jahr</span>
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="px-3 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">-40,7 %</span>
+                  <span class="px-3 py-0.5 rounded-full text-xs font-semibold bg-cyan-200 text-cyan-800">Amortisation -6,9 J.</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-2 gap-6">
+              <div>
+                <p class="select-none text-sm font-semibold text-slate-500 mb-3">Jährliche Betriebskosten</p>
+                <div id="chart-waterfall" style="height: 320px;"></div>
+              </div>
+              <div>
+                <p class="select-none text-sm font-semibold text-slate-500 mb-3">Kumulierte Kosten</p>
+                <div id="chart-cumulative" style="height: 320px;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
+      <img src="{% static 'img/enetra-logo.png' %}" alt="Enetra" class="h-4 object-contain" />
+      <nav class="flex gap-6 items-center">
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
+        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
+      </nav>
+    </footer>
+
+    <script>
+      // Waterfall chart
+      const wfChart = echarts.init(document.getElementById('chart-waterfall'));
+      const wfCategories = ['Ist-Zustand', 'Strom', 'Wärme', 'CO₂-Kosten', 'Kraftstoffe', 'Ammoniak', 'Wasserstoff', 'Infrastruktur', 'Szenario 1'];
+      const wfPlaceholders = [0, 246, 206, 191, 179, 169, 169, 179, 0];
+      const wfBars = [316, 70, 40, 15, 12, 10, 10, 8, 187];
+      const wfSigned = [316, -70, -40, -15, -12, -10, +10, +8, 187];
+      const wfColors = ['#0E7490','#22C55E','#22C55E','#22C55E','#22C55E','#22C55E','#F97316','#F97316','#0E7490'];
+
+      wfChart.setOption({
+        grid: { top: 16, right: 16, bottom: 80, left: 16, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: wfCategories,
+          axisLabel: { rotate: 30, fontSize: 11, color: '#64748B', fontFamily: 'Inter, sans-serif', interval: 0 },
+          axisLine: { lineStyle: { color: '#E2E8F0' } },
+          axisTick: { show: false },
+        },
+        yAxis: {
+          type: 'value',
+          max: 380,
+          axisLabel: { formatter: v => v + ' T€', fontSize: 11, color: '#94A3B8', fontFamily: 'Inter, sans-serif' },
+          splitLine: { lineStyle: { color: '#F1F5F9' } },
+          axisLine: { show: false },
+          axisTick: { show: false },
+        },
+        series: [
+          {
+            type: 'bar',
+            stack: 'wf',
+            silent: true,
+            itemStyle: { color: 'transparent', borderColor: 'transparent' },
+            data: wfPlaceholders,
+          },
+          {
+            type: 'bar',
+            stack: 'wf',
+            barMaxWidth: 36,
+            data: wfBars.map((v, i) => ({
+              value: v,
+              itemStyle: { color: wfColors[i], borderRadius: i === 0 || i === 8 ? [3, 3, 0, 0] : (wfSigned[i] < 0 ? [0, 0, 3, 3] : [3, 3, 0, 0]) },
+            })),
+            label: {
+              show: true,
+              position: 'top',
+              formatter: params => {
+                const s = wfSigned[params.dataIndex];
+                if (params.dataIndex === 0 || params.dataIndex === 8) return s + ' T€';
+                return (s > 0 ? '+' : '') + s;
+              },
+              fontSize: 11,
+              color: '#475569',
+              fontFamily: 'Inter, sans-serif',
+            },
+          },
+        ],
+      });
+
+      // Cumulative cost line chart
+      const cumChart = echarts.init(document.getElementById('chart-cumulative'));
+      const cumYears = ['2032','2033','2034','2035','2036','2037','2038','2039','2040','2041','2042','2043','2044','2045','2046'];
+      const istData  = [316, 632, 948, 1264, 1580, 1896, 2212, 2528, 2844, 3160, 3476, 3792, 4108, 4424, 4740];
+      const szenData = [1077, 1264, 1451, 1638, 1825, 2012, 2199, 2386, 2573, 2760, 2947, 3134, 3321, 3508, 3695];
+
+      cumChart.setOption({
+        grid: { top: 16, right: 16, bottom: 40, left: 16, containLabel: true },
+        legend: { bottom: 0, textStyle: { fontSize: 11, color: '#64748B', fontFamily: 'Inter, sans-serif' } },
+        xAxis: {
+          type: 'category',
+          data: cumYears,
+          axisLabel: { fontSize: 11, color: '#94A3B8', fontFamily: 'Inter, sans-serif' },
+          axisLine: { lineStyle: { color: '#E2E8F0' } },
+          axisTick: { show: false },
+        },
+        yAxis: {
+          type: 'value',
+          max: 5000,
+          axisLabel: { formatter: v => v + ' T€', fontSize: 11, color: '#94A3B8', fontFamily: 'Inter, sans-serif' },
+          splitLine: { lineStyle: { color: '#F1F5F9' } },
+          axisLine: { show: false },
+          axisTick: { show: false },
+        },
+        series: [
+          {
+            name: 'Ist-Zustand',
+            type: 'line',
+            data: istData,
+            smooth: false,
+            lineStyle: { color: '#64748B', width: 2 },
+            itemStyle: { color: '#64748B' },
+            symbol: 'none',
+            markLine: {
+              silent: true,
+              symbol: ['none', 'none'],
+              lineStyle: { color: '#EF4444', type: 'dashed', width: 1.5 },
+              label: {
+                formatter: 'Amortisation\n~2038',
+                position: 'insideStartTop',
+                color: '#EF4444',
+                fontSize: 10,
+                fontFamily: 'Inter, sans-serif',
+              },
+              data: [{ xAxis: '2038' }],
+            },
+            markPoint: {
+              data: [{ coord: ['2038', 2206], symbol: 'circle', symbolSize: 8, itemStyle: { color: '#EF4444' }, label: { show: false } }],
+            },
+          },
+          {
+            name: 'Szenario 1',
+            type: 'line',
+            data: szenData,
+            smooth: false,
+            lineStyle: { color: '#0E7490', width: 2 },
+            itemStyle: { color: '#0E7490' },
+            symbol: 'none',
+          },
+        ],
+      });
+    </script>
+    <script>lucide.createIcons();</script>
+  </body>
+</html>

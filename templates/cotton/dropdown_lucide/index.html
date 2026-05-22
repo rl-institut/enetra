@@ -1,0 +1,8 @@
+    <div class="relative" x-data="{ open: false }">
+      <button @click="open = !open" class="select-none cursor-pointer text-slate-400 hover:text-slate-600 transition-colors duration-150">
+        <i data-lucide="ellipsis" class="w-5 h-5"></i>
+      </button>
+      <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-[1002] py-1 w-48">
+            {{slot}}
+      </div>
+    </div>

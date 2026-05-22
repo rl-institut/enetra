@@ -2,19 +2,24 @@
 <!-- Alpine Plugins -->
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 <script defer src='{% static "alpine.min.js" %}'></script>
-<script src='{% static "htmx.min.js" %}'></script>
+<script src='{% static "htmx.min.js" %}'>'</script>
+<script src='{% static "util.js" %}'>'</script>
 
     <!-- TODO: Remove: This makes using crispy-tailwind possible, but in later stages we want custom styled inputs anyways -->
     <!-- It also allows designing with new tailwind css classes without the need of running the tailwind cli -->
    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Calligraffitti&family=Geist:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+<!-- Remove this later -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
-<!-- Use stlyesheet after imports so the geist font is availabe -->
-<link rel="stylesheet" href="{% static 'output.css' %}">
+<!-- Tailwind CSS (compiled output) -->
+<link rel="stylesheet" href='{% static "/css/output.css" %}' />
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
 {% load constants %}
 {% events_data as EVENTS %}
 <script>
