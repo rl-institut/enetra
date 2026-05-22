@@ -1,0 +1,29 @@
+<p
+  hx-get="{% url 'ports:changes_count' scenario_internal_id=scenario.internal_id %}"
+  {% if all_changes_count == '' %}
+  hx-trigger="load"
+  {% else %}
+  hx-trigger="load delay:100s, click"
+  {% endif %}
+  hx-swap="outerHTML"
+  hx-target='this'
+  hx-on::trigger="event.stopPropagation();"
+  hx-vals='{"updated_at": "{{updated_at|date:'c'}}", "all_changes_count": "{{all_changes_count}}" }'
+  {% if changed %}
+  hx-on::after-settle="document.dispatchEvent(new CustomEvent('{{scenario.changed_event}}'));console.log('changed')"
+  {% endif %}
+  hx-indicator='this'
+  class="font-bold  text-[13px] text-[#b45309] text-nowrap">{{all_changes_count|default:"Lädt"}} Änderungen
+</p>
+
+
+
+{% for item in created_items %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True  %}
+  {% endfor %}
+{% for item in deleted_items %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='deleted' sendEvents=True %}
+  {% endfor %}
+{% for item in changed_items %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='changed' sendEvents=True %}
+  {% endfor %}

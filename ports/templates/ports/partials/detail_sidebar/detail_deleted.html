@@ -1,15 +1,5 @@
-<div x-data
-     x-on:htmx:load="setTimeout(()=>$dispatch('hide-detail-sidebar'),1000)">
+<div>
   This element was deleted
 </div>
 
-{% comment %}
-@Bryan this needs styling
-{% endcomment %}
-<div hx-swap-oob='outerHTML'
-     id='area-button-list{{item.internal_id}}'>
-  This item was deleted
-  <button x-data type="button" @click="$el.parentElement.remove()">
-    <c-icon.close />
-  </button>
-</div>
+{% include 'ports/partials/update_delete_create_scenario_item.html' with item=item status='deleted' %}

@@ -17,38 +17,59 @@
       <div class="bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1]">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Komponenten</h4>
       </div>
-      <!-- {/* Generator */} -->
-      <div class="border-b border-[#cbd5e1] bg-white">
-        <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
-          <c-list :border=False title="Generator">
-              {% for generator in generators %}
-              <div class="contents"
-                hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=generator.model_name internal_id=generator.internal_id %}"
-                hx-target="#detailSidebar"
-                hx-swap="innerHTML"
-              >
-              <c-list.item :border=False :selected=False title='{{generator.name}} ({{generator.area.name}})' :indicated=False  />
-                </div>
-              {% endfor %}
-          </c-list>
-        </div>
-        <div class="flex flex-col items-center justify-between p-[12px] py-2 border-b border-[#cbd5e1]">
-          <c-list :border=False title="Heizsystem konventionell">
+      <div class="border-b border-[#cbd5e1] bg-white  ">
 
-              {% for heater in heaters %}
-              <c-list.item :border=False :selected=False title="{{heater.name}} ({{heater.area.name}})" :indicated=False :callback="handleViewChange('template','Heizsystem','{{heater.internal_id}}')" />
+        {% partialdef komponenten-list-section %}
+          <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
+              <form>
+                <c-list.index id={{listId}} count title='{{title}}' @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                >
+                  {% for item in items %}
+                  <c-list.item
+                    id='button-list-item-{{ item.internal_id }}'
+                    hx-swap-oob='true'
 
-              {% endfor %}
-          </c-list>
-        </div>
-        <div class="flex flex-col items-center justify-between p-[12px] py-2">
-          <c-list :border=False title="Photovoltaik">
+                    :defaultHxDetails=True
+                    :selected=False
+                    :indicated=False
+                    :item=item
+                    value='{{ item.internal_id }}'
+                    title='{{item.name}}'
+                    radioName='internal_id'
+                >
+                  <c-slot name="singleModeIcon">
+                    {% include "ports/partials/list_item_ellipsis.html" %}
+                  </c-slot>
+                </c-list.item>
 
-              {% for solar in solars %}
-              <c-list.item :border=False :selected=False title="{{solar.name}} ({{solar.area.name}})" :indicated=False :callback="handleViewChange('template','Photovoltaik','{{solar.internal_id}}')" />
-              {% endfor %}
-          </c-list>
-        </div>
+                {% endfor %}
+              </c-list>
+              </form>
+          </div>
+        {% endpartialdef %}
+
+        {% with listId="komponenten-tab-generator-list" title="Generatoren" items=generators %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+
+        {% with listId="komponenten-tab-heating-list" title="Heizsysteme konventionell" items=heatings %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-chp-list" title="Blockheizkraftwerke" items=chps %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-fuelcell-list" title="Brennstoffzellen" items=fuelcells %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-electrolyzer-list" title="Elektrolyseure" items=electrolyzers %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-heatpump-list" title="Wärmepumpen" items=heatpumps %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
+        {% with listId="komponenten-tab-solar-list" title="Photovoltaik" items=solars %}
+        {% partial komponenten-list-section %}
+        {% endwith %}
       </div>
     </div>
   </div>
@@ -67,6 +88,7 @@
       <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">+Vorlage</button>
     </div>
     <div class="border border-[#cbd5e1] rounded-[8px] bg-[#f8fafc] overflow-hidden">
+        <form>
       <c-list :border=False customTitle >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
@@ -76,6 +98,7 @@
           </c-slot>
       <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False callback="handleViewChange('template-detail','Generator','Generator')"/>
       </c-list>
+        </form>
     </div>
   </div>
   </c-expand.index>

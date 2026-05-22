@@ -1,0 +1,37 @@
+<div x-data="{show: false}"   class="cursor-pointer" >
+  <button
+    @click.prevent.stop="show = !show;hideOtherDropDown('#list-drop-down-{{item.internal_id}}')"
+    @click.outside="show = false"
+    class="cursor-pointer"
+
+  >
+  <c-icon.three_dots class="h-[12px]  "
+  />
+  </button>
+  <div
+  x-show='show' x-cloak >
+    <ul  class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50"
+    id="list-drop-down-{{item.internal_id}}"
+    @hide="show=false"
+
+  >
+    {% comment %}
+      special handling of hiding the detail sidebar only in cases where the deleted item/form is inside the dom
+    {% endcomment %}
+    <li><button
+      class="hover:bg-slate-300 w-full"
+      hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
+      hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
+      hx-vals='{"internal_id": "{{ item.internal_id }}"}'
+      @htmx:after-request="const form = htmx.find('#form_{{item.internal_id}}');
+      if (form){
+        form.dispatchEvent(new CustomEvent('hide-detail-sidebar', {bubbles: true}));
+        form.remove()
+      };"
+      hx-swap='none'
+      type="button"
+      hx-on::trigger="event.stopPropagation(); event.preventDefault();"
+    >Löschen</button></li>
+  </ul>
+</div>
+</div>

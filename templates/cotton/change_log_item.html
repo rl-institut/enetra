@@ -1,3 +1,34 @@
-<li class='bg-amber-50 list-item'>
-{{slot}}
-</li>
+<c-vars class item original_item></c-vars>
+      <div class="first:border-t-2 border-b-2 border-[#cbd5e1] py-[16px] flex flex-col gap-[8px]">
+        <div class="flex gap-[8px] items-center">
+          <c-icon.plus/>
+          <p class="font-semibold text-[14px] text-[#1e293b]">
+          <span class="font-bold text-[#0e7490]">{{item.name}}</span>
+            {% if original_item.area %}
+      <span> in </span>
+            <span class="font-bold text-[#0e7490]">{{original_item.area.name}}</span>
+            {% endif %}
+      {% if status == 'changed' %}
+            <span> überschrieben</span>
+      {% elif status == 'created' %}
+            <span> erstellt</span>
+      {% elif status == 'deleted' %}
+            <span> gelöscht</span>
+      {% endif %}
+          </p>
+        </div>
+        <div class="flex gap-[8px] items-center text-[#51637c] text-[14px]">
+          <c-icon.circle_full/>
+          <span>{{item.created_at|date:"j.n.Y H:i"}}</span>
+          <span>•</span>
+          <span>{{item.manager|default:"Unbekannter User"}}</span>
+        </div>
+          {{slot}}
+        {% comment %}
+        NOTE: Changed values are not stored right now
+        <div class="bg-[#f8fafc] rounded-[8px] p-[12px] mt-[4px]">
+          <p class="text-[14px] text-[#1e293b]">Leistung 20 kW → 25 kW</p>
+        </div>
+
+        {% endcomment %}
+      </div>
