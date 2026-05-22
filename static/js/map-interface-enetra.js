@@ -114,7 +114,8 @@ function getGeoJsons() {
     // Add a style to each geometry/Feature, the layer name, and a unique identifier
     inputs.forEach((input) => {
       console.assert(input.name.includes('geom'), 'input should be a "geom"');
-      id = input.id
+      id = input.id;
+      key = input.dataset.value;
       try {
         if (input.value == '') {
           return
@@ -141,7 +142,8 @@ function getGeoJsons() {
           'geojson': geojson,
           'layer': name,
           'style': getStyle(name, id),
-          'id': id
+          'id': id,
+          'key': key
         }
       )
     });

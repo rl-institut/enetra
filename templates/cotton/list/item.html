@@ -16,7 +16,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
         "
        @checked="isSelected=true; event.preventDefault(); $dispatch('item-selected',{ value:'{{value}}'} );"
        @unchecked="isSelected=false; event.preventDefault();$dispatch('item-unselected',{ value:'{{value}}'} );"
-      @map-layer-clicked.window="if (event.detail.value=='geom_{{item.internal_id}}'){$el.click();}"
+        @map-layer-clicked.window="if (event.detail.value=='{{item.internal_id}}'){$el.click();}"
 
 
        {{ attrs }}

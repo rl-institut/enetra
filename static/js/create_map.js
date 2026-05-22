@@ -103,7 +103,6 @@ class MyMap {
     }));
   }
   finishDraw() {
-    console.log('foo')
     if (this.map.pm.Draw.Polygon.enabled()) {
       this.map.pm.Draw.Polygon._finishShape();
     }
@@ -226,7 +225,7 @@ class MyMap {
     }
     var layers = {}
     this.isEditing = false
-    geometries.forEach(({ geojson, layer: layer_name, id, style }) => {
+    geometries.forEach(({ geojson, layer: layer_name, id, style, key }) => {
       console.assert(geojson.type === 'Polygon')
 
       const coords = geojson.coordinates[0].map(([lng, lat]) => [lat, lng]);
@@ -243,6 +242,7 @@ class MyMap {
 
       layers[id] = layer;
       layer.id = id;
+      layer.key = key;
       layer.geojson = geojson;
       this.featureGroups[layer_name].addLayer(layer);
 
@@ -266,7 +266,7 @@ class MyMap {
     // turn on markers and hovers, but only if no layer is in editable mode
     // since editing is not easy with hovers/icons etc
     if (!this.isEditing) {
-      geometries.forEach(({ geojson, layer: layer_name, id, style }) => {
+      geometries.forEach(({ geojson, layer: layer_name, id, style, key }) => {
         var layer = layers[id];
         const popupContent = popups[id];
         if (popupContent) {
@@ -421,9 +421,9 @@ class MyMap {
           if (inside) {
             var event;
             if (e.originalEvent.shiftKey) {
-              event = new CustomEvent('map-layer-shift-clicked', { detail: { value: layer.id }, bubbles: true });
+              event = new CustomEvent('map-layer-shift-clicked', { detail: { value: layer.key }, bubbles: true });
             } else {
-              event = new CustomEvent('map-layer-clicked', { detail: { value: layer.id }, bubbles: true });
+              event = new CustomEvent('map-layer-clicked', { detail: { value: layer.key }, bubbles: true });
             }
             document.dispatchEvent(event);
           }

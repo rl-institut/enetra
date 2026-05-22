@@ -62,16 +62,11 @@ mapdiv.addEventListener('map-elements-edited', (event) => {
 })
 
 mapdiv.addEventListener('some-map-element-created', (event) => {
+  // Add the reference to the created Polygon
   if (createPolygonKey != null) {
     event.detail.key = createPolygonKey
-    var target = document.getElementById(createPolygonKey)
-    if (!target) {
-      console.log(target + ' not found')
-      return
-    }
-    target.value = JSON.stringify(event.detail.layer.toGeoJSON().geometry);
-    target.dispatchEvent(new Event('change', { bubbles: true }));
-    document.dispatchEvent(new CustomEvent('map-element-created', { detail: { key: createPolygonKey }, bubbles: true }))
+    geojson = JSON.stringify(event.detail.layer.toGeoJSON().geometry);
+    document.dispatchEvent(new CustomEvent('map-element-created', { detail: { key: createPolygonKey, geojson: geojson }, bubbles: true }))
   }
   event.stopPropagation()
 });

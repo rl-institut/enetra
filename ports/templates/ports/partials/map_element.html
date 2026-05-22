@@ -16,6 +16,12 @@
     {{form.internal_id}}
     </div>
     <c-tail-input :field=form.geom
+      data-value='{{form.instance.internal_id}}'
+      @map-element-created.window="if (event.detail.key ==$el.dataset.value){
+      $el.value = event.detail.geojson;
+      $el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      "
       rows='2'
       id='geom_{{form.instance.internal_id}}'
       type='text'
