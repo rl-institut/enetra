@@ -1,0 +1,74 @@
+<c-vars
+  search_placeholder="Durchsuchen..."
+  create_label="Erstellen"
+  create_icon="plus-circle"
+/>
+{% comment %}
+{% endcomment %}
+
+<div class="border-t-2 border-slate-200 flex flex-col gap-6 pt-8"
+  x-data="{ view: 'card', search: '', sort_key: '' ,
+          init() {
+            const parent_table = document.getElementById('filterable_table');
+            const parent_cards = document.getElementById('filterable_cards');
+            this.$watch('search', search => {
+            searchName(search, parent_table);
+            searchName(search, parent_cards);
+            });
+
+            this.$watch('sort_key', key => {
+            sortContainer(parent_table, key);
+            sortContainer(parent_cards, key);
+            });
+          },
+        }"
+>
+  <!-- Toolbar row -->
+  <div class="flex gap-4 items-center">
+
+    <!-- Search input -->
+    <div class="w-80 h-10 bg-white px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4">
+      <i data-lucide="search" class="w-4 h-4 text-slate-500 shrink-0"></i>
+      <input type="text" placeholder="{{search_placeholder}}" class="text-sm text-slate-500 placeholder:text-slate-500 bg-transparent outline-none w-full" x-model='search'/>
+    </div>
+
+    <!-- Sort dropdown -->
+    <div class="relative" x-data="{ open: false, selected: 'Sortieren' }">
+      <button @click="open = !open" class="select-none h-10 bg-white hover:bg-slate-50 transition-colors duration-150 px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4 cursor-pointer">
+        <span class="text-sm font-semibold text-slate-800" x-text="selected"></span>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-800"></i>
+      </button>
+      <div x-show="open" x-cloak @click.outside="open = false" class="absolute left-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-10 min-w-full py-1">
+        {{sort_buttons}}
+      </div>
+    </div>
+
+    <!-- View toggle -->
+    <div class="flex items-center rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 overflow-hidden">
+      <button @click="view = 'card'" :class="view === 'card' ? 'bg-slate-100 text-slate-800' : 'bg-white text-slate-500 hover:bg-slate-50'" class="select-none h-10 w-10 flex items-center justify-center transition-colors duration-150 cursor-pointer">
+        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+      </button>
+      <button @click="view = 'table'" :class="view === 'table' ? 'bg-slate-100 text-slate-800' : 'bg-white text-slate-500 hover:bg-slate-50'" class="select-none h-10 w-10 flex items-center justify-center transition-colors duration-150 cursor-pointer border-l border-slate-400">
+        <i data-lucide="list" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Create button -->
+    <button class="select-none ml-auto px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 shrink-0 cursor-pointer">
+      <i data-lucide="{{ create_icon }}" class="w-4 h-4 text-white"></i>
+      <span class="text-sm font-semibold text-white tracking-tight">{{ create_label }}</span>
+    </button>
+
+  </div>
+
+  <!-- Card view slot -->
+  <div x-show="view === 'card'" x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+    {{ card_view }}
+  </div>
+
+  <!-- Table view slot -->
+  <div x-show="view !== 'card'"   x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+    {{table_view }}
+  </div>
+
+</div>

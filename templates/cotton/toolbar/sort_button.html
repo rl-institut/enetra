@@ -1,0 +1,11 @@
+<c-vars
+  sort_key
+  name
+  ="Erstellen"
+  create_icon="plus-circle"
+  alpine_view_state_variable="view"
+/>
+<button @click="sort_key='{{sort_key}}'; selected = '{{name}}'; open = false"
+  class="{{class}} select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150"
+  {{attrs}}
+>{{name}}</button>

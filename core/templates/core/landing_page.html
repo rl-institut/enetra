@@ -1,0 +1,479 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ENETRA – Energieplanung für Binnenhäfen | Reiner Lemoine Institut</title>
+    <meta name="description" content="ENETRA unterstützt Hafenbetreiber bei der Energieplanung: Bestandsaufnahme, Szenarien und Wirtschaftlichkeitsanalyse für 100 % erneuerbare Energie im Binnenhafen." />
+
+    <!-- Open Graph: controls the preview card when this URL is shared on LinkedIn, Slack, WhatsApp, etc. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:site_name" content="ENETRA" />
+    <meta property="og:title" content="ENETRA – Energieplanung für Binnenhäfen" />
+    <meta property="og:description" content="ENETRA unterstützt Hafenbetreiber bei der Energieplanung: Bestandsaufnahme, Szenarien und Wirtschaftlichkeitsanalyse für 100 % erneuerbare Energie im Binnenhafen." />
+    <meta property="og:image" content='{% static "img/hero-app-screenshot.png" %}' /><!-- TODO: use absolute URL in production -->
+
+    <!-- Preload the hero image so the browser fetches it immediately, before it parses the body (improves LCP score) -->
+    <link rel="preload" as="image" href='{% static "img/hero-app-screenshot.png" %}' />
+
+    <!-- Twitter Card: same as Open Graph but specifically for X (Twitter) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ENETRA – Energieplanung für Binnenhäfen" />
+    <meta name="twitter:description" content="ENETRA unterstützt Hafenbetreiber bei der Energieplanung: Bestandsaufnahme, Szenarien und Wirtschaftlichkeitsanalyse für 100 % erneuerbare Energie im Binnenhafen." />
+    <meta name="twitter:image" content='{% static "img/hero-app-screenshot.png" %}' /><!-- TODO: use absolute URL in production -->
+
+    {% include "core/imports.html" %}
+
+    <!-- Structured data: tells Google what this page is about in machine-readable form.
+         SoftwareApplication describes the tool; Organization describes RLI.
+         Enables rich results and improves entity recognition in search. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "ENETRA",
+          "description": "Webbasiertes Energie-Transformations-Assistenzsystem zur Planung der Energiewende in Binnenhäfen.",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "de",
+          "author": {
+            "@type": "Organization",
+            "name": "Reiner Lemoine Institut gGmbH",
+            "url": "https://reiner-lemoine-institut.de"
+          },
+          "funder": {
+            "@type": "Organization",
+            "name": "Bundesministerium für Digitales und Verkehr"
+          }
+        },
+        {
+          "@type": "Organization",
+          "name": "Reiner Lemoine Institut gGmbH",
+          "url": "https://reiner-lemoine-institut.de",
+        "logo":'{% static "logos/RLI_Logo_Horizontal_Zweifarbig_RGB.svg" %}'
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col bg-white">
+
+    <!-- Navbar -->
+    <header class="select-none bg-white border-b border-slate-200 shrink-0 relative" x-data="{ open: false }">
+      <div class="flex items-center justify-between px-6 py-4">
+        <a href="{% url 'core:landing_page' %}">
+          <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-5 w-32 object-contain" />
+        </a>
+
+        <!-- Desktop nav -->
+        <nav aria-label="Hauptnavigation" class="hidden lg:flex items-center gap-8">
+          <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's{{request.user}}</a>
+          <a href="#ueber-das-projekt" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Über das Projekt</a>
+          {% if not request.user.is_authenticated %}
+          <a href="{% url 'core:login' %}" class="flex items-center gap-2 text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">
+            <i data-lucide="circle-user" class="w-4 h-4"></i>
+            Anmelden
+          </a>
+          {% else %}
+          <form action="{% url 'core:logout' %}", method="post">
+            {% csrf_token %}
+          <button class="flex items-center gap-2 text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">
+            <i data-lucide="circle-user" class="w-4 h-4"></i>
+            Abmelden
+          </button>
+          </form>
+          {% endif %}
+        </nav>
+
+        <!-- Mobile hamburger button -->
+        <button @click="open = !open" :aria-expanded="open" aria-label="Menü öffnen" aria-controls="mobile-nav" class="lg:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 transition-colors duration-150 cursor-pointer text-slate-600">
+          <i data-lucide="menu" class="w-5 h-5" x-show="!open"></i>
+          <i data-lucide="x" class="w-5 h-5" x-show="open"></i>
+        </button>
+      </div>
+
+      <!-- Mobile dropdown -->
+      <nav
+        id="mobile-nav"
+        aria-label="Hauptnavigation"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 -translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        @click="open = false"
+        class="lg:hidden absolute top-full left-0 right-0 bg-white border-t border-slate-200 shadow-lg flex flex-col py-2 z-50"
+      >
+        <a href="#so-funktionierts" class="px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-[0.28px] hover:bg-slate-50 hover:text-slate-800 transition-colors duration-150">So funktioniert's</a>
+        <a href="#ueber-das-projekt" class="px-6 py-3 text-sm font-bold text-slate-500 uppercase tracking-[0.28px] hover:bg-slate-50 hover:text-slate-800 transition-colors duration-150">Über das Projekt</a>
+        <a href="{% url 'core:login' %}" class="px-6 py-3 flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-[0.28px] hover:bg-slate-50 hover:text-slate-800 transition-colors duration-150">
+          <i data-lucide="circle-user" class="w-4 h-4"></i>
+          Anmelden
+        </a>
+      </nav>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-1">
+
+      <!-- Hero section -->
+      <section class="bg-cyan-700" aria-labelledby="hero-heading">
+
+        <!-- Two-column content, max 1440px centered -->
+        <div class="max-w-[1440px] mx-auto flex flex-col lg:flex-row">
+
+          <!-- Left: text + badge -->
+          <div class="flex-1 flex flex-col gap-12 lg:justify-end pt-16 lg:pt-24 pb-12 px-6 sm:px-10 lg:px-12">
+
+            <!-- Text block -->
+            <div class="flex flex-col gap-6">
+              <hgroup class="flex flex-col gap-2">
+                <p class="text-sm font-medium text-white/80 uppercase tracking-[0.28px]">
+                  Reiner Lemoine Institut · Forschungsprojekt
+                </p>
+                <h1 id="hero-heading" class="text-white font-extrabold text-[36px] leading-[44px] sm:text-[46px] sm:leading-[54px] lg:text-[54px] lg:leading-[60px]">
+                  Die Energiewende<br />im Binnenhafen<br />systematisch planen
+                </h1>
+              </hgroup>
+              <p class="text-white text-base sm:text-lg leading-7 max-w-lg lg:max-w-none">
+                ENETRA ist ein webbasiertes Energie-Transformations-Assistent, das Hafenbetreiber dabei unterstützt, den Weg zu 100 % erneuerbarer Energie strukturiert zu analysieren, zu modellieren und zu gestalten.
+              </p>
+              <div class="flex flex-wrap gap-4 items-center">
+                <a href="{% url 'core:login' %}" class="select-none px-8 lg:px-10 py-3 lg:py-4 bg-white text-cyan-700 rounded-full text-base lg:text-xl font-semibold uppercase tracking-[0.4px] hover:bg-slate-100 transition-colors duration-150 shrink-0">
+                  Tool öffnen
+                </a>
+                <a href="#so-funktionierts" class="select-none px-8 lg:px-10 py-3 lg:py-4 text-white rounded-full text-base lg:text-xl uppercase tracking-[0.4px] outline outline-1 outline-white hover:bg-white/10 transition-colors duration-150 shrink-0">
+                  Mehr erfahren
+                </a>
+              </div>
+            </div>
+
+            <!-- Pilot badge -->
+            <div class="bg-cyan-600/50 border border-cyan-600 rounded-[4px] px-4 pt-1.5 pb-3 flex flex-col max-w-[477px]">
+              <p class="text-sm font-bold text-white leading-7">Pilotprojekt: BEHALA Westhafen Berlin</p>
+              <p class="text-[13px] text-white leading-6">Entwickelt und erprobt mit Hafenstakeholdern</p>
+            </div>
+
+          </div>
+
+          <!-- Right: app screenshot -->
+          <div class="flex-1 flex items-center justify-center py-10 lg:py-12 px-6 sm:px-10 lg:px-12">
+            <img
+              src='{% static "img/hero-app-screenshot.png" %}'
+              alt="ENETRA App Screenshot"
+              width="468"
+              height="333"
+              fetchpriority="high"
+              class="w-full max-w-[468px] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.35)]"
+            />
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Wave transition: cyan → white -->
+      <img src='{% static "img/wave-green-sm-white-lg.svg" %}' alt="" role="presentation" class="block w-full" />
+
+      <!-- Ausgangslage section -->
+      <section class="bg-white" id="ausgangslage" aria-labelledby="ausgangslage-heading">
+        <div class="max-w-[1440px] mx-auto px-6 sm:px-12 py-12 lg:py-16">
+          <div class="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 items-start">
+
+            <!-- Left: port photo, bottom-aligned on desktop -->
+            <div class="w-full lg:w-1/2 lg:self-stretch lg:flex lg:flex-col lg:justify-end lg:pt-12">
+              <img
+                src='{% static "img/port-from-above.png" %}'
+                alt="Luftbild Binnenhafen"
+                width="600"
+                height="437"
+                loading="lazy"
+                class="w-full rounded-lg object-cover"
+              />
+            </div>
+
+            <!-- Right: kicker + heading + feature cards -->
+            <div class="flex-1 flex flex-col gap-6">
+
+              <!-- Kicker + heading -->
+              <hgroup class="flex flex-col gap-2">
+                <p class="text-cyan-700 text-sm font-medium uppercase tracking-[0.28px]">Ausgangslage</p>
+                <h2 id="ausgangslage-heading" class="font-extrabold text-[32px] sm:text-[40px] leading-[1.2] text-slate-900">
+                  Binnenhäfen stehen vor einer komplexen Transformation
+                </h2>
+              </hgroup>
+
+              <!-- Card 1 -->
+              <div class="bg-slate-100 border-l-[3px] border-cyan-700 rounded-lg flex gap-4 items-start px-4 py-6">
+                <img src='{% static "icons/energy-icon.svg" %}' alt="" class="w-8 h-8 shrink-0 mt-0.5" />
+                <div class="flex flex-col gap-2">
+                  <p class="font-extrabold text-[20px] leading-6 text-slate-900">Energiebedarf analysieren</p>
+                  <p class="text-sm text-slate-500 leading-[22px]">Gebäude, Freiflächen und Infrastruktur müssen hinsichtlich ihres aktuellen und künftigen Energieverbrauchs bewertet werden.</p>
+                </div>
+              </div>
+
+              <!-- Card 2 -->
+              <div class="bg-slate-100 border-l-[3px] border-cyan-700 rounded-lg flex gap-4 items-start px-4 py-6">
+              <img src='{% static "icons/map-icon.svg" %}' alt="" class="w-8 h-8 shrink-0 mt-0.5" />
+                <div class="flex flex-col gap-2">
+                  <p class="font-extrabold text-[20px] leading-6 text-slate-900">Flächen und Potenziale erfassen</p>
+                  <p class="text-sm text-slate-500 leading-[22px]">Solaranlagen, Wärmepumpen oder Wasserstoffinfrastruktur: der Standort entscheidet über die Machbarkeit neuer Energiekonzepte.</p>
+                </div>
+              </div>
+
+              <!-- Card 3 -->
+              <div class="bg-slate-100 border-l-[3px] border-cyan-700 rounded-lg flex gap-4 items-start px-4 py-6">
+              <img src='{% static "icons/screens-icon.svg" %}' alt="" class="w-8 h-8 shrink-0 mt-0.5" />
+                <div class="flex flex-col gap-2">
+                  <p class="font-extrabold text-[20px] leading-6 text-slate-900">Szenarien vergleichen</p>
+                  <p class="text-sm text-slate-500 leading-[22px]">Welche Technologiekombination ist wirtschaftlich, technisch umsetzbar und klimaschonend? Diese Frage lässt sich ohne passendes Werkzeug kaum beantworten.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wave transition: white → grey -->
+      <img src='{% static "img/wave-white-lg-grey-sm.svg" %}' alt="" role="presentation" class="block w-full" />
+
+      <!-- So funktioniert's section -->
+      <section class="bg-slate-100" id="so-funktionierts" aria-labelledby="so-funktionierts-heading">
+        <div class="max-w-[1440px] mx-auto px-6 sm:px-12 py-16 lg:py-24">
+          <div class="max-w-[1200px] mx-auto flex flex-col gap-6">
+
+            <!-- Section header -->
+            <div class="flex flex-col gap-4">
+              <hgroup class="flex flex-col gap-2">
+                <p class="text-cyan-700 text-sm font-medium uppercase tracking-[0.28px]">So funktioniert's</p>
+                <h2 id="so-funktionierts-heading" class="font-extrabold text-[32px] sm:text-[40px] leading-[1.2] text-slate-900">In vier Schritten zum Energiekonzept</h2>
+              </hgroup>
+              <p class="text-[18px] leading-7 text-slate-500 max-w-[688px]">ENETRA bildet den gesamten Planungsprozess ab – von der Bestandsaufnahme über die Szenarioentwicklung bis zur Berechnung und Ergebnisdarstellung. Ohne Vorkenntnisse in Energiemodellierung.</p>
+            </div>
+
+            <!-- Two-column content -->
+
+            <div class="flex flex-col lg:flex-row gap-6 items-start pt-2" x-data="{ active: 1,
+                images: [
+                `{% static "img/how-it-works-1.png" %}`,
+                `{% static "img/how-it-works-2.png" %}`,
+                `{% static "img/how-it-works-3.png" %}`,
+                `{% static "img/how-it-works-4.png" %}`] }">
+
+              <!-- Left: step cards -->
+              <div class="w-full lg:w-[37%] shrink-0 rounded-lg border border-slate-300 divide-y divide-slate-300 overflow-hidden">
+
+                <div role="button" tabindex="0" :aria-pressed="active === 1" class="p-4 flex flex-col gap-2 cursor-pointer transition-colors duration-150" :class="active === 1 ? 'bg-white' : 'bg-slate-100 hover:bg-slate-50'" @click="active = 1" @keydown.enter="active = 1" @keydown.space.prevent="active = 1">
+                  <div class="flex items-center gap-3 font-bold text-lg leading-6">
+                    <span class="shrink-0 transition-colors duration-150" :class="active === 1 ? 'text-slate-500' : 'text-slate-400'">01</span>
+                    <h3 class="transition-colors duration-150" :class="active === 1 ? 'text-slate-900' : 'text-slate-500'">Ist-Zustand erfassen</h3>
+                  </div>
+                  <p class="text-sm leading-[22px] transition-colors duration-150" :class="active === 1 ? 'text-slate-700' : 'text-slate-500'">Gebäude und Freiflächen auf einer interaktiven Karte anlegen, Gebäudetypen definieren, bestehende Energietechnik, Lastprofile und Netzanschlüsse eintragen.</p>
+                </div>
+
+                <div role="button" tabindex="0" :aria-pressed="active === 2" class="p-4 flex flex-col gap-2 cursor-pointer transition-colors duration-150" :class="active === 2 ? 'bg-white' : 'bg-slate-100 hover:bg-slate-50'" @click="active = 2" @keydown.enter="active = 2" @keydown.space.prevent="active = 2">
+                  <div class="flex items-center gap-3 font-bold text-lg leading-6">
+                    <span class="shrink-0 transition-colors duration-150" :class="active === 2 ? 'text-slate-500' : 'text-slate-400'">02</span>
+                    <h3 class="transition-colors duration-150" :class="active === 2 ? 'text-slate-900' : 'text-slate-500'">Szenario erstellen</h3>
+                  </div>
+                  <p class="text-sm leading-[22px] transition-colors duration-150" :class="active === 2 ? 'text-slate-700' : 'text-slate-500'">Neue Technologien wie PV-Anlagen, Wärmepumpen oder Elektrolyseure flächengenau zuordnen. Der Ist-Zustand bleibt dabei unverändert.</p>
+                </div>
+
+                <div role="button" tabindex="0" :aria-pressed="active === 3" class="p-4 flex flex-col gap-2 cursor-pointer transition-colors duration-150" :class="active === 3 ? 'bg-white' : 'bg-slate-100 hover:bg-slate-50'" @click="active = 3" @keydown.enter="active = 3" @keydown.space.prevent="active = 3">
+                  <div class="flex items-center gap-3 font-bold text-lg leading-6">
+                    <span class="shrink-0 transition-colors duration-150" :class="active === 3 ? 'text-slate-500' : 'text-slate-400'">03</span>
+                    <h3 class="transition-colors duration-150" :class="active === 3 ? 'text-slate-900' : 'text-slate-500'">Parameter konfigurieren</h3>
+                  </div>
+                  <p class="text-sm leading-[22px] transition-colors duration-150" :class="active === 3 ? 'text-slate-700' : 'text-slate-500'">Investitionskosten, Leistung und Wirkungsgrade flächen- oder komponentenweise festlegen. Vorlagen aus der Bibliothek ermöglichen Bulk-Editing über mehrere Flächen.</p>
+                </div>
+
+                <div role="button" tabindex="0" :aria-pressed="active === 4" class="p-4 flex flex-col gap-2 cursor-pointer transition-colors duration-150" :class="active === 4 ? 'bg-white' : 'bg-slate-100 hover:bg-slate-50'" @click="active = 4" @keydown.enter="active = 4" @keydown.space.prevent="active = 4">
+                  <div class="flex items-center gap-3 font-bold text-lg leading-6">
+                    <span class="shrink-0 transition-colors duration-150" :class="active === 4 ? 'text-slate-500' : 'text-slate-400'">04</span>
+                    <h3 class="transition-colors duration-150" :class="active === 4 ? 'text-slate-900' : 'text-slate-500'">Berechnen &amp; entscheiden</h3>
+                  </div>
+                  <p class="text-sm leading-[22px] transition-colors duration-150" :class="active === 4 ? 'text-slate-700' : 'text-slate-500'">Energetische und wirtschaftliche Kennzahlen werden automatisch berechnet. Szenarien lassen sich vergleichen, um fundierte Investitionsentscheidungen zu treffen.</p>
+                </div>
+
+              </div>
+
+              <!-- Right: app screenshot -->
+              <div class="flex-1 rounded-lg border border-slate-300 overflow-hidden">
+                <img
+                  :src="images[active - 1]"
+                  :alt="`ENETRA – Schritt ${active}`"
+                  width="732"
+                  height="521"
+                  loading="lazy"
+                  class="w-full h-full object-cover block"
+                  style="aspect-ratio: 732 / 521"
+                />
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wave transition: grey → cyan -->
+      <img src='{% static "img/wave-grey-sm-green-lg.svg" %}' alt="" role="presentation" class="block w-full" />
+
+      <!-- CTA section -->
+      <section class="bg-cyan-700" aria-label="Einstieg in ENETRA">
+        <div class="max-w-[1440px] mx-auto px-6 sm:px-12 py-16 lg:py-24">
+          <div class="max-w-[1200px] mx-auto flex flex-col lg:flex-row gap-12">
+
+            <!-- Card: Planungswerkzeug -->
+            <div class="flex-1 bg-white border border-slate-300 rounded-lg p-8 flex flex-col justify-between gap-6">
+              <div class="flex flex-col gap-6">
+                <p class="text-slate-500 text-sm font-medium uppercase tracking-[0.28px]">Planungswerkzeug</p>
+                <div class="flex flex-col gap-3">
+                  <p class="font-bold text-[18px] leading-6 text-slate-900">Du planst die Energiezukunft deines Hafens</p>
+                  <p class="text-sm leading-6 text-slate-900">ENETRA unterstützt <strong>Hafenbetreiber und&nbsp;-verwaltungen</strong> sowie Beteiligter wie <strong>Mieter, Dienstleister</strong> und <strong>Projektpartner</strong> dabei, den Energiebedarf ihres Standorts zu analysieren, Transformationsszenarien zu entwickeln und fundierte Investitionsentscheidungen zu treffen – ohne Vorkenntnisse in Energiemodellierung.</p>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-4 items-center">
+                <a href="{% url 'core:signup' %}" class="select-none px-8 py-3 bg-cyan-700 text-white rounded-full text-base font-bold uppercase tracking-[0.32px] border border-white hover:bg-cyan-800 transition-colors duration-150 shrink-0">
+                  Zum Tool registrieren
+                </a>
+                <a href="{% url 'core:login' %}" class="select-none px-8 py-3 bg-white text-cyan-700 rounded-full text-base uppercase tracking-[0.32px] border border-cyan-700 hover:bg-cyan-50 transition-colors duration-150 shrink-0">
+                  Einloggen
+                </a>
+              </div>
+            </div>
+
+            <!-- Card: Forschung & Entwicklung -->
+            <div class="flex-1 bg-white border border-slate-300 rounded-lg p-8 flex flex-col justify-between gap-6">
+              <div class="flex flex-col gap-6">
+                <p class="text-slate-500 text-sm font-medium uppercase tracking-[0.28px]">Forschung &amp; Entwicklung</p>
+                <div class="flex flex-col gap-3">
+                  <p class="font-bold text-[18px] leading-6 text-slate-900">Du forschst, modellierst oder entwickelst weiter</p>
+                  <p class="text-sm leading-6 text-slate-900">ENETRA entsteht als offenes Forschungsprojekt des Reiner Lemoine Instituts. Der Quellcode ist öffentlich zugänglich – für <strong>Wissenschaftler</strong>, <strong>Modellierer</strong> und <strong>Entwickler</strong>, die das Tool auf andere Hafenstandorte übertragen oder methodisch weiterentwickeln möchten.</p>
+                </div>
+              </div>
+              <a href="https://github.com/rl-institut/enetra" target="_blank" rel="noopener noreferrer" aria-label="Quellcode auf GitHub ansehen (öffnet in neuem Tab)" class="flex items-center gap-3 text-cyan-700 font-bold text-base hover:underline w-fit">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 shrink-0" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+                Quellcode auf GitHub ansehen
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Wave transition: cyan → white -->
+      <img src='{% static "img/wave-green-lg-white-sm.svg" %}' alt="" role="presentation" class="block w-full" />
+
+      <!-- Über das Projekt section -->
+      <section class="bg-white" id="ueber-das-projekt" aria-labelledby="ueber-das-projekt-heading">
+        <div class="max-w-[1440px] mx-auto px-6 sm:px-12 py-16 lg:py-24">
+          <div class="max-w-[1200px] mx-auto flex flex-col gap-16 lg:gap-24">
+
+            <!-- Top: text + project details card -->
+            <div class="flex flex-col lg:flex-row gap-12">
+
+              <!-- Left: description -->
+              <div class="flex-1 flex flex-col gap-4">
+                <hgroup class="flex flex-col gap-2">
+                  <p class="text-cyan-700/80 text-sm font-medium uppercase tracking-[0.28px]">Über das Projekt</p>
+                  <h2 id="ueber-das-projekt-heading" class="font-extrabold text-[32px] sm:text-[40px] leading-[1.2] text-slate-900">Forschung für die Energiewende in Binnenhäfen</h2>
+                </hgroup>
+                <p class="text-base text-slate-500 leading-6">Wissenschaftler*innen des Reiner Lemoine Instituts (RLI) untersuchen, wie Binnenhäfen den Übergang zu einem nachhaltigen Energiesystem mit 100 % erneuerbaren Energien gestalten können.</p>
+                <p class="text-base text-slate-500 leading-6">Am Beispiel des BEHALA Westhafen in Berlin wird das Tool in enger Zusammenarbeit mit allen relevanten Stakeholdern erprobt und weiterentwickelt. Die Erkenntnisse und das Tool sollen auf andere deutsche Binnenhäfen übertragbar sein.</p>
+                <p class="text-base text-slate-500 leading-6">ENETRA berücksichtigt dabei alle wesentlichen Variablen: aktuellen und zukünftigen Energieverbrauch, Erzeugungsoptionen, verschiedene Energiesektoren wie PV-Potenziale sowie Flächennutzungsoptionen auf dem Hafengelände.</p>
+              </div>
+
+              <!-- Right: project details card -->
+              <div class="flex-1 bg-slate-100 rounded-lg p-8 flex flex-col gap-6">
+                <p class="text-slate-500 text-sm font-medium uppercase tracking-[0.28px]">Projektdetails</p>
+                <dl class="divide-y divide-slate-300">
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Träger</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">Reiner Lemoine Institut gGmbH</dd>
+                  </div>
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Förderung</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">Bundesministerium für Digitales und Verkehr</dd>
+                  </div>
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Partner</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">BEHALA, IHATEC</dd>
+                  </div>
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Ziel</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">100 % erneuerbare Energie für Binnenhäfen</dd>
+                  </div>
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Ansatz</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">Sektorengekoppelte Energiesystemanalyse, partizipativ entwickelt</dd>
+                  </div>
+                  <div class="flex gap-3 items-start py-2">
+                    <dt class="text-[13px] font-bold text-slate-500 uppercase w-[150px] shrink-0 leading-6">Übertragbarkeit</dt>
+                    <dd class="flex-1 text-sm text-slate-900 leading-[22px]">Ergebnisse und Tool für alle deutschen Binnenhäfen nutzbar</dd>
+                  </div>
+                </dl>
+              </div>
+
+            </div>
+
+            <!-- Bottom: logos -->
+            <div class="flex flex-wrap gap-x-16 gap-y-12 items-start">
+
+              <div class="flex flex-col gap-8 shrink-0">
+                <p class="font-extrabold text-lg lg:text-[24px] leading-8 text-slate-900">Förderung</p>
+                <a href="https://www.bmv.de/DE/Home/home.html" target="_blank" rel="noopener noreferrer" aria-label="Bundesministerium für Digitales und Verkehr (öffnet in neuem Tab)">
+                  <img src='{% static "logos/BMDV.png" %}' alt="Bundesministerium für Digitales und Verkehr" width="192" height="195" loading="lazy" class="w-[144px] h-[146px] lg:w-[192px] lg:h-[195px] object-contain" />
+                </a>
+              </div>
+              <div class="flex flex-col gap-8 shrink-0">
+                <p class="font-extrabold text-lg lg:text-[24px] leading-8 text-slate-900">Träger</p>
+                <div class="flex items-center lg:h-[195px]">
+                  <a href="https://reiner-lemoine-institut.de/en/project/enetra-development-of-an-energy-transformation-assistant-for-sustainable-inland-ports/" target="_blank" rel="noopener noreferrer" aria-label="Reiner Lemoine Institut – ENETRA Projektseite (öffnet in neuem Tab)">
+                    <img src='{% static "logos/RLI_Logo_Horizontal_Zweifarbig_RGB.svg" %}' alt="Reiner Lemoine Institut" width="204" height="58" loading="lazy" class="w-[166.5px] h-[81px] lg:w-[222px] lg:h-[108px] object-contain" />
+                  </a>
+                </div>
+              </div>
+              <div class="flex flex-col gap-8 shrink-0">
+                <p class="font-extrabold text-lg lg:text-[24px] leading-8 text-slate-900">Partner</p>
+                <div class="flex flex-wrap lg:h-[195px] gap-x-12 gap-y-6 items-center">
+                  <a href="https://www.behala.de/" target="_blank" rel="noopener noreferrer" aria-label="BEHALA (öffnet in neuem Tab)">
+                    <img src='{% static "logos/behala.png" %}' alt="BEHALA" width="222" height="108" loading="lazy" class="w-[166.5px] h-[81px] lg:w-[222px] lg:h-[108px] object-contain" />
+                  </a>
+                  <a href="https://www.innovativehafentechnologien.de/" target="_blank" rel="noopener noreferrer" aria-label="IHATEC – Innovative Hafentechnologien (öffnet in neuem Tab)">
+                    <img src='{% static "logos/IHATEC.png" %}' alt="IHATEC" width="175" height="108" loading="lazy" class="w-[166.5px] h-[81px] lg:w-[175px] lg:h-[108px] object-contain" />
+                  </a>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="select-none bg-slate-100 py-12">
+      <div class="max-w-[1440px] mx-auto px-6 sm:px-12">
+        <div class="max-w-[1200px] mx-auto flex items-center justify-between">
+          <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-5 w-32 object-contain" />
+          <nav class="flex items-center gap-8">
+            <a href="#" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
+            <a href="#" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
+            <a href="#" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150">Reiner Lemoine Institut</a>
+          </nav>
+        </div>
+      </div>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+  </body>
+</html>
