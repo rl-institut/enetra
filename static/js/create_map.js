@@ -425,7 +425,7 @@ class MyMap {
             } else {
               event = new CustomEvent('map-layer-clicked', { detail: { value: layer.id }, bubbles: true });
             }
-            document.getElementById(layer.id).dispatchEvent(event);
+            document.dispatchEvent(event);
           }
         });
       });

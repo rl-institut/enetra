@@ -1,41 +1,25 @@
 <c-vars key layer :selected=False ></c-vars>
 {% comment %}
 NOTE: Inserted inputs and textareas need a unique id
-
-
 Native html element which is used as state for the leaflet map
 @input is mostly for debugging and allows changing the map based on input
-
-class 'contents' makes the div "inivisble" for display
-Add data-storage for allowed interaction?
-Add data-storage for allowed interaction?
 {% endcomment %}
 <div
-    x-data='{selected: {{selected|lower}}, highlighted: false}'
-    @item-unselected.window="if (event.detail.value=='{{key}}'){highlighted=false; $dispatch('map-redraw')}"
-    @item-selected.window="if (event.detail.value=='{{key}}'){ highlighted=true; $dispatch('map-redraw')}"
-    @click.ctrl ="highlighted = !highlighted; $dispatch('map-redraw')"
-    @map-item-edit.window="if (event.detail.value=='{{key}}'){ highlighted=false;selected=true; $dispatch('map-redraw')}"
-    @map-item-stop-edit.window="if (event.detail.value=='{{key}}'){
-    selected=false;
-    $dispatch('map-redraw')}"
-    @map-layer-shift-clicked="selected =!selected; $dispatch('map-redraw')"
-    @input="$dispatch('geom-changed');console.log('geom changed')"
-    @keyup.escape.window='selected=false; $dispatch("map-redraw")'
-    @keyup.enter.window='selected=false; $dispatch("map-redraw")'
-
+    x-data='{selected: false, highlighted: false}'
+    @item-unselected.window="$dispatch('map-item-stop-highlight', {value:'{{key}}'})"
+    @item-selected.window="$dispatch('map-item-highlight', {value:'{{key}}'})"
+    @input="$dispatch('geom-changed');"
+    x-effect ="
+    selected = $store.map.editingElements.has('{{key}}');
+    highlighted = $store.map.highlightElements.has('{{key}}');
+    "
     class='
-    {% comment %}
-    contents
-    <!-- flex flex-row -->
-    {% endcomment %}
     map-draw-element
-    inline-block
     '
     :class='
-    (selected && "border-6 border-orange-500 map-layer-editable") ||
-    (highlighted && "border-6 border-green-500 map-layer-selected") ||
-            ("{{layer}}")'
+    (selected && "map-layer-editable") ||
+    (highlighted && "map-layer-selected") ||
+    ("{{layer}}")'
 >
 {{slot}}
 </div>
