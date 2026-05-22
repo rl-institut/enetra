@@ -20,7 +20,16 @@ dependencies = [
     # oemof dependencies
     "oemof-network==0.5.0a1",
     "oemof-tabular",
+
     "celery>=5.1.2",
+    # home/ubuntu/PycharmProjects/django-enetra/.venv/lib/python3.10/site-packages/celery/bin/celery.py:11:
+    # UserWarning: pkg_resources is deprecated as an API. See
+    # https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources
+    # package is slated for removal as early as 2025-11-30. Refrain from using this
+    # package or pin to Setuptools<81.
+    # better solution would be upgrading celery, but this is not possible due to depenency lock
+    # from django-oemof
+    "setuptools<81",
     # specified rev via git
     "django-oemof",
     "psycopg2>=2.9.10",
