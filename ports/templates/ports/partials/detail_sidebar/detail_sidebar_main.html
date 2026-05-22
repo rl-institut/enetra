@@ -25,7 +25,7 @@
     {{ errors }}
     <button hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name internal_id=item.internal_id %}"
       hx-target="closest form"
-            hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
+            hx-confirm="Willst du {{ item.name }} wirklich löschen?"
             type="button"
             class="
       w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
@@ -98,7 +98,7 @@
   </details-sidebar-header>
   <details-sidebar-content class="my-hide">
     <div class="px-[21px] py-[16px]">
-      <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchten Sie konfigurieren?</p>
+      <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchtest du konfigurieren?</p>
       <div class="flex flex-col gap-[16px]">
         <c-detail-sidebar-section title=Lasten :items=loads>
           <c-slot name="icon">
