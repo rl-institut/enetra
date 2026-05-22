@@ -9,7 +9,7 @@ ARG APP_HOME=/app
 WORKDIR ${APP_HOME}
 
 # we need to move the virtualenv outside of the $APP_HOME directory because it will be overriden by the docker compose mount
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0 UV_PROJECT_ENVIRONMENT=/venv
 
 # Install apt packages
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -34,6 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock:rw \
     uv sync --no-install-project
 
+
 COPY . ${APP_HOME}
 
 # NOTE: No need to installe the project
@@ -49,8 +50,8 @@ COPY . ${APP_HOME}
 #   && echo dev-user ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/dev-user \
 #   && chmod 0440 /etc/sudoers.d/dev-user
 
-ENV PATH="/${APP_HOME}/.venv/bin:$PATH"
-ENV PYTHONPATH="${APP_HOME}/.venv/lib/python3.10/site-packages:$PYTHONPATH"
+ENV PATH="/venv/bin:$PATH"
+ENV PYTHONPATH="/venv/lib/python3.10/site-packages:$PYTHONPATH"
 
 
 # The django user does not get write access to the starscripts, but they are made executable

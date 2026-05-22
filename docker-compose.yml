@@ -14,7 +14,10 @@ services:
     command:
       /start_dev
     volumes:
-      # - /app/.venv
+      # Bind mount, e.g. use the local folder /app instead of the docker content
+      # this allows making local changes which are reflected directly
+      # this means the .venv from the docker build can not be part of the app-folder
+
       - .:/app
     ports:
       - "8000:8000"
