@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
@@ -341,6 +342,20 @@ class LoadTemplate(ScenarioItem):
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
         default=None
     )
+
+    @classmethod
+    def from_csv(cls, file: InMemoryUploadedFile) -> "LoadTemplate":
+        timeseries = []
+        for line in file:
+            row = line.decode().strip()
+            vals = row.split(",")
+            try:
+                value = float(vals[-1])
+            except ValueError:
+                value = 0
+
+            timeseries.append(value)
+        return LoadTemplate(timeseries=timeseries, spec_load=sum(timeseries) / len(timeseries))
 
 
 class Load(ScenarioItem):

@@ -22,8 +22,10 @@ from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
+from django.shortcuts import redirect
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
@@ -38,6 +40,7 @@ from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import Load
+from .models import LoadTemplate
 from .models import Scenario
 from .models import ScenarioItem
 from .models import Solar
@@ -345,6 +348,44 @@ def render_oob_updates(
         context |= {key: forms}
     oob_changed_items = render_to_string("ports/partials/oob_form_swap.html", context)
     return oob_changed_items
+
+
+def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
+    if request.method != "POST":
+        return HttpResponseBadRequest(b"This method only allows POST requests")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden(b"You need to be logged in to use this function")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    internal_load_id = request.GET.get("internal_id")
+    load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
+    authorized = get_authentification(scenario, request.user, "create")
+    if not authorized:
+        return HttpResponseForbidden(b"You are not authorized for this function")
+    file = request.FILES.get("template_file")
+    if not file:
+        return HttpResponseBadRequest(b"This endpoint needs a template_file in the body")
+    suffix = file.name.split(".")[-1].lower()
+    allowed_suffixes = ["csv"]
+    if suffix not in allowed_suffixes:
+        return HttpResponseBadRequest("This filetype is not Supported")
+    template_load = LoadTemplate.from_csv(file=file)
+    template_load.scenario = scenario
+    template_load.name = file.name
+    template_load.manager = request.user
+    template_load.save()
+    load.template = template_load
+    load.save()
+    response = redirect(
+        reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": scenario_internal_id,
+                "model": model,
+            },
+        )
+        + f"?internal_id={internal_load_id}"
+    )
+    return response
 
 
 def leaflet(request):
