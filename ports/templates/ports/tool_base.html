@@ -51,7 +51,17 @@
 
   detailSidebar innerHTML is the target for hx-requests
   {% endcomment %}
-  <c-detail-sidebar id='detailSidebar' class='z-[9998]'  class='bg-white'>
+
+  {% comment %}
+    Allow htmx injection via content. Useful for debugging /desinging htmx_components
+  {% endcomment %}
+  {% with sidebar_open=content|yesno:"True,False" %}
+  <c-detail-sidebar.index :open=sidebar_open id='detailSidebar' class='z-[9998]' class='bg-white'>
+    {{content}}
+  </c-detail-sidebar>
+  {% endwith %}
+
+    {% comment %}
     <c-detail-sidebar.component template="template">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template.html" %}
     </c-detail-sidebar.component>
@@ -61,7 +71,7 @@
     <c-detail-sidebar.component template="template-detail">
       {% include "ports/partials/detail_sidebar/detail_sidebar_template_detail.html" %}
     </c-detail-sidebar.component>
-  </c-detail-sidebar>
+    {% endcomment %}
   <div>
     Here are some icons to use
     <c-icon.template class="w-5 h-5 text-blue-500 bg-yellow-400" />

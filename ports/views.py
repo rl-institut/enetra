@@ -322,6 +322,37 @@ class DetailsView(View):
     instances: Iterable[ScenarioItem] = []
     data: dict = {}
 
+    def details_render(
+        self, request, template_name, context=None, content_type=None, status=None, using=None
+    ):
+        if request.headers.get("HX-Request"):
+            return render(
+                request=request,
+                template_name=template_name,
+                context=context,
+                content_type=content_type,
+                status=None,
+                using=using,
+            )
+        # Details were requested directly, return full response
+        else:
+            content = render_to_string(
+                request=request,
+                template_name=template_name,
+                context=context,
+                using=using,
+            )
+            context = get_home_context()
+            context["content"] = content
+        return render(
+            request,
+            "ports/tool_base.html",
+            context,
+            content_type=content_type,
+            status=status,
+            using=using,
+        )
+
     def get_basic_context(self, request, *args, **kwargs) -> dict:
         context = {
             "scenario": self.scenario,
@@ -431,7 +462,7 @@ class DetailsView(View):
             scenario=self.scenario, internal_id=self.internal_id
         ).first()
         if deleted_item:
-            return render(
+            return self.details_render(
                 self.request,
                 "ports/partials/detail_sidebar/detail_deleted.html",
                 self.context,
@@ -446,10 +477,10 @@ class DetailsView(View):
         if self.Model == Area:
             self.context |= self.get_area_context()
         elif self.Model == Load or ElectricComponent in self.Model.mro():
-            return render(self.request, self.template, self.context)
+            return self.details_render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
-        response = render(self.request, self.template, self.context)
+        response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
 
@@ -507,7 +538,7 @@ class DetailsView(View):
 
         self.context |= get_home_context()
         self.context["created"] = True
-        response = render(self.request, self.template, self.context)
+        response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
 
@@ -516,7 +547,7 @@ class DetailsView(View):
         form.is_valid()
         self.instance.delete()
         self.context["status"] = "deleted"
-        response = render(
+        response = self.details_render(
             self.request,
             "ports/partials/update_delete_create_scenario_item.html",
             self.context,
@@ -540,7 +571,7 @@ class DetailsView(View):
 
             form = self.Form(data=merged_data)
             self.context["form"] = form
-            return render(self.request, self.template, self.context)
+            return self.details_render(self.request, self.template, self.context)
 
         raise NotImplementedError(f"Multi Get not implemented for {self.Model.__name__}")
 
@@ -577,7 +608,7 @@ class DetailsView(View):
         self.context |= get_home_context()
         self.context["update"] = True
 
-        response = render(self.request, self.template, self.context)
+        respone = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
 
@@ -601,7 +632,7 @@ class DetailsView(View):
 
         self.context |= get_home_context()
         self.context["update"] = True
-        response = render(self.request, self.template, self.context)
+        response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
 
