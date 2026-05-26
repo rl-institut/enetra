@@ -20,7 +20,8 @@ from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import redirect  # noqa
-from django.shortcuts import render  # noqa
+from django.shortcuts import render  # noqa  # noqa
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models

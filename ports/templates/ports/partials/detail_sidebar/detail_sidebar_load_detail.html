@@ -1,5 +1,8 @@
-<form id="form_{{instance.internal_id}}"
-  hx-indicator='this'>
+<<<<<<< HEAD
+<form hx-indicator='this'
+  id="form_{{instance.internal_id}}"
+  hx-encoding="multipart/form-data"
+>
   {{ form.internal_id }}
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
@@ -52,13 +55,39 @@
             <c-field-required :field="form.template" />
           </div>
 
-      <c-input :field=form.template x-data=""
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
+        <c-input :field=form.template x-data=""
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
         </c-input>
         <c-field-errors :field="form.template" />
       <c-input type='file' x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Datei Hochladen">
         </c-input>
+
+        <div class="flex items-center gap-[8px] text-[12px] text-[#94a3b8]">
+          <div class="flex-1 h-px bg-[#e2e8f0]"></div>
+          <span>oder</span>
+          <div class="flex-1 h-px bg-[#e2e8f0]"></div>
+        </div>
+
+        <div class="flex items-center gap-[8px]">
+          <label class="shrink-0 flex items-center justify-center w-[36px] h-[36px] bg-white border border-[#cbd5e1] rounded cursor-pointer hover:bg-[#f1f5f9] transition-colors">
+            <c-icon.circle_full class="w-[16px] h-[16px] text-[#64748b]"/>
+            <input type="file" name="template_file" class="hidden">
+          </label>
+          <input type="number" name="timestep_minutes" min="1" value="15"
+            class="w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2">
+          <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
+          <button type="button"
+              class="grow h-[36px] px-[12px] bg-[#1e293b] text-white text-[13px] font-semibold rounded hover:opacity-80 transition-opacity"
+              hx-post="{% url 'ports:template_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}"
+              {% with hx_target="#form_"|add:internal_id %}
+              hx-target='{{hx_target}}'
+              hx-select='{{hx_target}}'
+              {% endwith %}
+            >
+            Hochladen
+          </button>
+        </div>
       </div>
 
 <div class="flex flex-col gap-[8px]">
