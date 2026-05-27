@@ -23,20 +23,6 @@ document.addEventListener('create-polygon', (event) => {
 });
 
 
-// document.addEventListener('map-item-stop-edit', (event) => {
-//   console.log('foo')
-//   if (myMap.map.pm.globalDrawModeEnabled()) {
-//     console.log('bar')
-//     document.dispatchEvent(new CustomEvent('stop-create-polygon'));
-//   }
-// });
-
-// document.addEventListener('keyup', (event) => {
-//   if (event.key === 'Escape' && myMap.map.pm.globalDrawModeEnabled()) {
-//     console.log('bar')
-//     document.dispatchEvent(new CustomEvent('stop-create-polygon'));
-//   }
-// });
 
 document.addEventListener('keyup', (event) => {
   if (event.key === 'Enter') {

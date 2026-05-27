@@ -26,14 +26,6 @@ function getEditLayerName() {
   return 'map-layer-editable'
 }
 
-function getPolyVerticesEditOption() {
-  return {
-    className: '',  // clear Leaflet's default divIcon styles
-    html: '<div class="size-4 rounded-full bg-white border-2 border-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.35)] cursor-grab active:cursor-grabbing active:scale-120 transition-transform"></div>',
-    iconSize: [16, 16],
-    iconAnchor: [8, 8], // half of iconSize, so its centered
-  }
-}
 
 function getStyle(name, id) {
   // https://leafletjs.com/reference.html#path-option

@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
@@ -303,9 +302,6 @@ def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
     return str(instance_or_uuid)[:5]
 
 
-s = None
-
-
 class DetailsView(View):
     """View which handles detail request for instances
 
@@ -390,8 +386,6 @@ class DetailsView(View):
         # FIXME
         # TODO: Add authorization
         # Instantiate the class with its fixed attributes
-        global s
-        s = time.time()
         self.setup_view(request, *args, **kwargs)
 
         if not self.internal_ids and not self.internal_id and not self.created:
@@ -600,16 +594,9 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        print("before home ctx")
-        print(time.time() - s)
         self.context |= get_home_context()
         self.context["update"] = True
-        print("before render")
-        print(time.time() - s)
         response = render(self.request, self.template, self.context)
-        print("after render")
-
-        print(time.time() - s)
         response["HX-Trigger"] = "map-redraw"
         return response
 
