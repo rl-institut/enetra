@@ -359,16 +359,33 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     internal_load_id = request.GET.get("internal_id")
     load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
     authorized = get_authentification(scenario, request.user, "create")
+
+    def retargetForFailure(response):
+        response["HX-Retarget"] = "#templateError"
+        response["HX-Reselect"] = "unset"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+
     if not authorized:
-        return HttpResponseForbidden(b"You are not authorized for this function")
+        response = HttpResponseForbidden(b"You are not authorized for this function")
+        return retargetForFailure(response)
     file = request.FILES.get("template_file")
     if not file:
-        return HttpResponseBadRequest(b"This endpoint needs a template_file in the body")
+        response = HttpResponse("Keine Datei ausgewählt")
+        return retargetForFailure(response)
     suffix = file.name.split(".")[-1].lower()
     allowed_suffixes = ["csv"]
     if suffix not in allowed_suffixes:
-        return HttpResponseBadRequest("This filetype is not Supported")
-    template_load = LoadTemplate.from_csv(file=file)
+        response = HttpResponse(
+            "Momentan sind nur die folgenden Dateitypen unterstützt: " + ",".join(allowed_suffixes)
+        )
+        return retargetForFailure(response)
+    values = LoadTemplate.values_from_csv(file=file)
+    if not values:
+        response = HttpResponse("Keine numerischen Werte gefunden")
+        return retargetForFailure(response)
+
+    template_load = LoadTemplate(timeseries={"values": values}, spec_load=sum(values) / len(values))
     template_load.scenario = scenario
     template_load.name = file.name
     template_load.manager = request.user
@@ -595,7 +612,13 @@ class DetailsView(View):
         self.context["form"] = self.Form(instance=self.instance)
         if self.Model == Area:
             self.context |= self.get_area_context()
-        elif self.Model == Load or ElectricComponent in self.Model.mro():
+        elif self.Model == Load:
+            # TODO: Area all templates available to every user?
+            templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
+            self.context["templates"] = templates
+
+            return self.details_render(self.request, self.template, self.context)
+        elif ElectricComponent in self.Model.mro():
             return self.details_render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
