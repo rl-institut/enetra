@@ -367,18 +367,45 @@ class LoadTemplate(ScenarioItem):
     )
 
     @classmethod
-    def from_csv(cls, file: InMemoryUploadedFile) -> "LoadTemplate":
-        timeseries = []
+    def values_from_csv(cls, file: InMemoryUploadedFile) -> list:
+        values = []
         for line in file:
             row = line.decode().strip()
             vals = row.split(",")
             try:
                 value = float(vals[-1])
+                values.append(value)
             except ValueError:
-                value = 0
+                pass
+        return values
 
-            timeseries.append(value)
-        return LoadTemplate(timeseries=timeseries, spec_load=sum(timeseries) / len(timeseries))
+    def get_hourly_average(self) -> float:
+        if not hasattr(self, "hourlyAvg"):
+            self.annotateAverages()
+        return self.hourlyAvg
+
+    def get_daily_average(self) -> float:
+        if not hasattr(self, "dailyAvg"):
+            self.annotateAverages()
+        return self.dailyAvg
+
+    def get_yearly_average(self) -> float:
+        if not hasattr(self, "yearlyAvg"):
+            self.annotateAverages()
+        return self.yearlyAvg
+
+    def annotateAverages(self) -> "LoadTemplate":
+        timestep_min = self.timeseries.get("timestep", 15)
+        values = self.timeseries.get("values", [0])
+        total_time_min = len(values) * timestep_min
+        sum_values = sum(values)
+        hourlyAverage = sum_values / (total_time_min / 60)
+        dailyAverage = sum_values / (total_time_min / (60 * 24))
+        yearlyAverage = sum_values / (total_time_min / (365 * 24 * 60))
+        self.hourlyAvg = hourlyAverage
+        self.dailyAvg = dailyAverage
+        self.yearlyAvg = yearlyAverage
+        return self
 
 
 class Load(ScenarioItem):

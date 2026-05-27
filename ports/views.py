@@ -477,7 +477,13 @@ class DetailsView(View):
         self.context["form"] = self.Form(instance=self.instance)
         if self.Model == Area:
             self.context |= self.get_area_context()
-        elif self.Model == Load or ElectricComponent in self.Model.mro():
+        elif self.Model == Load:
+            # TODO: Area all templates available to every user?
+            templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
+            self.context["templates"] = templates
+
+            return self.details_render(self.request, self.template, self.context)
+        elif ElectricComponent in self.Model.mro():
             return self.details_render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")

@@ -28,7 +28,11 @@
 </details-sidebar-header>
 
 <details-sidebar-content>
-  <div class="px-[24px] py-[24px]">
+  <div class="px-[24px] py-[24px]"
+      x-data="{selectedTemplate:null,
+               multiplicator: null,
+      }"
+    >
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
 
@@ -56,6 +60,7 @@
           </div>
 
         <c-input :field=form.template x-data=""
+            @change="selectedTemplate=event.target.value"
             class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
         </c-input>
         <c-field-errors :field="form.template" />
@@ -78,16 +83,19 @@
             class="w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2">
           <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
           <button type="button"
-              class="grow h-[36px] px-[12px] bg-[#1e293b] text-white text-[13px] font-semibold rounded hover:opacity-80 transition-opacity"
+              class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
               hx-post="{% url 'ports:template_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}"
               {% with hx_target="#form_"|add:internal_id %}
               hx-target='{{hx_target}}'
               hx-select='{{hx_target}}'
+              hx-indicator='find span'
               {% endwith %}
             >
+          <span class="w-[1em]! h-[1em]! loader htmx-indicator"></span>
             Hochladen
           </button>
         </div>
+          <div id="templateError"></div>
       </div>
 
 <div class="flex flex-col gap-[8px]">
@@ -96,6 +104,8 @@
             <c-field-required :field="form.factor" />
           </div>
       <c-input :field=form.factor x-data=""
+          x-init='multiplicator=$el.value'
+          x-model='multiplicator'
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Multiplikator eingeben">
         </c-input>
         <c-field-errors :field="form.factor" />
@@ -120,30 +130,51 @@
         </c-select.index>
       </div>
 
-      <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Berechnung via...</label>
-        <c-select.index classButton='border-[#cbd5e1]!' selectedValue='1'>
-          <c-select.button selectValue='1'>
-            Jahressumme
-          </c-select.button>
-          <c-select.button selectValue='2'>
-            Tagessumme
-          </c-select.button>
-          <c-select.button selectValue='3'>
-            Stundenwerte
-          </c-select.button>
-        </c-select.index>
-      </div>
 
-      <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Jahressumme</label>
-        <div class="relative">
-          <input
-            type="text"
-            value="600.000"
-            class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
-          />
-          <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">kWh</span>
+      <div
+          x-data='{templates : {
+          {% for template in templates %}
+          "{{template.id}}": {
+          1: {{template.get_yearly_average}},
+          2: {{template.get_daily_average}},
+          3: {{template.get_hourly_average}},
+          },
+          {% endfor %}
+          },
+          selectedDuration: null,
+          }'
+        >
+
+        <div class="flex flex-col gap-[8px]"
+            @change="selectedDuration=event.target.value"
+          >
+          <label class="font-semibold text-[14px] text-[#1e293b]">Berechnung via...</label>
+          <c-select.index classButton='border-[#cbd5e1]!' selectedValue='1'>
+            <c-select.button selectValue='1'>
+              Jahressumme
+            </c-select.button>
+            <c-select.button selectValue='2'>
+              Tagessumme
+            </c-select.button>
+            <c-select.button selectValue='3'>
+              Stundenwerte
+            </c-select.button>
+          </c-select.index>
+        </div>
+
+
+        <div class="flex flex-col gap-[8px]">
+          <label class="font-semibold text-[14px] text-[#1e293b]">Jahressumme</label>
+          <div class="relative">
+            <input
+              type="text"
+              @change='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
+              @input='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
+              x-bind:value='templates[selectedTemplate][selectedDuration]*multiplicator'
+              class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
+            />
+            <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">kWh</span>
+          </div>
         </div>
       </div>
 
