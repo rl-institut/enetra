@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registrierung ausstehend – Enetra</title>
+
+    {% include "core/imports.html" %}
+  </head>
+  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col items-center justify-center px-4 py-12">
+
+    <div class="w-full max-w-sm flex flex-col items-center gap-8">
+
+      <!-- Logo -->
+      <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-6 object-contain" />
+
+      <!-- Card -->
+      <div class="w-full p-8 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-6">
+
+        <!-- Heading -->
+        <div class="flex flex-col gap-1">
+          <h1 class="text-2xl font-bold text-slate-800">Fast geschafft!</h1>
+          <p class="text-sm text-slate-500">Sie haben sich erfolgreich registriert.</p>
+        </div>
+
+        <!-- Icon -->
+        <div class="flex justify-center">
+          <div class="w-16 h-16 rounded-full bg-cyan-50 flex items-center justify-center">
+            <i data-lucide="mail" class="w-8 h-8 text-cyan-700"></i>
+          </div>
+        </div>
+
+        <!-- Info box -->
+        <div class="flex items-start gap-3 px-4 py-3 bg-slate-50 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-200">
+          <i data-lucide="info" class="w-4 h-4 text-cyan-700 mt-0.5 shrink-0"></i>
+          <p class="text-sm text-slate-600">
+            Ihr Konto muss noch per E-Mail aktiviert werden. Bitte prüfen Sie Ihren Posteingang und auch den Spam-Ordner.
+          </p>
+        </div>
+
+        <!-- Steps -->
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-full bg-cyan-700 flex items-center justify-center shrink-0">
+              <i data-lucide="check" class="w-3 h-3 text-white"></i>
+            </div>
+            <span class="text-sm text-slate-500">Konto erstellt</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-full outline outline-1 outline-slate-300 flex items-center justify-center shrink-0">
+              <span class="text-xs text-slate-400">2</span>
+            </div>
+            <span class="text-sm text-slate-800 font-medium">E-Mail bestätigen</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-full outline outline-1 outline-slate-300 flex items-center justify-center shrink-0">
+              <span class="text-xs text-slate-400">3</span>
+            </div>
+            <span class="text-sm text-slate-500">Loslegen</span>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex flex-col gap-3">
+          <button type="button" class="select-none w-full px-6 py-2.5 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex justify-center items-center cursor-pointer">
+            <span class="text-sm font-semibold text-white">E-Mail erneut senden</span>
+          </button>
+          <a href="{% url 'core:login' %}" class="select-none w-full px-6 py-2.5 rounded-full outline outline-1 outline-offset-[-1px] outline-slate-300 flex justify-center items-center hover:bg-slate-50 transition-colors duration-150 cursor-pointer">
+            <span class="text-sm font-semibold text-slate-600">Zurück zur Anmeldung</span>
+          </a>
+        </div>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3">
+          <hr class="flex-1 border-slate-200" />
+          <span class="text-xs text-slate-400">oder</span>
+          <hr class="flex-1 border-slate-200" />
+        </div>
+
+        <!-- Back to login -->
+        <p class="text-center text-sm text-slate-500">
+          Bereits aktiviert?
+          <a href="{% url 'core:login' %}" class="text-cyan-700 font-semibold hover:underline">Jetzt anmelden</a>
+        </p>
+
+      </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+  </body>
+</html>
