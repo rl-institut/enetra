@@ -66,9 +66,9 @@
         </div>
 
         <div class="flex items-center gap-[8px]">
-          <label class="shrink-0 flex items-center justify-center w-[36px] h-[36px] bg-white border border-[#cbd5e1] rounded cursor-pointer hover:bg-[#f1f5f9] transition-colors">
-            <c-icon.circle_full class="w-[16px] h-[16px] text-[#64748b]"/>
-            <input type="file" name="template_file" class="hidden">
+          <label class="relative shrink-0 flex items-center justify-center w-[36px] h-[36px] bg-white border border-[#cbd5e1] rounded cursor-pointer hover:bg-[#f1f5f9] transition-colors">
+            <c-icon.upload class="w-[16px] h-[16px] text-[#64748b] pointer-events-none" aria-hidden="true" />
+            <input type="file" name="template_file" title="Datei auswählen" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
           </label>
           <input type="number" name="timestep_minutes" min="1" value="15"
             class="w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2">
