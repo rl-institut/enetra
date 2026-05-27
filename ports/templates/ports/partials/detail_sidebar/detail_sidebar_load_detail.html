@@ -152,7 +152,11 @@
 
 
         <div class="flex flex-col gap-[8px]">
-          <label class="font-semibold text-[14px] text-[#1e293b]">Jahressumme</label>
+          <label class="font-semibold text-[14px] text-[#1e293b]" x-data
+              x-text="
+              (selectedDuration =='1' && 'Jahressumme') ||
+              (selectedDuration =='2' && 'Tagessumme') ||
+              (selectedDuration =='3' && 'Stundenwerte')"></label>
           <div class="relative">
             <input
               type="text"

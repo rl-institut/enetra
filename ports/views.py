@@ -384,8 +384,20 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     if not values:
         response = HttpResponse("Keine numerischen Werte gefunden")
         return retargetForFailure(response)
-
-    template_load = LoadTemplate(timeseries={"values": values}, spec_load=sum(values) / len(values))
+    timestep_minutes = request.POST.get("timestep_minutes", None)
+    if not timestep_minutes:
+        # number input strips non numeric content from request. We dont know its missing or not numeric
+        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
+        return retargetForFailure(response)
+    try:
+        timestep_minutes = float(timestep_minutes)
+    except ValueError:
+        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
+        return retargetForFailure(response)
+    template_load = LoadTemplate(
+        timeseries={"values": values, "timestep_minutes": timestep_minutes},
+        spec_load=sum(values) / len(values),
+    )
     template_load.scenario = scenario
     template_load.name = file.name
     template_load.manager = request.user

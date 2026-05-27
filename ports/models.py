@@ -372,7 +372,7 @@ class LoadTemplate(ScenarioItem):
         return self.yearlyAvg
 
     def annotateAverages(self) -> "LoadTemplate":
-        timestep_min = self.timeseries.get("timestep", 15)
+        timestep_min = self.timeseries.get("timestep_minutes", 15)
         values = self.timeseries.get("values", [0])
         total_time_min = len(values) * timestep_min
         sum_values = sum(values)
