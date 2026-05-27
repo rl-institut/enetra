@@ -1,6 +1,7 @@
 import django.forms as forms
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
+from django.db.models import ForeignKey
 from django.db.models import QuerySet
 from django.forms import CharField
 from django.forms import ValidationError
@@ -29,12 +30,18 @@ def AreaItemFormFactory():
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
-    exclude = ["manager", "scenario"]
+    exclude = ["manager", "scenario", "updated_user"]
+    fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
+        exclude = exclude + ["area_type", "geom"]
+        field_classes = {"geom": GeoJSONPolygonField}
+        for fk_f in filter(lambda x: x not in exclude, fk_fields):
+            print(fk_f)
+            field_classes[fk_f] = InternalIDModelChoiceField
         BaseForm = modelform_factory(
             ItemModel,
-            exclude=exclude + ["area_type", "geom"],
-            field_classes={"geom": GeoJSONPolygonField},
+            exclude=exclude,
+            field_classes=field_classes,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
@@ -44,9 +51,15 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         )
 
     elif ItemModel == Load or ElectricComponent in ItemModel.mro():
+        exclude = exclude + ["area"]
+        field_classes = {}
+        for fk_f in filter(lambda x: x not in exclude, fk_fields):
+            print(fk_f)
+            field_classes[fk_f] = InternalIDModelChoiceField
         BaseForm = modelform_factory(
             ItemModel,
-            exclude=exclude + ["area"],
+            exclude=exclude,
+            field_classes=field_classes,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 "name": forms.TextInput(),
@@ -113,6 +126,12 @@ class GeoJSONWidget(forms.Textarea):
         if hasattr(value, "geojson"):
             return value.geojson
         return value
+
+
+class InternalIDModelChoiceField(forms.ModelChoiceField):
+    def __init__(self, queryset, **kwargs):
+        kwargs.setdefault("to_field_name", "internal_id")
+        super().__init__(queryset, **kwargs)
 
 
 class UUIDMultipleChoiceField(CharField):
