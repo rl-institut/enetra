@@ -43,7 +43,15 @@ class Scenario(models.Model):
     )
 
     class Meta:
-        permissions = (("foo", "Assign foo"),)
+        permissions = (
+            ("view", "view scenario"),
+            ("details", "details scenario"),
+            ("delete", "delete scenario"),
+            ("change", "change scenario"),
+        )
+
+    def group_name(self):
+        return f"Scenario_{self.id}_group"
 
     @atomic()
     def safe_delete(self):
@@ -84,6 +92,12 @@ class ScenarioItem(models.Model):
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
+    # the item was authorized. It can be shown in the frontend
+    has_authorization = False
+    # the items authorization was checked. It should be checked that only items with
+    # checked_authorization and has_authorization are shown.
+    checked_authorization = False
+
     updated_user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -104,6 +118,13 @@ class ScenarioItem(models.Model):
             )
         ]
         ordering = ["scenario", "id"]  # Optional: share common Meta options
+
+        permissions = (
+            ("view", "view item with limited attributes"),
+            ("details", "read item with all attributes"),
+            ("delete", "delete item"),
+            ("change", "change item"),
+        )
 
     """
     The scenario contains different types of models, which should share some common functionality.
@@ -180,7 +201,7 @@ class ScenarioItem(models.Model):
         return "icon.circle_full"
 
     @classmethod
-    def create_new(cls, scenario: Scenario, **kwargs):
+    def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         raise NotImplementedError("Missing implementation of Model specific empty Instance")
 
@@ -319,8 +340,17 @@ class Area(ScenarioItem):
         default=None,
     )
 
+<<<<<<< HEAD
     def layer_name(self):
         return f"{self.area_type}-{self._meta.model_name}"
+=======
+    class Meta:
+        permissions = (
+            ("details", "View area details"),
+            ("delete", "delete area"),
+            ("change", "change area"),
+        )
+>>>>>>> f71c392 (Create permissions for viewing scenario-items)
 
     @classmethod
     def adjust_Form(
@@ -339,7 +369,7 @@ class Area(ScenarioItem):
         return FormClass
 
     @classmethod
-    def create_new(cls, scenario: Scenario, **kwargs):
+    def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
         allowed_attributes = ["area_type"]
@@ -352,12 +382,13 @@ class Area(ScenarioItem):
         instance = cls(
             scenario=scenario,
             name=new_name,
+            manager=manager,
             **extra_args,
-            # TODO: manager=request.user
         )
         return instance
 
 
+# FIXME: A load template is not part of an area. What permission state should it have?
 class LoadTemplate(ScenarioItem):
     """Template for timeseries, mostly power series"""
 
@@ -423,7 +454,11 @@ class Load(ScenarioItem):
 
     @classmethod
     def create_new(
-        cls, scenario: Scenario, area_internal_ids: list[uuid.UUID | str] = None, **kwargs
+        cls,
+        scenario: Scenario,
+        manager: User,
+        area_internal_ids: list[uuid.UUID | str] = None,
+        **kwargs,
     ):
         if area_internal_ids is None:
             area_internal_ids = []
@@ -444,8 +479,8 @@ class Load(ScenarioItem):
                 Load(
                     scenario=scenario,
                     name=new_name,
+                    manager=manager,
                     **extra_args,
-                    # TODO: manager=request.user
                 )
             )
         return loads
@@ -546,7 +581,9 @@ class ElectricComponent(ScenarioItem):
         return {}
 
     @classmethod
-    def create_new(cls, scenario: Scenario, area_internal_ids: list[str | uuid.UUID], **kwargs):
+    def create_new(
+        cls, scenario: Scenario, manager: User, area_internal_ids: list[str | uuid.UUID], **kwargs
+    ):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
@@ -561,8 +598,8 @@ class ElectricComponent(ScenarioItem):
                 cls(
                     scenario=scenario,
                     name=new_name,
+                    manager=manager,
                     **extra_args,
-                    # TODO: manager=request.user
                 )
             )
         return components

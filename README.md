@@ -21,6 +21,7 @@ uvx djlint filepath --reformat
 ```
 to make use of uv tools
 
+
 enetra uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
 > shadcn_django provides a CLI tool that allows you to initialize and add shadcn-style components to your Django templates.
 
@@ -44,7 +45,15 @@ This site make use of the django package ecosystem and uses the following packag
  - gunicorn as wsgi
  - docker and docker-compose for easy setup of local development or local hosting
 
-### Linting
+### Formatting and Linting
+for ruff formatting run
+```
+uvx ruff format filepath
+```
+for ruff linting run \[with automatic safe fixes\]
+```
+uvx ruff check filepath [--fix]
+```
 
 ### Documentation
  - mike and mkdocs for documentation
@@ -135,8 +144,15 @@ This site make use of the django package ecosystem and uses the following packag
         1. Set up the database: `uv run manage.py migrate`
         2. Create admin account: `uv run manage.py createsuperuser`
 
-```
 
+## Permissions
+Enetra uses django-guardian for instance based permissions.
+Permissions can be given only on a group base right now.
+A scenario/project can have multiple users. Each user is part of the same <i>Scenario-Group</i>
+If a user creates an Instance (of an Area) he has all permissions for this instance. He is called the <i>manager</i> of this object
+The <i>Scenario-Group</i> has no permissions by default to interact with the instance.
+Only a generic view of the instance is allowed.
+The <i>manager</i> can toggle the authorization level to public, so every Project-User can change/delete and create instances inside the area as well as the area itself.
 
 
 ## Running

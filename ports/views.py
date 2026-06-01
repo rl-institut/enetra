@@ -10,7 +10,13 @@ from uuid import uuid4
 
 import numpy as np
 from django.apps.registry import apps
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.db.models import ForeignKey
+from django.db.models import ManyToManyField
+from django.db.models import QuerySet
+from django.db.models import Value
+from django.forms import ModelForm
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -26,6 +32,10 @@ from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
 from django_oemof import simulation
+from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
+from guardian.shortcuts import get_perms
+from guardian.shortcuts import remove_perm
 
 from ports import models
 from ports.create_placeholder_scenario import create_scenario
@@ -43,15 +53,108 @@ from .models import ScenarioItem
 logger = logging.getLogger("django-ports")
 
 
-def get_authentification(
-    object: Scenario | ScenarioItem,
+def get_related_model_values(
+    instances: QuerySet[ScenarioItem], model: type[ScenarioItem], field_name: str
+):
+    """Find the values of field_name on all related instances of type model for the given queryset
+
+    Used to find all area_internal_ids for a given QuerySet of ScenarioItems, so the permission
+    can be checked on those areas
+    """
+    all_fields = instances.model._meta.get_fields()
+    fk_fields = [
+        f for f in all_fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
+    ]
+    m2m_fields = [
+        f
+        for f in all_fields
+        if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
+    ]
+    if not fk_fields and not m2m_fields:
+        return None
+
+    if fk_fields:
+        instances = instances.select_related(*[f.name for f in fk_fields])
+    if m2m_fields:
+        instances = instances.prefetch_related(*[f.name for f in m2m_fields])
+
+    values = []
+    for instance in instances:
+        for field in fk_fields:
+            related_instance = getattr(instance, field.name)
+            if related_instance is not None:
+                values.append(getattr(related_instance, field_name))
+        for field in m2m_fields:
+            values.extend(getattr(instance, field.name).values_list(field_name, flat=True))
+    return values
+
+
+def has_area_authorization_from_uuids(
+    uuids: list[UUID | str],
     user: User,
-    crud: Literal["create", "c", "read", "r", "update", "u", "delete", "d"],
+    crud: Literal["view", "create", "details", "change", "delete"],
+    scenario: Scenario,
+    model: type[ScenarioItem],
+):
+    if model is Area:
+        area_uuids = uuids
+    else:
+        instances = model.objects.filter(scenario=scenario, internal_id__in=uuids)
+        area_uuids = get_related_model_values(instances, Area, "internal_id")
+    areas = Area.objects.filter(scenario=scenario, internal_id__in=area_uuids).exclude(manager=user)
+    non_managed_areas_internal_ids = areas.values_list("internal_id", flat=True)
+    allowed_internal_ids = get_objects_for_user(user, crud, areas).values_list(
+        "internal_id", flat=True
+    )
+    missing_permissions = len(set(non_managed_areas_internal_ids).difference(allowed_internal_ids))
+    return missing_permissions == 0
+
+
+def has_authorization(
+    item: Scenario | ScenarioItem,
+    user: User,
+    crud: Literal["view", "create", "details", "change", "delete"],
 ) -> bool:
-    # TODO: Implement
-    if False:  # noqa
+    """
+    View: See an item with limited set of attributes
+    details: See an item with all its attributes
+    Change: Change an item
+    Delete: Delete an item
+    Create: Create an item
+    """
+    # For now short the authorization for ScenarioItems, since their authorization is
+    # based only on areas for now
+    if isinstance(item, ScenarioItem):
+        return has_area_authorization_from_uuids(
+            [item.internal_id], user, crud, item.scenario, item.model()
+        )
+
+    if not user.is_authenticated:
         return False
-    return True
+    if user.is_superuser:
+        return True
+    if user == item.manager:
+        return True
+    has_perm = False
+    match crud:
+        case "delete" | "details":
+            has_perm = user.has_perm("details", item)
+        case "view":
+            has_perm = user.has_perm("view", item)
+        case _:
+            print("no matching crud found for " + crud)
+    return has_perm
+
+
+def debug_switch_user(request, username: str):
+    from django.contrib.auth import login
+    from django.contrib.auth import logout
+
+    user = User.objects.filter(username=username).first()
+    if user:
+        logout(request)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return render(request, "ports/partials/user_debug_buttons.html", {})
 
 
 def test(request):
@@ -250,25 +353,57 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
-def get_home_context(scenario: Scenario | None = None):
+def get_home_context(scenario: Scenario, user: User | None):
     data = {}
     scenario = scenario or Scenario.objects.last()
     data["scenario"] = scenario
     data["scenarios"] = Scenario.objects.all()
+    data["Area"] = Area
+    if not user:
+        return data
+    #
 
+    base_qs = Area.objects.filter(scenario=scenario)
+    allowed_details_ids = set(
+        get_objects_for_user(user, "details", Area.objects.filter(scenario=scenario)).values_list(
+            "id", flat=True
+        )
+    )
+    managed_area_ids = set(
+        Area.objects.filter(manager=user, scenario=scenario).values_list("id", flat=True)
+    )
+    allowed_details_ids.union(managed_area_ids)
+    print(allowed_details_ids)
+
+    building_areas = list(base_qs.filter(area_type=Area.AreaTypeChoices.BUILDING))
+    open_areas = list(base_qs.filter(area_type=Area.AreaTypeChoices.OPEN))
+
+    for areas in [building_areas, open_areas]:
+        for area in areas:
+            area: Area
+            area.checked_authorization = True
+            if area.id in allowed_details_ids:
+                area.has_authorization = True
+
+    print(building_areas)
+    data["building_areas"] = building_areas
+    data["open_areas"] = open_areas
     electric_components = dict()
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
             # create queries for all electriccomponenent models like
             # key is model_name + "s" ,e.g. solars, heatings, generators
             key = f"{m._meta.model_name}s"
-            query = m.objects.filter(scenario=scenario)
-            data[key] = query
-            electric_components[key] = list(query)
+            items = list(m.objects.filter(scenario=scenario))
+            for item in items:
+                item.checked_authorization = True
+                if item.area_id in allowed_details_ids:
+                    item.has_authorization = True
+            data[key] = items
+            electric_components[key] = items
 
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
-    data["Area"] = Area
 
     # important:  prefetch all related models to avoid n+1 queries
     all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
@@ -289,14 +424,15 @@ def get_home_context(scenario: Scenario | None = None):
 
 
 def home(request):
-    if request.GET.get("new"):
+    if request.GET.get("new") or Scenario.objects.count() == 0:
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
         s = create_scenario()
-        s.name = request.GET.get("new")
+        s.name = request.GET.get("new", "NewScenario")
         s.save(update_fields=["name"])
-
-    context = get_home_context()
+        return redirect(reverse("ports:home"))
+    user = None if not request.user.is_authenticated else request.user
+    context = get_home_context(user=user)
     return render(request, "ports/tool_base.html", context)
 
 
@@ -343,7 +479,7 @@ class DetailsView(View):
                 context=context,
                 using=using,
             )
-            context = get_home_context()
+            context = get_home_context(user=request.user)
             context["content"] = content
         return render(
             request,
@@ -382,9 +518,10 @@ class DetailsView(View):
         # These instances should be shown or posted.
         self.internal_ids = [] if internal_ids[0] == "" else internal_ids
         self.internal_id = self.data.get("internal_id")
-
         # NOTE: created is set through the url resolver
         self.multi = len(self.internal_ids) > 1
+        if self.multi and self.internal_id:
+            assert self.internal_id in self.internal_ids
         if self.created:
             pass
         elif self.multi:
@@ -423,7 +560,25 @@ class DetailsView(View):
         # FIXME
         # TODO: Add authorization
         # Instantiate the class with its fixed attributes
+        if not request.user.is_authenticated:
+            response = HttpResponse("You need to be authenicated to view this")
+            return response
+        assert isinstance(request.user, User)
         self.setup_view(request, *args, **kwargs)
+        if not has_authorization(self.scenario, request.user, "view"):
+            response = HttpResponse("You are not allowed to VIEW this scenario")
+            return response
+        # if self.multi:
+        #     if not has_area_authorization_from_uuids(
+        #         self.internal_ids, request.user, "view", self.scenario, self.Model
+        #     ):
+        #         response = HttpResponse("You are not allowed to VIEW all of these items")
+        #         return response
+        # elif not has_area_authorization_from_uuids(
+        #     [self.internal_id], request.user, "view", self.scenario, self.Model
+        # ):
+        #     response = HttpResponse("You are not allowed to VIEW this item")
+        #     return response
 
         if not self.internal_ids and not self.internal_id and not self.created:
             # No item selected. Don't swap but hide the detail-sidebar. Ignore this if self.created
@@ -471,22 +626,29 @@ class DetailsView(View):
         raise Http404("This instance does not exist")
 
     def get(self, request, *args, **kwargs):
+        if not has_authorization(self.instance, request.user, "details"):
+            return HttpResponse("You are not allowed to see details")
+
+        initial = {}
         if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
             raise Http404("This model does not exist or is not implemented yet")
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
-        self.context["form"] = self.Form(instance=self.instance)
         if self.Model == Area:
+            group = Group.objects.get(name=self.scenario.group_name())
+            # If Object permissions are queried multiple times consider using a
+            # guardian.core.ObjectPermissionChecker
+            initial = {"is_public": "details" in get_perms(group, self.instance)}
             self.context |= self.get_area_context()
         elif self.Model == Load:
             # TODO: Area all templates available to every user?
             templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
             self.context["templates"] = templates
-
-            return self.details_render(self.request, self.template, self.context)
         elif ElectricComponent in self.Model.mro():
-            return self.details_render(self.request, self.template, self.context)
+            # nothing to do here
+            pass
         else:
             raise NotImplementedError("No template defined for this Model")
+        self.context["form"] = self.Form(initial=initial, instance=self.instance)
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
@@ -503,7 +665,7 @@ class DetailsView(View):
         # ScenarioItem.create_new sanitizes input for allowed attributes
         data = request.POST.dict()
         if self.Model == Area:
-            new_instance = Area.create_new(self.scenario, **data)
+            new_instance = Area.create_new(self.scenario, request.user, **data)
             new_instance.save()
             self.context["instance"] = new_instance
             # Created areas are selected immediately
@@ -513,7 +675,16 @@ class DetailsView(View):
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
-            new_items = self.Model.create_new(self.scenario, **data)
+            # Check permissions for creation for all areas that are not managed by the request user
+            has_permission = has_area_authorization_from_uuids(
+                area_internal_ids, request.user, "details", scenario=self.scenario, model=self.Model
+            )
+            if not has_permission:
+                return HttpResponse(
+                    "You dont have permission to create instances for all the selected areas"
+                )
+
+            new_items = self.Model.create_new(self.scenario, request.user, **data)
             self.multi = len(area_internal_ids) > 1
             self.Form = ScenarioItemFormFactory(
                 self.Model, multi=self.multi, scenario=self.scenario
@@ -550,8 +721,11 @@ class DetailsView(View):
         return response
 
     def delete(self, request, *args, **kwargs):
-        form = self.Form(data=request.GET)
-        form.is_valid()
+        if not has_authorization(self.instance, request.user, "delete"):
+            response = HttpResponse("You are not allowed to delete")
+            response["HX-Reselect"] = "unset"
+            response["HX-Reswap"] = "innerHTML"
+            return response
         self.instance.delete()
         self.context["status"] = "deleted"
         response = self.details_render(
@@ -560,6 +734,10 @@ class DetailsView(View):
             self.context,
         )
         response["HX-Trigger"] = "map-redraw"
+        response["HX-Trigger"] = (
+            "hide-detail-sidebar"  # ;htmx.find('#form_{self.instance.internal_id}').remove(); "
+        )
+
         return response
 
     def multi_get(self, request, *args, **kwargs):
@@ -567,7 +745,14 @@ class DetailsView(View):
             return HttpResponseBadRequest(
                 b"The fetching of multiple objects is not possible with a single instance"
             )
+
+        if not has_area_authorization_from_uuids(
+            self.internal_ids, request.user, "details", self.scenario, self.Model
+        ):
+            response = HttpResponse("You are not allowed to VIEW all of these items")
+            return response
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
+
         if self.Model == Area or ElectricComponent in self.Model.mro():
             merged_data = model_to_dict(self.instances[0])
             for x in self.instances:
@@ -612,7 +797,7 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
-        self.context |= get_home_context()
+        self.context |= get_home_context(user=request.user)
         self.context["update"] = True
 
         respone = self.details_render(self.request, self.template, self.context)
@@ -628,8 +813,16 @@ class DetailsView(View):
             self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
             self.context["form"] = form
+            if self.Model == Area:
+                self.context |= self.get_area_context()
             if form.is_valid():
                 self.context["item"] = form.save()
+                group = Group.objects.get(name=self.scenario.group_name())
+                if form.cleaned_data["is_public"]:
+                    assign_perm("details", group, form.instance)
+                else:
+                    remove_perm("details", group, form.instance)
+
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
                 self.context["errors"] = ["An error occured", form.errors]
@@ -637,7 +830,7 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        self.context |= get_home_context()
+        self.context |= get_home_context(user=request.user)
         self.context["update"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"

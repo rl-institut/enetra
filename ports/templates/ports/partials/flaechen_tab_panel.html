@@ -28,10 +28,12 @@
         {% endcomment %}
 
       {% partialdef list-item-and-form %}
+        {% if item.has_authorization %}
 
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
+            :active=True
             :selected=False
             :indicated=False
             :item=item
@@ -45,6 +47,20 @@
             {% include "ports/partials/list_item_ellipsis.html" %}
           </c-slot>
           </c-list.item>
+        {% else %}
+          <c-list.item
+            id='button-list-item-{{ item.internal_id }}'
+            :active=False
+            :selected=False
+            :indicated=False
+            :item=item
+            hx-swap-oob='true'
+            value='{{ item.internal_id }}'
+            title='{{item.name}}'
+            radioName='internal_id'
+        >
+          </c-list.item>
+        {% endif %}
       {% endpartialdef %}
         {% for item in building_areas %}
 

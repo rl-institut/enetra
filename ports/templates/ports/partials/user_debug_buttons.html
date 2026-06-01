@@ -1,0 +1,45 @@
+  {# DEBUG: user-switch buttons — remove before production #}
+  <div class="user-debug-buttons bg-white p-2 border fixed bottom-4 right-4 z-[99999] flex flex-col gap-2"
+    hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
+    hx-swap="innerHTML"
+    hx-target=".user-debug-buttons"
+  >
+    <span class='text-ellipsis w-5'>{{csrf_token}}</span>
+    <span class='w-40 text-xs break-after-all'>This lets you swap user with or without full reload. This lets you check if backend properly returns forbbidden responses, when requesting non permissed items</span>
+    <button
+      hx-post="{% url 'ports:debug_switch_user' 'fo@fo' %}"
+      hx-on::before-request="
+     function h(e){
+       if(e.detail.elt===htmx.find('.user-debug-buttons')){
+     document.removeEventListener('htmx:afterSettle',h);
+      window.location=window.location;
+     }else{console.log(e.detail.elt)} } document.addEventListener('htmx:afterSettle',h);
+     "
+      class="px-3 py-1 text-xs font-mono rounded shadow bg-amber-300 hover:bg-amber-400 opacity-80">
+      user1 (fo@fo)
+    </button>
+    <button
+      hx-post="{% url 'ports:debug_switch_user' 'ba@ba' %}"
+      hx-on::before-request="
+     function h(e){
+       if(e.detail.elt===htmx.find('.user-debug-buttons')){
+      console.log( 'found')
+     document.removeEventListener('htmx:afterSettle',h);
+      window.location =window.location;
+     }else{console.log(e.detail.elt)} } document.addEventListener('htmx:afterSettle',h);
+     "
+      class="px-3 py-1 text-xs font-mono rounded shadow bg-sky-300 hover:bg-sky-400 opacity-80">
+      user2 (ba@ba)
+    </button>
+
+    <button
+      hx-post="{% url 'ports:debug_switch_user' 'fo@fo' %}"
+      class="px-3 py-1 text-xs font-mono rounded shadow bg-amber-100 hover:bg-amber-200 opacity-80">
+      user1 (fo@fo) no reload
+    </button>
+    <button
+      hx-post="{% url 'ports:debug_switch_user' 'ba@ba' %}"
+      class="px-3 py-1 text-xs font-mono rounded shadow bg-sky-100 hover:bg-sky-200 opacity-80">
+      user2 (ba@ba) no reload
+    </button>
+  </div>

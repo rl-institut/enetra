@@ -49,6 +49,11 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
+        BaseForm.base_fields["is_public"] = forms.BooleanField(
+            required=False,
+            widget=forms.CheckboxInput(),
+            label="Für andere Projektmitarbeiter sichtbar machen",
+        )
 
     elif ItemModel == Load or ElectricComponent in ItemModel.mro():
         exclude = exclude + ["area"]
@@ -81,6 +86,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.fields.pop("internal_id")
+            self.fields.pop("is_public", None)
             self.fields.pop("name")
             # For multi forms no fields are required.
             # this allows partial overwriting.

@@ -1,18 +1,6 @@
 {% load partials %}
 {% load constants %}
 
-{% if not request.headers.Hx_Request %}
-  {% comment %}
-   this injects css/and js in the response for debugging/styling the partial response
-  {% endcomment %}
-  <html>
-  <head>
-    {% include 'core/imports.html' %}
-    {% include "ports/imports_app.html" %}
-  </head>
-  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="font-sans antialiased">
-{% endif %}
-
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
 {% if created %}
@@ -27,6 +15,8 @@
 >
   {{ form.internal_id }}
   <input name="area_internal_ids" class='hidden' value='{{internal_id}}'>
+        Manager:{{form.instance.manager}}
+        CurrentUser:{{request.user}}
 
 
   {% comment %}
@@ -141,6 +131,15 @@
   <details-sidebar-content class='my-hide'>
     <div class="px-[21px] py-[16px]">
       <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchtest du konfigurieren?</p>
+
+      <div class="flex flex-row gap-[8px]">
+
+      <c-input :field=form.is_public
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" >
+        </c-input>
+        <label class="font-semibold text-[14px] text-[#1e293b]">Öffentlich machen</label>
+
+      </div>
       <!-- {/* Configuration Sections */} -->
       <div class="flex flex-col gap-[16px]">
         <!-- {/* LASTEN Section */} -->
@@ -219,10 +218,6 @@ In case of an update the list element is swapped
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
 
-  {% if not request.headers.Hx_Request %}
-  </body>
-  </html>
-{% endif %}
 
 {% comment %}
 

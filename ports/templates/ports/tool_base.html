@@ -40,6 +40,9 @@
         {% include 'ports/partials/sidebar_footer.html' %}
 {% endblock sideBarFooter %}
 {% block mainContent %}
+{% if debug %}
+  {% include 'ports/partials/user_debug_buttons.html' %}
+{% endif %}
 <c-map_container>
   <c-slot name="legend">
       {% include "ports/partials/map_legend.html" %}

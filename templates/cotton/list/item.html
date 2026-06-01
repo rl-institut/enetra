@@ -1,4 +1,4 @@
-<c-vars indicated selected  class :border=True callback title :defaultHxDetails=False item ></c-vars>
+<c-vars indicated selected active  class :border=True callback title :defaultHxDetails=False item ></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
@@ -6,7 +6,13 @@
   selected is populated by the input
 wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-[8px] items-center mb-[-1px] px-[12px] py-[8px] relative shrink-0 w-full cursor-pointer transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] bg-white hover:bg-[#f8fafc] {{ class }} "
+<label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-2 items-center -mb-px px-3 py-2 relative shrink-0 w-full  transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] select-none
+  {% if active %}
+  bg-white hover:bg-[#f8fafc] cursor-pointer
+  {% else %}
+  bg-gray-200  cursor-not-allowed
+  {% endif %}
+  {{ class }} "
        x-data="{isSelected: $el.querySelector('input').checked }"
        x-on:htmx:load="
         isSelected=$el.querySelector('input').checked;
@@ -55,16 +61,21 @@ wrap everyting in a label so everything toggles the radio/checkbox
           onClick handles the dispatch when the element is interacted with directly
           x-effect handles when the selection is changed from the outside, e.g. radiobutton is switched.
           {% endcomment %}
-          x-on:click="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
-          "
-           x-effect="ischecked = $el.value==selected;
-              if (!isBulkMode) {
-                if (ischecked) {$dispatch('checked')}
-                else {$dispatch('unchecked')}
+          {% if active %}
+            x-on:click="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
+            "
+            x-effect="ischecked = $el.value==selected;
+            if (!isBulkMode) {
+            if (ischecked) {$dispatch('checked')}
+            else {$dispatch('unchecked')}
             } "
+          {% else %}
+          disabled
+          {% endif %}
+
            :name="isBulkMode ?'{{value }}' : '{{ radioName }}'"
            value="{{ value }}"
-           class="cotton-list-item-input size-[14px] cursor-pointer accent-[#0E7490]" />
+           class="cotton-list-item-input size-[14px]  accent-[#0E7490]" />
   </div>
   {% comment %}
     Should the image be shown even without bulkselection?
