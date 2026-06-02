@@ -157,17 +157,15 @@ class ScenarioItem(models.Model):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 
     def changed_callback(self):
-        """Create a callback for this item. This is triggered in the client as event.
-        Elements in the client are listening for this event and can show a notification if they
-        are changed.
-        The updated_at times are sent as details, so the item can compare its current state time with the updated time
-        The current architecture allows updates through post-requests as well as the
-        change poll. Therefore the changes might detect a change which is already part of the dom.
-        In this case no notification shall be sent.
+        """
+        On change, create a callback event in the frontend.
+        Elements in the client listen for this event and can show a notification.
+        Send updated_at time with event, so any item can compare its current state time.
         """
         date_str = self.updated_at.isoformat()
         return mark_safe(
-            f"const cEvent = new CustomEvent('{self.changed_event()}',{{detail:{{updated_at:'{date_str}'}}}});document.dispatchEvent(cEvent);"
+            f"document.dispatchEvent(new CustomEvent( '{self.changed_event()}', "
+            f"{{detail:{{updated_at:'{date_str}'}}}}));"
         )
 
     def deleted_event(self):

@@ -378,7 +378,8 @@ class MyMap {
 
 
   _cloneLatLngs(latlngs) {
-    return latlngs.map(ring => ring.map(ll => L.latLng(ll.lat, ll.lng)));
+    // this handles ring like polygons (during editing)
+    return latlngs.map(ring => ring.map(ll => L.latLng(ll.lat, ll.lng)))
   }
 
   _onVertexChange(e) {
@@ -388,11 +389,15 @@ class MyMap {
     this._lastLayerState.set(layer, this._cloneLatLngs(layer.getLatLngs()));
   }
 
-  undoLastNode() {
-    if (this.map.pm.Draw.Polygon.enabled()) return;
-    if (!this.isEditing) return;
-    if (this._vertexHistory.length === 0) return;
 
+
+  undoLastNode() {
+    if (this.map.pm.Draw.Polygon.enabled()) {
+      // Private method which is usually exposed via button
+      this.map.pm.Draw.Polygon._removeLastVertex();
+      return;
+    }
+    if (this._vertexHistory.length === 0) return;
     const { layer, latlngs } = this._vertexHistory.pop();
     layer.setLatLngs(latlngs);
     this._lastLayerState.set(layer, this._cloneLatLngs(latlngs));
@@ -436,6 +441,7 @@ class MyMap {
       event.layer.remove();
       document.dispatchEvent(new CustomEvent('map-redraw'));
     });
+
     // Query all layers on Shift click event
     this.map.on('click', (e) => {
 
