@@ -14,7 +14,9 @@
         onClick="onClose()"
         className="relative shrink-0 size-[24px] hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0"
       >
+        {% if imgMaterialSymbolsClose %}
         <img alt="close" className="block max-w-none size-full" src={imgMaterialSymbolsClose} />
+        {% endif %}
       </button>
     </div>
 

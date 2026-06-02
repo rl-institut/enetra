@@ -1,10 +1,10 @@
-<div x-data='{onIcon:false, onPopup: false, onIconTimerId: null, onPopupTimerId: null, resetTimers(){ if (this.onIconTimerId) clearTimeout(this.onIconTimerId); if (this.onPopupTimerId) clearTimeout(this.onPopupTimerId); } }'
+<div x-data='{show:false, onIcon:false, onPopup: false, onIconTimerId: null, onPopupTimerId: null, resetTimers(){ if (this.onIconTimerId) clearTimeout(this.onIconTimerId); if (this.onPopupTimerId) clearTimeout(this.onPopupTimerId); } }'
      class="icon-wrapper"
      style="position: relative;
             display: inline-block;
             margin: 0 2px">
   <div x-on:mouseenter='onIcon=true; clearTimeout(onIconTimerId)'
-       x-on:mouseleave='onIconTimerId=setTimeout(()=>onIcon=false, 500);'>{{ slot }}</div>
+       x-on:mouseleave='onIconTimerId=setTimeout(()=>onIcon=false, 100);'>{{ slot }}</div>
   {% if badge %}
     <div style="position: absolute;
                 top: -2px;
@@ -19,8 +19,14 @@
   {% if popup %}
     <div class="icon-popover"
          x-on:mouseenter='onPopup=true;clearTimeout(onPopupTimerId)'
-         x-on:mouseleave='onPopupTimerId=setTimeout(()=>onPopup=false, 500)'
-         x-show='onIcon || onPopup'
+         x-on:mouseleave='onPopupTimerId=setTimeout(()=>onPopup=false, 100)'
+          x-init="
+          $watch('onIcon', (value)=>show=(onIcon || onPopup));
+          $watch('onPopup', (value)=>show=(onIcon || onPopup));
+          $watch('show', (value)=>{if(value){$dispatch('hide-popup')}});
+          "
+         @hide-popup.window="if (event.target !=$el)show=false"
+         x-show="show"
          style="position: absolute;
                 bottom: 28px;
                 left: 50%;

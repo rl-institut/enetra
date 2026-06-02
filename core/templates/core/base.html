@@ -13,8 +13,8 @@
     </title>
     {% include 'core/imports.html' %}
     {% block header %}{% endblock %}
-    <!-- This makes htmx use outerHTML by default -->
-    <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML"}'>
+    <!-- This makes htmx use outerHTML by default. hx-validate checks validity. with reportValidityOfForms the first invalid input is focused -->
+    <meta name="htmx-config" content='{"defaultSwapStyle":"outerHTML", "reportValidityOfForms" : true}'>
   </head>
   <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="font-sans antialiased">
     <div class="bg-white flex flex-col h-screen overflow-hidden">

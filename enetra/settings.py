@@ -86,10 +86,18 @@ INSTALLED_APPS = [
     "widget_tweaks",
 ]
 
+if DEBUG:
+    # To reduce issues with stale static resources
+    INSTALLED_APPS.insert(0, "whitenoise.runserver_nostatic")
+    WHITENOISE_MAX_AGE = 0
 
+# LocaleMiddleware takes care of translating django default messages
+# based on language query param, or Accept-Language header
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -277,6 +285,7 @@ X_FRAME_OPTIONS = "DENY"
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 UPLOAD_PATH = "uploads/"
 MEDIA_ROOT = env.str("DJANGO_MEDIA_ROOT", "media/")
 MEDIA_URL = "media/"
@@ -290,10 +299,6 @@ STATICFILES_DIRS = [
     BASE_DIR / "static/img",
     BASE_DIR / UPLOAD_PATH,
 ]
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 
 # Default primary key field type

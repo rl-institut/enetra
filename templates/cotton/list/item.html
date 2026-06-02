@@ -14,15 +14,18 @@ wrap everyting in a label so everything toggles the radio/checkbox
           if(isSelected)selected=$el.querySelector('input').value
         }
         "
-       @checked="isSelected=true; event.preventDefault()"
-       @unchecked="isSelected=false; event.preventDefault()"
+       @checked="isSelected=true; event.preventDefault(); $dispatch('item-selected',{ value:'{{value}}'} );"
+       @unchecked="isSelected=false; event.preventDefault();$dispatch('item-unselected',{ value:'{{value}}'} );"
+        @map-layer-clicked.window="if (event.detail.value=='{{item.internal_id}}'){$el.click();}"
+
+
        {{ attrs }}
 
        {% if defaultHxDetails %}
         x-data
         @detail-sidebar-closed.document="isSelected=false"
         @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
-
+        @select-instance-{{item.internal_id}}.window="$el.click()"
         hx-include="closest form"
         hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
         hx-trigger='getdetails'

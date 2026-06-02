@@ -40,7 +40,11 @@
         {% include 'ports/partials/sidebar_footer.html' %}
 {% endblock sideBarFooter %}
 {% block mainContent %}
-  {% include 'ports/partials/map_container.html' %}
+<c-map_container>
+  <c-slot name="legend">
+      {% include "ports/partials/map_legend.html" %}
+  </c-slot>
+</c-map_container>
   {% comment %}
     NOTE: The z-index is below the detail sidebar above: This allows a slide-in effect from below
   this sidebar

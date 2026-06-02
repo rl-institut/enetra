@@ -27,25 +27,58 @@ def create_scenario() -> Scenario:
     area1 = Area.objects.create(
         scenario=s,
         name="Building Area 1",
-        geom=Polygon(((52, 13), (52, 13.5), (52.5, 13.2), (52, 13))),
+        geom=Polygon(
+            (
+                [13.333282, 52.53887],
+                [13.333282, 52.53887],
+                [13.335385, 52.538648],
+                [13.335385, 52.538648],
+                [13.3356, 52.539144],
+                [13.3356, 52.539144],
+                [13.334506, 52.539445],
+                [13.334506, 52.539445],
+                [13.334033, 52.539327],
+                [13.333712, 52.539262],
+                [13.333712, 52.539262],
+                [13.333454, 52.539144],
+                [13.333454, 52.539144],
+                [13.333282, 52.53887],
+            )
+        ),
         area_type=Area.AreaTypeChoices.BUILDING,
     )
     area1 = Area.objects.create(
         scenario=s,
-        name="Building Area 2",
-        geom=Polygon(((52, 13.2), (52, 13.7), (52.5, 13.4), (52, 13.2))),
+        name="Silo",
+        geom=Polygon(
+            (
+                [13.332338, 52.53825],
+                [13.332338, 52.53825],
+                [13.332467, 52.538192],
+                [13.332467, 52.538192],
+                [13.332564, 52.538296],
+                [13.332564, 52.538296],
+                [13.332564, 52.538413],
+                [13.332564, 52.538413],
+                [13.332403, 52.538492],
+                [13.332403, 52.538492],
+                [13.332263, 52.538433],
+                [13.332263, 52.538433],
+                [13.332253, 52.538342],
+                [13.332253, 52.538342],
+                [13.332338, 52.53825],
+            )
+        ),
         area_type=Area.AreaTypeChoices.BUILDING,
     )
     area2 = Area.objects.create(
         scenario=s,
         name="Building Area 2",
-        geom=Polygon(((51, 13), (51, 13.5), (51.5, 13.2), (51, 13))),
         area_type=Area.AreaTypeChoices.BUILDING,
     )
     Area.objects.create(
         scenario=s,
         name="Open Area 1",
-        geom=Polygon(((51, 13), (51, 13.5), (51.5, 13.2), (51, 13))),
         area_type=Area.AreaTypeChoices.OPEN,
         usage=Area.OpenUsageChoices.GREEN,
     )
@@ -53,7 +86,6 @@ def create_scenario() -> Scenario:
     Area.objects.create(
         scenario=s,
         name="Open Area 2",
-        geom=Polygon(((51, 13), (51, 13.5), (51.5, 13.2), (51, 13))),
         area_type=Area.AreaTypeChoices.OPEN,
     )
 

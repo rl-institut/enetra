@@ -1,4 +1,5 @@
 <p
+  id="changes_count"
   hx-get="{% url 'ports:changes_count' scenario_internal_id=scenario.internal_id %}"
   {% if all_changes_count == '' %}
   hx-trigger="load"
@@ -7,6 +8,7 @@
   {% endif %}
   hx-swap="outerHTML"
   hx-target='this'
+  hx-select='#changes_count'
   hx-on::trigger="event.stopPropagation();"
   hx-vals='{"updated_at": "{{updated_at|date:'c'}}", "all_changes_count": "{{all_changes_count}}" }'
   {% if changed %}

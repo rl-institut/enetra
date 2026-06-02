@@ -10,6 +10,7 @@
     },
     "@tailwindcss/cli": "^4.1.17",
     "dependencies": {
+        "@geoman-io/leaflet-geoman-free": "^2.19.3",
         "@tailwindcss/cli": "^4.1.17",
         "alpinejs": "^3.15.1",
         "htmx.org": "^2.0.8",

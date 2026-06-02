@@ -1,0 +1,38 @@
+<div
+  x-data="{ toasts: [] }"
+  @geom-saved.window="const id = Date.now();
+                      toasts.push(id);
+                      setTimeout(() => toasts.splice(toasts.indexOf(id), 1), 1000)"
+  class=" flex flex-col gap-2"
+>
+  <template x-for="id in toasts" :key="id">
+    <div x-transition class="bg-green-600 text-white px-4 py-2 rounded shadow">
+      Gespeichert
+    </div>
+  </template>
+</div>
+
+<div class="bg-white rounded-[8px] shadow-[0px_4px_8px_rgba(0,0,0,0.15)] p-[16px] min-w-[140px]">
+  <!-- {/* Gebäudeflächen Section */} -->
+  <div class="mb-[8px]">
+    <div class="flex items-center gap-[12px] mb-[4px]">
+      <div class="bg-[#a78bfa] rounded-[4px] w-4 h-4"></div>
+      <span class="text-[#1e293b] text-sm font-normal">Gebäudeflächen</span>
+      <button class="ml-auto rounded-full border-2 border-[#64748b] flex items-center justify-center text-[#64748b] text-[12px] font-bold w-4 h-4">
+        i
+      </button>
+    </div>
+      {% include "ports/partials/flaechen_tab_panel.html#add-gebaeudeflaeche-button" %}
+  </div>
+  <!-- {/* Freiflächen Section */} -->
+  <div>
+    <div class="flex items-center gap-[12px] mb-[4px]">
+      <div class="bg-[#c6e474] rounded-[4px] w-4 h-4"></div>
+      <span class="text-[#1e293b] text-sm font-normal">Freiflächen</span>
+      <button class="ml-auto rounded-full border-2 border-[#64748b] flex items-center justify-center text-[#64748b] text-[12px] font-bold w-4 h-4">
+        i
+      </button>
+    </div>
+      {% include "ports/partials/flaechen_tab_panel.html#add-freiflaeche-button" %}
+  </div>
+</div>

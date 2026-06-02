@@ -21,16 +21,6 @@ urlpatterns = [
         name="test",
     ),
     path(
-        "dynamic_forms_example/",
-        views.dynamic_forms,
-        name="dynamic_forms_example",
-    ),
-    path(
-        "leaflet_example/",
-        views.leaflet,
-        name="leaflet",
-    ),
-    path(
         "details_create/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=True),
         name="details_create",
@@ -41,6 +31,11 @@ urlpatterns = [
         name="changes_count",
     ),
     path(
+        "patch_area/<uuid:scenario_internal_id>/",
+        views.patch_area,
+        name="patch_area",
+    ),
+    path(
         "changes/<uuid:scenario_internal_id>/",
         views.changes,
         name="changes",
@@ -49,10 +44,5 @@ urlpatterns = [
         "details/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=False),
         name="details",
-    ),
-    path(
-        "<uuid:scenario_uuid>/<str:first_load_str>/<str:last_update_str>/get_updates/",
-        views.get_updates,
-        name="get_updates",
     ),
 ]

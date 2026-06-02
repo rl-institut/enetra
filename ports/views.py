@@ -4,7 +4,6 @@ import traceback
 from collections.abc import Iterable
 from datetime import datetime
 from datetime import timedelta
-from typing import Any
 from typing import Literal
 from uuid import UUID
 from uuid import uuid4
@@ -12,8 +11,6 @@ from uuid import uuid4
 import numpy as np
 from django.apps.registry import apps
 from django.contrib.auth.models import User
-from django.db.models import Value
-from django.forms import ModelForm
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -22,8 +19,8 @@ from django.http import HttpResponseForbidden
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
+from django.shortcuts import redirect  # noqa
 from django.shortcuts import render  # noqa
-from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
@@ -31,6 +28,7 @@ from django_oemof import simulation
 
 from ports import models
 from ports.create_placeholder_scenario import create_scenario
+from ports.forms import AreaItemFormFactory
 from ports.forms import ScenarioItemFormFactory
 
 from .models import Area
@@ -40,7 +38,6 @@ from .models import ElectricComponent
 from .models import Load
 from .models import Scenario
 from .models import ScenarioItem
-from .models import Solar
 
 logger = logging.getLogger("django-ports")
 
@@ -58,7 +55,28 @@ def get_authentification(
 
 def test(request):
     context = {}
-    return render(request, "ports/test.html", context)
+    scenario = Scenario.objects.last()
+    all_areas = list(Area.objects.filter(scenario=scenario))
+    building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
+    open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
+    area_forms = []
+    for a in open_areas + building_areas:
+        area_forms.append(AreaItemFormFactory()(instance=a))
+    context["area_forms"] = area_forms
+    return render(request, "ports/map_test.html", context)
+
+
+def patch_area(request, scenario_internal_id: UUID):
+    internal_id = request.POST.get("internal_id")
+    area = Area.objects.get(scenario__internal_id=scenario_internal_id, internal_id=internal_id)
+    form = AreaItemFormFactory()(instance=area, data=request.POST)
+    try:
+        if form.is_valid():
+            form.save()
+            return HttpResponse(b"success")
+    except ValueError:
+        pass
+    return HttpResponse(b"failed")
 
 
 def changes_count(request, scenario_internal_id: UUID):
@@ -68,7 +86,7 @@ def changes_count(request, scenario_internal_id: UUID):
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
-        HttpResponseForbidden("No access")
+        return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
     updated_at = scenario.updated_at
@@ -137,7 +155,7 @@ def changes(request, scenario_internal_id: UUID):
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
-        HttpResponseForbidden("No access")
+        return HttpResponseForbidden("No access")
     days = int(request.GET.get("days", "90"))
     otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
     query_time = timezone.now().astimezone() - timedelta(days=days)
@@ -231,15 +249,11 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
-def get_home_context():
+def get_home_context(scenario: Scenario | None = None):
     data = {}
-    scenario = Scenario.objects.last()
+    scenario = scenario or Scenario.objects.last()
     data["scenario"] = scenario
     data["scenarios"] = Scenario.objects.all()
-    data["building_areas"] = Area.objects.filter(
-        scenario=scenario, area_type=Area.AreaTypeChoices.BUILDING
-    )
-    data["open_areas"] = Area.objects.filter(scenario=scenario, area_type=Area.AreaTypeChoices.OPEN)
 
     electric_components = dict()
     for m in apps.get_models():
@@ -249,12 +263,27 @@ def get_home_context():
             key = f"{m._meta.model_name}s"
             query = m.objects.filter(scenario=scenario)
             data[key] = query
-            electric_components[key] = query
+            electric_components[key] = list(query)
 
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
     data["Area"] = Area
 
+    # important:  prefetch all related models to avoid n+1 queries
+    all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
+    building_areas = list()
+    open_areas = list()
+    for area in all_areas:
+        if area.area_type == Area.AreaTypeChoices.BUILDING:
+            building_areas.append(area)
+        if area.area_type == Area.AreaTypeChoices.OPEN:
+            open_areas.append(area)
+    data["building_areas"] = building_areas
+    data["open_areas"] = open_areas
+    area_forms = []
+    for a in open_areas + building_areas:
+        area_forms.append(AreaItemFormFactory()(instance=a))
+    data["area_forms"] = area_forms
     return data
 
 
@@ -268,113 +297,6 @@ def home(request):
 
     context = get_home_context()
     return render(request, "ports/tool_base.html", context)
-
-
-def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):
-    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_uuid)
-    focused_form = request.GET.get("focusedForm", None)
-    if not get_authentification(scenario, request.user, "read"):
-        return HttpResponseForbidden("Not Allowed")
-    first_load = datetime.fromisoformat(first_load_str)
-    context = {"scenario": scenario, "first_load": first_load_str}
-    if scenario.items_updated_at <= first_load:
-        return render(request, "ports/partials/changelog.html", context)
-    else:
-        changed_items: list[ScenarioItem] = []
-        created_items: list[ScenarioItem] = []
-        port_models = apps.get_models("ports")
-        scenario_item_models = [model for model in port_models if issubclass(model, ScenarioItem)]
-        for model in scenario_item_models:
-            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load).annotate(
-                changed=Value(True)
-            )
-            changed_items = changed_items + list(objs)
-            objs = model.objects.filter(scenario=scenario, created_at__gt=first_load).annotate(
-                changed=Value(False)
-            )
-            created_items = created_items + list(objs)
-        changed_or_created_items = created_items + changed_items
-        changed_or_created_items.sort(key=lambda x: x.updated_at if x.changed else x.created_at)
-        context |= {"changed_or_created_items": changed_or_created_items}
-        change_log = render_to_string("ports/partials/changelog.html", context, request)
-
-    last_update = datetime.fromisoformat(last_update_str)
-    if scenario.items_updated_at <= last_update:
-        return HttpResponse(change_log)
-
-    changed, created = get_update_items(scenario, last_update, scenario_item_models)
-    oob_updates = render_oob_updates(created, changed, focused_form)
-    return HttpResponse(change_log + oob_updates)
-
-
-def get_update_items(scenario, last_update, scenario_item_models):
-    changed_items: list[ScenarioItem] = []
-    created_items: list[ScenarioItem] = []
-    for model in scenario_item_models:
-        objs = model.objects.filter(
-            scenario=scenario,
-            updated_at__gte=last_update,
-            created_at__lte=last_update,
-        )
-        changed_items = changed_items + list(objs)
-        objs = model.objects.filter(scenario=scenario, created_at__gt=last_update)
-        created_items = created_items + list(objs)
-    return changed_items, created_items
-
-
-def render_oob_updates(
-    created_items: Iterable[ScenarioItem],
-    update_items: Iterable[ScenarioItem],
-    focused_form: str | None = None,
-) -> str:
-    """Render ScenarioItems via oob to inject updates into a response"""
-    context = {}
-    for key, items in [
-        ("created_forms", created_items),
-        ("updated_forms", update_items),
-    ]:
-        forms: list[ModelForm[ScenarioItem]] = []
-        for item in items:
-            Form = ScenarioItemFormFactory(item._meta.model)
-            prefix = get_pre(item)
-            form = Form(instance=item, prefix=prefix)
-            if focused_form and focused_form == f"form_{prefix}":
-                context |= {"focused_form_changed": focused_form}
-                continue
-            forms.append(form)
-        context |= {key: forms}
-    oob_changed_items = render_to_string("ports/partials/oob_form_swap.html", context)
-    return oob_changed_items
-
-
-def leaflet(request):
-    s, _ = Scenario.objects.get_or_create(name="Test Scenario")
-    a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
-    a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
-    context: dict[str, Any] = {"scenario": s}
-
-    Form = ScenarioItemFormFactory(Area)
-    context["areas"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
-    ]
-    return render(request, "ports/leaflet.html", context)
-
-
-def dynamic_forms(request):
-    s, _ = Scenario.objects.get_or_create(name="Test Scenario")
-    a, _ = Area.objects.get_or_create(name="Test Area", scenario=s)
-    a, _ = Area.objects.get_or_create(name="Test Area2", scenario=s)
-    context: dict[str, Any] = {"scenario": s}
-    Form = ScenarioItemFormFactory(Solar)
-    context["solars"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Solar.objects.filter(scenario=s)
-    ]
-
-    Form = ScenarioItemFormFactory(Area)
-    context["areas"] = [
-        Form(instance=s, prefix=get_pre(s)) for s in Area.objects.filter(scenario=s)
-    ]
-    return render(request, "ports/dynamic_forms.html", context)
 
 
 def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
@@ -405,16 +327,16 @@ class DetailsView(View):
             "scenario": self.scenario,
             "Model": self.Model,
             "model_name": self.Model._meta.model_name,
-            "internal_id": self.internal_id,
+            "internal_id": str(self.internal_id),
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
-            "updateOob": "true",
             "electric_models": [
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
         }
-
+        for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
+            context[model._meta.object_name] = model
         return context
 
     def setup_view(self, request, *args, **kwargs) -> None:
@@ -527,7 +449,9 @@ class DetailsView(View):
             return render(self.request, self.template, self.context)
         else:
             raise NotImplementedError("No template defined for this Model")
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def create(self, request, *args, **kwargs):
         if self.instance:
@@ -546,6 +470,7 @@ class DetailsView(View):
             self.context["instance"] = new_instance
             # Created areas are selected immediately
             self.context["createItemCallback"] = "this.click()"
+            self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
         elif self.Model == Load or ElectricComponent in self.Model.mro():
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
@@ -563,7 +488,7 @@ class DetailsView(View):
                 self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
                     instance=self.instance
                 )
-
+                self.context["internal_id"] = str(self.instance.internal_id)
             else:
                 # Template choice earlier works for direct instance access.
                 # For creation this is decided here, since self.multi might have been overwritten
@@ -580,19 +505,24 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
+        self.context |= get_home_context()
         self.context["created"] = True
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def delete(self, request, *args, **kwargs):
         form = self.Form(data=request.GET)
         form.is_valid()
         self.instance.delete()
         self.context["status"] = "deleted"
-        return render(
+        response = render(
             self.request,
             "ports/partials/update_delete_create_scenario_item.html",
             self.context,
         )
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def multi_get(self, request, *args, **kwargs):
         if self.instance:
@@ -647,7 +577,9 @@ class DetailsView(View):
         self.context |= get_home_context()
         self.context["update"] = True
 
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
     def post(self, request, *args, **kwargs):
         if self.Model not in [Area, Load] and ElectricComponent not in self.Model.mro():
@@ -669,7 +601,9 @@ class DetailsView(View):
 
         self.context |= get_home_context()
         self.context["update"] = True
-        return render(self.request, self.template, self.context)
+        response = render(self.request, self.template, self.context)
+        response["HX-Trigger"] = "map-redraw"
+        return response
 
 
 # Create your views here.

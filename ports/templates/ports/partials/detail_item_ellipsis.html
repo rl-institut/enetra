@@ -20,6 +20,7 @@
       </li>
       <li>
         <button type="button"
+                hx-trigger="click, refresh-{{instance.internal_id}} from:body"
                 hx-get="{{ form_url }}"
                 hx-select="{{hx_target}}"
                 hx-target="{{hx_target}}"

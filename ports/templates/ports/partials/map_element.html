@@ -1,0 +1,65 @@
+<form
+  id="geom_form_{{form.instance.internal_id}}"
+  hx-post='{% url "ports:patch_area" scenario_internal_id=scenario.internal_id %}'
+  hx-swap='none'
+  hx-on::trigger="console.log('triggerd submit')"
+  hx-trigger="submit, change"
+  hx-on::after-request="htmx.trigger('body' ,'refresh-{{form.instance.internal_id}}');
+                        if(event.detail.xhr.status === 200) {
+                        htmx.trigger('body' ,'geom-saved');
+                        }
+  "
+>
+  {% csrf_token %}
+  <c-map-element.index :key="form.instance.internal_id" layer='map-layer-{{form.instance.layer_name}}'>
+    <div class='hidden'>
+    {{form.internal_id}}
+    </div>
+    <c-tail-input :field=form.geom
+      data-value='{{form.instance.internal_id}}'
+      @map-element-created.window="if (event.detail.key ==$el.dataset.value){
+      $el.value = event.detail.geojson;
+      $el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      "
+      rows='2'
+      id='geom_{{form.instance.internal_id}}'
+      type='text'
+      class='border-black border-2 bg-gray-200'
+    />
+
+    <!--  Map will use this template and inject the html -->
+    <!--  wrap this in template so it exists only in the map -->
+    <template class='map-content-only'>
+      {% comment %}
+       No popups for now
+    <c-map-element.popup>
+      Im the content of the popup
+      Im not sure we will use this? maybe
+      Click the layer to show me
+    </c-map-element.popup>
+      {% endcomment %}
+    <div class="hidden">
+      <!-- Put a label on the map. works inside a c-map-element -->
+      <c-map-element.marker :name='form.instance.name'>
+
+    {% for component in  form.instance.generator_set.all %}
+        <!-- Put a marker icon on the map -->
+        <c-map-element.marker-icon>
+          <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
+          <!-- Give the icon a popup -->
+          <c-slot name='popup'>
+            <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
+            <c-map-element-popup :instance=component >
+              <c-slot name='icon'>
+                <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
+              </c-slot>
+            </c-map-element-popup>
+          </c-slot>
+        </c-map-element.marker-icon>
+      {% endfor %}
+      </c-map-element.marker>
+    </div>
+    </template>
+  </c-map-element.index>
+</form>

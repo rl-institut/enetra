@@ -1,6 +1,5 @@
-<form hx-indicator='this'
-  id="form_{{instance.internal_id}}"
->
+<form id="form_{{instance.internal_id}}"
+  hx-indicator='this'>
   {{ form.internal_id }}
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
@@ -38,7 +37,8 @@
     <div class="flex flex-col gap-[16px]">
 
       <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Name</label>
+        <label class="inline font-semibold text-[14px] text-[#1e293b]">Name</label>
+        <c-field-required :field="form.name" />
 
       <c-input :field=form.name x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
@@ -47,25 +47,31 @@
       </div>
 
       <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+          <div>
+            <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+            <c-field-required :field="form.template" />
+          </div>
 
       <c-input :field=form.template x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
         </c-input>
-
+        <c-field-errors :field="form.template" />
       </div>
 
 <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
-
+          <div>
+            <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
+            <c-field-required :field="form.factor" />
+          </div>
       <c-input :field=form.factor x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Multiplikator eingeben">
         </c-input>
-
+        <c-field-errors :field="form.factor" />
       </div>
 
       <div class="flex flex-col gap-[8px]">
         <label class="font-semibold text-[14px] text-[#1e293b]">Typ</label>
+
         <c-select.index classButton='border-[#cbd5e1]!' selectedValue='1'>
           <c-select.button selectValue='1'>
             Heizung
@@ -109,8 +115,8 @@
         </div>
       </div>
 
-      {{ errors }}
 
+      {{form.non_field_errors}}
       {% with hx_target="#form_"|add:internal_id %}
       {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
       {% endwith %}
