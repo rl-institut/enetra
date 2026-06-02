@@ -340,17 +340,15 @@ class Area(ScenarioItem):
         default=None,
     )
 
-<<<<<<< HEAD
     def layer_name(self):
         return f"{self.area_type}-{self._meta.model_name}"
-=======
+
     class Meta:
         permissions = (
             ("details", "View area details"),
             ("delete", "delete area"),
             ("change", "change area"),
         )
->>>>>>> f71c392 (Create permissions for viewing scenario-items)
 
     @classmethod
     def adjust_Form(

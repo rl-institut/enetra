@@ -28,6 +28,7 @@ from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import redirect  # noqa
 from django.shortcuts import render  # noqa  # noqa
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
@@ -47,6 +48,7 @@ from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import Load
+from .models import LoadTemplate
 from .models import Scenario
 from .models import ScenarioItem
 
@@ -150,24 +152,14 @@ def debug_switch_user(request, username: str):
     from django.contrib.auth import login
     from django.contrib.auth import logout
 
-    user = User.objects.filter(username=username).first()
+    if username == "SUPERUSER":
+        user = User.objects.filter(is_superuser=True).first()
+    else:
+        user = User.objects.filter(username=username).first()
     if user:
         logout(request)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return render(request, "ports/partials/user_debug_buttons.html", {})
-
-
-def test(request):
-    context = {}
-    scenario = Scenario.objects.last()
-    all_areas = list(Area.objects.filter(scenario=scenario))
-    building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
-    open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
-    area_forms = []
-    for a in open_areas + building_areas:
-        area_forms.append(AreaItemFormFactory()(instance=a))
-    context["area_forms"] = area_forms
-    return render(request, "ports/map_test.html", context)
 
 
 def patch_area(request, scenario_internal_id: UUID):
@@ -189,7 +181,7 @@ def changes_count(request, scenario_internal_id: UUID):
     Piggybacks the request to update the page with new content (from other users)
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not get_authentification(scenario, request.user, "read"):
+    if not has_authorization(scenario, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
@@ -258,7 +250,7 @@ def changes(request, scenario_internal_id: UUID):
     Different filter options are supported for timespans and user
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not get_authentification(scenario, request.user, "read"):
+    if not has_authorization(scenario, request.user, "details"):
         return HttpResponseForbidden("No access")
     days = int(request.GET.get("days", "90"))
     otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
@@ -353,41 +345,19 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
-def get_home_context(scenario: Scenario, user: User | None):
+def get_home_context(user: User, scenario: Scenario):
     data = {}
-    scenario = scenario or Scenario.objects.last()
     data["scenario"] = scenario
     data["scenarios"] = Scenario.objects.all()
     data["Area"] = Area
-    if not user:
-        return data
-    #
 
     base_qs = Area.objects.filter(scenario=scenario)
     allowed_details_ids = set(
-        get_objects_for_user(user, "details", Area.objects.filter(scenario=scenario)).values_list(
-            "id", flat=True
-        )
+        get_objects_for_user(user, "details", base_qs).values_list("id", flat=True)
     )
-    managed_area_ids = set(
-        Area.objects.filter(manager=user, scenario=scenario).values_list("id", flat=True)
-    )
-    allowed_details_ids.union(managed_area_ids)
-    print(allowed_details_ids)
+    managed_area_ids = set(base_qs.filter(manager=user).values_list("id", flat=True))
+    allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
-    building_areas = list(base_qs.filter(area_type=Area.AreaTypeChoices.BUILDING))
-    open_areas = list(base_qs.filter(area_type=Area.AreaTypeChoices.OPEN))
-
-    for areas in [building_areas, open_areas]:
-        for area in areas:
-            area: Area
-            area.checked_authorization = True
-            if area.id in allowed_details_ids:
-                area.has_authorization = True
-
-    print(building_areas)
-    data["building_areas"] = building_areas
-    data["open_areas"] = open_areas
     electric_components = dict()
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
@@ -397,7 +367,7 @@ def get_home_context(scenario: Scenario, user: User | None):
             items = list(m.objects.filter(scenario=scenario))
             for item in items:
                 item.checked_authorization = True
-                if item.area_id in allowed_details_ids:
+                if item.area_id in allowed_details_ids_union:
                     item.has_authorization = True
             data[key] = items
             electric_components[key] = items
@@ -406,7 +376,7 @@ def get_home_context(scenario: Scenario, user: User | None):
     data["electric_components"] = electric_components
 
     # important:  prefetch all related models to avoid n+1 queries
-    all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
+    all_areas = list(base_qs.prefetch_related("generator_set"))
     building_areas = list()
     open_areas = list()
     for area in all_areas:
@@ -414,6 +384,14 @@ def get_home_context(scenario: Scenario, user: User | None):
             building_areas.append(area)
         if area.area_type == Area.AreaTypeChoices.OPEN:
             open_areas.append(area)
+
+    for areas in [building_areas, open_areas]:
+        for area in areas:
+            area: Area
+            area.checked_authorization = True
+            if area.id in allowed_details_ids_union:
+                area.has_authorization = True
+
     data["building_areas"] = building_areas
     data["open_areas"] = open_areas
     area_forms = []
@@ -430,10 +408,176 @@ def home(request):
         s = create_scenario()
         s.name = request.GET.get("new", "NewScenario")
         s.save(update_fields=["name"])
-        return redirect(reverse("ports:home"))
-    user = None if not request.user.is_authenticated else request.user
-    context = get_home_context(user=user)
+        return redirect(
+            reverse(
+                "ports:enetra_tool",
+                kwargs={"scenario_internal_id": s.internal_id},
+            )
+        )
+    s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
+    return redirect(
+        reverse(
+            "ports:enetra_tool",
+            kwargs={"scenario_internal_id": s_internal_id},
+        )
+    )
+
+
+def enetra_tool(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not request.user.is_authenticated:
+        debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
+        # During development allow easy access to scenario_users
+        return HttpResponse(
+            "<div>To See this scenario you need to be logged in as a user of the scenario_group</div>"
+            + debug_buttons
+        )
+    context = get_home_context(user=request.user, scenario=scenario)
     return render(request, "ports/tool_base.html", context)
+
+
+def get_updates(request, scenario_uuid: str, first_load_str: str, last_update_str: str):
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_uuid)
+    focused_form = request.GET.get("focusedForm", None)
+    if not has_authorization(scenario, request.user, "details"):
+        return HttpResponseForbidden("Not Allowed")
+    first_load = datetime.fromisoformat(first_load_str)
+    context = {"scenario": scenario, "first_load": first_load_str}
+    if scenario.items_updated_at <= first_load:
+        return render(request, "ports/partials/changelog.html", context)
+    else:
+        changed_items: list[ScenarioItem] = []
+        created_items: list[ScenarioItem] = []
+        port_models = apps.get_models("ports")
+        scenario_item_models = [model for model in port_models if issubclass(model, ScenarioItem)]
+        for model in scenario_item_models:
+            objs = model.objects.filter(scenario=scenario, updated_at__gte=first_load).annotate(
+                changed=Value(True)
+            )
+            changed_items = changed_items + list(objs)
+            objs = model.objects.filter(scenario=scenario, created_at__gt=first_load).annotate(
+                changed=Value(False)
+            )
+            created_items = created_items + list(objs)
+        changed_or_created_items = created_items + changed_items
+        changed_or_created_items.sort(key=lambda x: x.updated_at if x.changed else x.created_at)
+        context |= {"changed_or_created_items": changed_or_created_items}
+        change_log = render_to_string("ports/partials/changelog.html", context, request)
+
+    last_update = datetime.fromisoformat(last_update_str)
+    if scenario.items_updated_at <= last_update:
+        return HttpResponse(change_log)
+
+    changed, created = get_update_items(scenario, last_update, scenario_item_models)
+    oob_updates = render_oob_updates(created, changed, focused_form)
+    return HttpResponse(change_log + oob_updates)
+
+
+def get_update_items(scenario, last_update, scenario_item_models):
+    changed_items: list[ScenarioItem] = []
+    created_items: list[ScenarioItem] = []
+    for model in scenario_item_models:
+        objs = model.objects.filter(
+            scenario=scenario,
+            updated_at__gte=last_update,
+            created_at__lte=last_update,
+        )
+        changed_items = changed_items + list(objs)
+        objs = model.objects.filter(scenario=scenario, created_at__gt=last_update)
+        created_items = created_items + list(objs)
+    return changed_items, created_items
+
+
+def render_oob_updates(
+    created_items: Iterable[ScenarioItem],
+    update_items: Iterable[ScenarioItem],
+    focused_form: str | None = None,
+) -> str:
+    """Render ScenarioItems via oob to inject updates into a response"""
+    context = {}
+    for key, items in [
+        ("created_forms", created_items),
+        ("updated_forms", update_items),
+    ]:
+        forms: list[ModelForm[ScenarioItem]] = []
+        for item in items:
+            Form = ScenarioItemFormFactory(item._meta.model)
+            prefix = get_pre(item)
+            form = Form(instance=item, prefix=prefix)
+            if focused_form and focused_form == f"form_{prefix}":
+                context |= {"focused_form_changed": focused_form}
+                continue
+            forms.append(form)
+        context |= {key: forms}
+    oob_changed_items = render_to_string("ports/partials/oob_form_swap.html", context)
+    return oob_changed_items
+
+
+def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
+    if request.method != "POST":
+        return HttpResponseBadRequest(b"This method only allows POST requests")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden(b"You need to be logged in to use this function")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    internal_load_id = request.GET.get("internal_id")
+    load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
+    authorized = has_authorization(scenario, request.user, "view")
+
+    def retargetForFailure(response):
+        response["HX-Retarget"] = "#templateError"
+        response["HX-Reselect"] = "unset"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+
+    if not authorized:
+        response = HttpResponseForbidden(b"You are not authorized for this function")
+        return retargetForFailure(response)
+    file = request.FILES.get("template_file")
+    if not file:
+        response = HttpResponse("Keine Datei ausgewählt")
+        return retargetForFailure(response)
+    suffix = file.name.split(".")[-1].lower()
+    allowed_suffixes = ["csv"]
+    if suffix not in allowed_suffixes:
+        response = HttpResponse(
+            "Momentan sind nur die folgenden Dateitypen unterstützt: " + ",".join(allowed_suffixes)
+        )
+        return retargetForFailure(response)
+    values = LoadTemplate.values_from_csv(file=file)
+    if not values:
+        response = HttpResponse("Keine numerischen Werte gefunden")
+        return retargetForFailure(response)
+    timestep_minutes = request.POST.get("timestep_minutes", None)
+    if not timestep_minutes:
+        # number input strips non numeric content from request. We dont know its missing or not numeric
+        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
+        return retargetForFailure(response)
+    try:
+        timestep_minutes = float(timestep_minutes)
+    except ValueError:
+        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
+        return retargetForFailure(response)
+    template_load = LoadTemplate(
+        timeseries={"values": values, "timestep_minutes": timestep_minutes},
+        spec_load=sum(values) / len(values),
+    )
+    template_load.scenario = scenario
+    template_load.name = file.name
+    template_load.manager = request.user
+    template_load.save()
+    load.template = template_load
+    load.save()
+    response = redirect(
+        reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": scenario_internal_id,
+                "model": model,
+            },
+        )
+        + f"?internal_id={internal_load_id}"
+    )
+    return response
 
 
 def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
@@ -479,7 +623,7 @@ class DetailsView(View):
                 context=context,
                 using=using,
             )
-            context = get_home_context(user=request.user)
+            context = get_home_context(user=request.user, scenario=self.scenario)
             context["content"] = content
         return render(
             request,
@@ -557,28 +701,15 @@ class DetailsView(View):
         return template
 
     def dispatch(self, request, *args, **kwargs):
-        # FIXME
-        # TODO: Add authorization
-        # Instantiate the class with its fixed attributes
         if not request.user.is_authenticated:
             response = HttpResponse("You need to be authenicated to view this")
             return response
         assert isinstance(request.user, User)
+        # Instantiate the class with its fixed attributes
         self.setup_view(request, *args, **kwargs)
         if not has_authorization(self.scenario, request.user, "view"):
             response = HttpResponse("You are not allowed to VIEW this scenario")
             return response
-        # if self.multi:
-        #     if not has_area_authorization_from_uuids(
-        #         self.internal_ids, request.user, "view", self.scenario, self.Model
-        #     ):
-        #         response = HttpResponse("You are not allowed to VIEW all of these items")
-        #         return response
-        # elif not has_area_authorization_from_uuids(
-        #     [self.internal_id], request.user, "view", self.scenario, self.Model
-        # ):
-        #     response = HttpResponse("You are not allowed to VIEW this item")
-        #     return response
 
         if not self.internal_ids and not self.internal_id and not self.created:
             # No item selected. Don't swap but hide the detail-sidebar. Ignore this if self.created
@@ -667,7 +798,10 @@ class DetailsView(View):
         if self.Model == Area:
             new_instance = Area.create_new(self.scenario, request.user, **data)
             new_instance.save()
+            new_instance.has_authorization = True
+            new_instance.checked_authorization = True
             self.context["instance"] = new_instance
+
             # Created areas are selected immediately
             self.context["createItemCallback"] = "this.click()"
             self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
@@ -693,6 +827,8 @@ class DetailsView(View):
             if not self.multi:
                 self.instance = self.instances[0]
                 self.instances = []
+                self.instance.has_authorization = True
+                self.instance.checked_authorization = True
                 self.context["instance"] = self.instance
                 self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
                     instance=self.instance
@@ -703,6 +839,10 @@ class DetailsView(View):
                 # For creation this is decided here, since self.multi might have been overwritten
                 self.template = self.get_template()
                 self.context["instances"] = self.instances
+                for item in self.instances:
+                    item.has_authorization = True
+                    item.checked_authorization = True
+
                 self.context["instance"] = None
                 self.context["internal_ids"] = ",".join(
                     [str(x.internal_id) for x in self.instances]
@@ -714,7 +854,7 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
-        self.context |= get_home_context()
+        self.context |= get_home_context(request.user, self.scenario)
         self.context["created"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -734,9 +874,7 @@ class DetailsView(View):
             self.context,
         )
         response["HX-Trigger"] = "map-redraw"
-        response["HX-Trigger"] = (
-            "hide-detail-sidebar"  # ;htmx.find('#form_{self.instance.internal_id}').remove(); "
-        )
+        response["HX-Trigger"] = "hide-detail-sidebar"
 
         return response
 
@@ -750,6 +888,8 @@ class DetailsView(View):
             self.internal_ids, request.user, "details", self.scenario, self.Model
         ):
             response = HttpResponse("You are not allowed to VIEW all of these items")
+            response["HX-Reselect"] = "unset"
+            response["HX-Reswap"] = "innerHTML"
             return response
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
 
@@ -774,6 +914,14 @@ class DetailsView(View):
             return HttpResponseBadRequest(
                 b"The patching of multiple objects is not possible with an instance"
             )
+
+        if not has_area_authorization_from_uuids(
+            self.internal_ids, request.user, "details", self.scenario, self.Model
+        ):
+            response = HttpResponse("You are not allowed to change all of these items")
+            response["HX-Reselect"] = "unset"
+            response["HX-Reswap"] = "innerHTML"
+            return response
         self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
         try:
             form = self.Form(data=request.POST)
@@ -797,10 +945,10 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
-        self.context |= get_home_context(user=request.user)
+        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
 
-        respone = self.details_render(self.request, self.template, self.context)
+        response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
 
@@ -809,6 +957,12 @@ class DetailsView(View):
             raise NotImplementedError("This model is not implemented for posting yet")
         if not self.instance:
             return HttpResponseBadRequest(b"The patching of an object needs an instance")
+        if not has_authorization(self.instance, request.user, "details"):
+            response = HttpResponse("You are not allowed to change this item")
+
+            response["HX-Reselect"] = "unset"
+            response["HX-Reswap"] = "innerHTML"
+            return response
         try:
             self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
@@ -818,7 +972,11 @@ class DetailsView(View):
             if form.is_valid():
                 self.context["item"] = form.save()
                 group = Group.objects.get(name=self.scenario.group_name())
-                if form.cleaned_data["is_public"]:
+                if (
+                    self.Model == Area
+                    and form.cleaned_data.get("is_public") is not None
+                    and form.cleaned_data["is_public"]
+                ):
                     assign_perm("details", group, form.instance)
                 else:
                     remove_perm("details", group, form.instance)
@@ -830,7 +988,7 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        self.context |= get_home_context(user=request.user)
+        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"

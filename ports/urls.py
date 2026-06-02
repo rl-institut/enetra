@@ -6,14 +6,14 @@ app_name = "ports"
 
 urlpatterns = [
     path(
-        "map/",
-        views.test,
-        name="map",
-    ),
-    path(
         "",
         views.home,
         name="home",
+    ),
+    path(
+        "<uuid:scenario_internal_id>/",
+        views.enetra_tool,
+        name="enetra_tool",
     ),
     path(
         "simulate/",
