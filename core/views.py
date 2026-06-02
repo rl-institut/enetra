@@ -60,7 +60,9 @@ def signup(request):
                 ),
                 fail_silently=True,
             )
-            return render(request, "core/registration/signup_success.html", {"email": user.email})
+            return render(
+                request, "core/registration/registration_pending.html", {"email": user.email}
+            )
 
     elif request.GET.get("token"):
         # token may be from signup process or invite
@@ -74,7 +76,7 @@ def signup(request):
             user.is_active = True
             user.save(update_fields=["is_active"])
             form = AuthForm(initial={"username": user.email})
-            return render(request, "core/registration/login.html", {"form": form})
+            return render(request, "core/registration/registration_success.html", {"form": form})
         except User.DoesNotExist:
             # token from invite: present registration form, fill in email from token
             form = SignUpForm(initial={"email": email, "invited": True})

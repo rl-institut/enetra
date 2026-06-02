@@ -42,6 +42,16 @@ urlpatterns = [
         name="logout",
     ),
     path(
+        "registration_pending/",
+        lambda x: render(x, template_name="core/registration/registration_pending.html"),
+        name="registration_pending",
+    ),
+    path(
+        "registration_success/",
+        lambda x: render(x, template_name="core/registration/registration_success.html"),
+        name="registration_success",
+    ),
+    path(
         "reset_password/",
         lambda x: render(x, template_name="core/registration/reset-password.html"),
         name="reset_password",

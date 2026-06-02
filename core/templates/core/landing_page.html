@@ -66,12 +66,13 @@
     <header class="select-none bg-white border-b border-slate-200 shrink-0 relative" x-data="{ open: false }">
       <div class="flex items-center justify-between px-6 py-4">
         <a href="{% url 'core:landing_page' %}">
-          <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-5 w-32 object-contain" />
+          <img src='{% static "img/enetra-logo.svg" %}' alt="Enetra" class="h-5 w-32 object-contain" />
         </a>
 
         <!-- Desktop nav -->
         <nav aria-label="Hauptnavigation" class="hidden lg:flex items-center gap-8">
-          <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's{{request.user}}</a>
+          <span href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Angemeldet als {{request.user}}</span>
+          <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's</a>
           <a href="#ueber-das-projekt" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Über das Projekt</a>
           {% if not request.user.is_authenticated %}
           <a href="{% url 'core:login' %}" class="flex items-center gap-2 text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">
@@ -464,7 +465,7 @@
     <footer class="select-none bg-slate-100 py-12">
       <div class="max-w-[1440px] mx-auto px-6 sm:px-12">
         <div class="max-w-[1200px] mx-auto flex items-center justify-between">
-          <img src='{% static "img/enetra-logo.png" %}' alt="Enetra" class="h-5 w-32 object-contain" />
+          <img src='{% static "img/enetra-logo.svg" %}' alt="Enetra" class="h-5 w-32 object-contain" />
           <nav class="flex items-center gap-8">
             <a href="#" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
             <a href="#" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
