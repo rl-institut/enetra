@@ -93,7 +93,9 @@
                 class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
                 active:scale-95 active:translate-y-[1px] active:shadow-inner
                 "
-                @click="$dispatch('create-polygon', {key:'{{instance.internal_id}}'})"
+                @click="
+              $dispatch('map-stop-edit');
+              $dispatch('create-polygon', {key:'{{instance.internal_id}}'})"
       >
           <c-icon.location-marker class="w-[16px] h-[16px]" />
           {{ instance.get_area_type_display }} zeichnen
@@ -110,7 +112,6 @@
                   if (!isEditing){
                   $dispatch('map-item-edit', {value:'{{instance.internal_id}}'});
                   } else {
-                  $dispatch('finish-create-polygon');
                   $dispatch('map-item-stop-edit', {value:'{{instance.internal_id}}'});
                   }
                   "

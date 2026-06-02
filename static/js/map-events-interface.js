@@ -22,7 +22,18 @@ document.addEventListener('create-polygon', (event) => {
   });
 });
 
+document.addEventListener('keyup', (event) => {
+  if (event.key === 'Backspace') {
+    myMap.undoLastNode();
+  }
+});
 
+document.addEventListener('keyup', (event) => {
+  if (event.key === 'Escape') {
+    document.dispatchEvent(new CustomEvent('stop-create-polygon'));
+    document.dispatchEvent(new CustomEvent('map-redraw'));
+  }
+});
 
 document.addEventListener('keyup', (event) => {
   if (event.key === 'Enter') {

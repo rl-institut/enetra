@@ -21,6 +21,8 @@ class MyMap {
     this.featureGroups = {};
     this.isEditing = null;
     this.editingMode = MyMap.Mode.EDIT
+    this._vertexHistory = [];
+    this._lastLayerState = new Map();
 
 
     this._initMap();
@@ -96,7 +98,7 @@ class MyMap {
 
   dispatchLayerChanges(event) {
     const editLayerName = this._getEditLayerName();
-    const layers = []; this.featureGroups[editLayerName].eachLayer((layer) => layers.push(layer));
+    const layers = this.featureGroups[editLayerName].getLayers();
 
     this.map._container.dispatchEvent(new CustomEvent('map-elements-edited', {
       detail: { layers, originalEvent: event },
@@ -205,6 +207,8 @@ class MyMap {
 
   drawElements() {
     console.log('drawing elements');
+    this._vertexHistory = [];
+    this._lastLayerState = new Map();
     const geometries = this.settings.getGeoJsons?.() ?? getGeoJsons();
     const popups = this.settings.getPopUps();
     const markers = this.settings.getMarkers();
@@ -253,11 +257,13 @@ class MyMap {
         } else if (this.editingMode === "move") {
           layer.pm.enableLayerDrag();
         } else {
-          layer.pm.enable({
-            allowEditing: true
-          }
-          )
+          layer.pm.enable({ allowEditing: true });
+          this._lastLayerState.set(layer, this._cloneLatLngs(layer.getLatLngs()));
+          layer.on('pm:vertexadded', this._onVertexChange, this);
+          layer.on('pm:vertexremoved', this._onVertexChange, this);
+          layer.on('pm:markerdragend', this._onVertexChange, this);
         }
+
       }
 
     });
@@ -370,6 +376,29 @@ class MyMap {
   }
 
 
+
+  _cloneLatLngs(latlngs) {
+    return latlngs.map(ring => ring.map(ll => L.latLng(ll.lat, ll.lng)));
+  }
+
+  _onVertexChange(e) {
+    const layer = e.layer;
+    const before = this._lastLayerState.get(layer);
+    if (before) this._vertexHistory.push({ layer, latlngs: before });
+    this._lastLayerState.set(layer, this._cloneLatLngs(layer.getLatLngs()));
+  }
+
+  undoLastNode() {
+    if (this.map.pm.Draw.Polygon.enabled()) return;
+    if (!this.isEditing) return;
+    if (this._vertexHistory.length === 0) return;
+
+    const { layer, latlngs } = this._vertexHistory.pop();
+    layer.setLatLngs(latlngs);
+    this._lastLayerState.set(layer, this._cloneLatLngs(latlngs));
+    layer.pm.disable();
+    layer.pm.enable({ allowEditing: true });
+  }
 
   _bindEvents() {
     let mouseStart = null;

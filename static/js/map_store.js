@@ -11,12 +11,19 @@ document.addEventListener('alpine:init', () => {
   });
   const mapStore = Alpine.store('map');
 
+  function stopEdit(){
+      mapStore.editingElements = new Set();
+      dispatchMapRedraw();
+  }
   // User presses escapse or enter
   window.addEventListener('keyup', (event) => {
     if (event.key === 'Enter' || event.key === "Escape") {
-      mapStore.editingElements = new Set();
-      dispatchMapRedraw();
+      stopEdit();
     }
+  });
+  // User presses escapse or enter
+  window.addEventListener('map-stop-edit', (event) => {
+      stopEdit();
   });
 
   window.addEventListener('map-item-stop-highlight', (event) => {

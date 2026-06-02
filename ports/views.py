@@ -271,8 +271,13 @@ def get_home_context(scenario: Scenario | None = None):
 
     # important:  prefetch all related models to avoid n+1 queries
     all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
-    building_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.BUILDING]
-    open_areas = [a for a in all_areas if a.area_type == Area.AreaTypeChoices.OPEN]
+    building_areas = list()
+    open_areas = list()
+    for area in all_areas:
+        if area.area_type == Area.AreaTypeChoices.BUILDING:
+            building_areas.append(area)
+        if area.area_type == Area.AreaTypeChoices.OPEN:
+            open_areas.append(area)
     data["building_areas"] = building_areas
     data["open_areas"] = open_areas
     area_forms = []

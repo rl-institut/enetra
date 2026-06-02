@@ -1,11 +1,14 @@
 // These are things the map needs
 // Why functions? Instead of constants? This allows lazy evaluation if needed
 function getCenter() {
-  return { 'lat': 51.505, 'lng': -0.04 };
+  return {
+    lat: 52.5381,
+    lng: 13.3322
+  }
+    ;
 }
 function getBounds() {
   return {};
-  // return { 'lat_min': 51, 'lng_min': -1, 'lat_max': 52, 'lng_max': 1 };
 }
 function getMaxZoom() {
   return 18;

@@ -23,19 +23,11 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
 <script src='{% static "js/create_map.js" %}'></script>
 <script>
   const myMap = new MyMap('#mapElement', {
-    getMaxZoom: () => 18,
-    getMinZoom: () => 3,
+    getMaxZoom: getMaxZoom,
+    getMinZoom: getMinZoom,
     getZoom: () => 16,
-    getBounds: () => ({
-      // lat_min: 48.0,
-      // lng_min: 10.0,
-      // lat_max: 55.0,
-      // lng_max: 14.0
-    }),
-    getCenter: () => ({
-      lat: 52.5381,
-      lng: 13.3322
-    }),
+    getBounds: getBounds,
+    getCenter: getCenter,
     getLayerNames: getLayerNames,
     getEditLayerName: getEditLayerName,
     getGeoJsons: getGeoJsons,
