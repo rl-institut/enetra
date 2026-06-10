@@ -70,10 +70,16 @@ wrap everyting in a label so everything toggles the radio/checkbox
     Should the image be shown even without bulkselection?
   {% endcomment %}
   <div class="relative shrink-0 size-[12px]">
-    <img alt=""
-         class="block max-w-none size-full"
-         :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
-         :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`' />
+    <svg x-show="!isSelected" width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M482.284 482H442.711V15C442.711 6.716 435.995 0 427.711 0H84.2878C76.0038 0 69.2878 6.716 69.2878 15V482H29.7158C21.4318 482 14.7158 488.716 14.7158 497C14.7158 505.284 21.4318 512 29.7158 512H482.285C490.569 512 497.285 505.284 497.285 497C497.285 488.716 490.569 482 482.284 482ZM204.869 482V379.739H307.13V482H204.869ZM337.13 482V364.739C337.13 356.455 330.414 349.739 322.13 349.739H189.869C181.585 349.739 174.869 356.455 174.869 364.739V482H99.2878V30H412.711V482H337.13Z" fill="black"/>
+      <rect x="159" y="88" width="55" height="55" fill="#64748B"/>
+      <rect x="159" y="227" width="55" height="55" fill="#64748B"/>
+      <rect x="298" y="88" width="55" height="55" fill="#64748B"/>
+      <rect x="298" y="227" width="55" height="55" fill="#64748B"/>
+    </svg>
+    <svg x-show="isSelected" width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M429 0C436.732 0 443 6.26801 443 14V482H483C490.732 482 497 488.268 497 496V498C497 505.732 490.732 512 483 512H29C21.268 512 15 505.732 15 498V496C15 488.268 21.268 482 29 482H68V14C68 6.26801 74.268 0 82 0H429ZM205 482H307V379H205V482ZM159 292H214V237H159V292ZM297 236V291H352V236H297ZM159 152H214V97H159V152ZM298 152H353V97H298V152Z" fill="#0E7490"/>
+    </svg>
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
     {% comment %}
