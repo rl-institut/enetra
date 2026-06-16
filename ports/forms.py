@@ -36,7 +36,6 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         exclude = exclude + ["area_type", "geom"]
         field_classes = {"geom": GeoJSONPolygonField}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
-            print(fk_f)
             field_classes[fk_f] = InternalIDModelChoiceField
         BaseForm = modelform_factory(
             ItemModel,
@@ -59,7 +58,6 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
-            print(fk_f)
             field_classes[fk_f] = InternalIDModelChoiceField
         BaseForm = modelform_factory(
             ItemModel,

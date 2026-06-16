@@ -26,7 +26,7 @@ from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import redirect  # noqa
-from django.shortcuts import render  # noqa  # noqa
+from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone

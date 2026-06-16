@@ -15,8 +15,11 @@
 >
   {{ form.internal_id }}
   <input name="area_internal_ids" class='hidden' value='{{internal_id}}'>
-        Manager:{{form.instance.manager}}
-        CurrentUser:{{request.user}}
+  {% if debug %}
+    Manager:{{form.instance.manager}}
+    CurrentUser:{{request.user}}
+    LastUpdate:{{form.instance.updated_user}}
+  {% endif %}
 
 
   {% comment %}

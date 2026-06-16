@@ -21,7 +21,6 @@ uvx djlint filepath --reformat
 ```
 to make use of uv tools
 
-
 enetra uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
 > shadcn_django provides a CLI tool that allows you to initialize and add shadcn-style components to your Django templates.
 
