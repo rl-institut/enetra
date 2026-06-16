@@ -614,6 +614,29 @@ class DetailsViewPermissionsTest(TestCase):
         self.load.refresh_from_db()
         self.assertNotEqual(self.load.name, "TAMPERED_BY_USER_B")
 
+    def test_post_load_description_allowed_for_owner(self):
+        self.client.force_login(self.user_a)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "internal_id": str(self.load.internal_id),
+                "name": self.load.name,
+                "description": "Owner set description",
+                "factor": "1.0",
+                "template": self.load_template.pk,
+            },
+        )
+        self.assertNotIn(b"not allowed", response.content.lower())
+        self.load.refresh_from_db()
+        self.assertEqual(self.load.description, "Owner set description")
+
     def test_multi_post_load_blocked_for_non_owner(self):
         self.client.force_login(self.user_b)
         url = reverse(

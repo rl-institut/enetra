@@ -425,11 +425,16 @@ def home(request):
 
 def enetra_tool(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
     if not request.user.is_authenticated:
-        debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
         # During development allow easy access to scenario_users
         return HttpResponse(
             "<div>To See this scenario you need to be logged in as a user of the scenario_group</div>"
+            + debug_buttons
+        )
+    elif not has_authorization(scenario, request.user, "details"):
+        return HttpResponse(
+            f"Current user {request.user} has no details permission for the scenario"
             + debug_buttons
         )
     context = get_home_context(user=request.user, scenario=scenario)
@@ -972,11 +977,7 @@ class DetailsView(View):
             if form.is_valid():
                 self.context["item"] = form.save()
                 group = Group.objects.get(name=self.scenario.group_name())
-                if (
-                    self.Model == Area
-                    and form.cleaned_data.get("is_public") is not None
-                    and form.cleaned_data["is_public"]
-                ):
+                if self.Model == Area and form.cleaned_data.get("is_public"):
                     assign_perm("details", group, form.instance)
                 else:
                     remove_perm("details", group, form.instance)
