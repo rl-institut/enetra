@@ -21,6 +21,21 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     }
 })
 
+// More minimal approach to restoring inputs without preserving everything
+// this allows preserving values of swapped htmx elements while still allowing
+// changing other attributes like disabled
+document.addEventListener("htmx:oobBeforeSwap", (event) => {
+    const fragment = event.detail.fragment;
+    fragment.querySelectorAll("[preserve-val]").forEach(newEl => {
+        if (!newEl.id) return;
+        const oldEl = document.getElementById(newEl.id);
+        if (oldEl) {
+            newEl.value = oldEl.value;
+            newEl.checked = oldEl.checked;
+        }
+    });
+})
+
 // The list indicates what is shown in the detailSidebar. Therefore the should only be a single
 // selection active at a time. this function handles deselecting other Lists
 function deselectOtherLists(element) {

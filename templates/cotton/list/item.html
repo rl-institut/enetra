@@ -53,7 +53,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
             Instead we dispatch an event to toggle the alpine state a level above.
             {% endcomment %}
            id="input_{{ value }}_{{ radioName }}"
-           hx-preserve
+           preserve-val
             {% if selected %}
             checked
           {% endif %}
@@ -62,7 +62,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
           x-effect handles when the selection is changed from the outside, e.g. radiobutton is switched.
           {% endcomment %}
           {% if active %}
-            x-on:click="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
+            x-on:change="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
             "
             x-effect="ischecked = $el.value==selected;
             if (!isBulkMode) {

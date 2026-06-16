@@ -124,6 +124,13 @@ def has_authorization(
     Delete: Delete an item
     Create: Create an item
     """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    if user == item.manager:
+        return True
+
     # For now short the authorization for ScenarioItems, since their authorization is
     # based only on areas for now
     if isinstance(item, ScenarioItem):
@@ -131,12 +138,6 @@ def has_authorization(
             [item.internal_id], user, crud, item.scenario, item.model()
         )
 
-    if not user.is_authenticated:
-        return False
-    if user.is_superuser:
-        return True
-    if user == item.manager:
-        return True
     has_perm = False
     match crud:
         case "delete" | "details":
@@ -216,13 +217,37 @@ def changes_count(request, scenario_internal_id: UUID):
                         deleted_items.append(model_item)
                     continue
                 filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                created_items.extend(list(Model.objects.filter(scenario=scenario).filter(**filter)))
+                base_qs = Model.objects.filter(scenario=scenario)
+                created_items.extend(list(base_qs.filter(**filter)))
                 filter = {
                     "created_at__lte": last_update,
                     "updated_at__gt": last_update,
                     "updated_at__lte": updated_at,
                 }
-                changed_items.extend(list(Model.objects.filter(scenario=scenario).filter(**filter)))
+                changed_items.extend(list(base_qs.filter(**filter)))
+
+            base_qs = Area.objects.filter(scenario=scenario)
+            allowed_details_ids = set(
+                get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
+            )
+            managed_area_ids = set(
+                base_qs.filter(manager=request.user).values_list("id", flat=True)
+            )
+            allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
+            for items in [created_items, changed_items]:
+                for item in items:
+                    if isinstance(item, Area):
+                        area_id = item.id
+                    else:
+                        try:
+                            area_id = item.area_id
+                        except AttributeError:
+                            # instances without area are not authorized as
+                            # secure default
+                            continue
+                    if area_id in allowed_details_ids_union:
+                        item.has_authorization = True
+                    item.checked_authorization = True
 
             context["created_items"] = created_items
             context["changed_items"] = changed_items
