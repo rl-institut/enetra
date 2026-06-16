@@ -21,7 +21,7 @@
   <button type='button'
                 hx-get="{% url 'ports:changes' scenario_internal_id=scenario.internal_id %}"
                 hx-target="#detailSidebar"
-                hx-trigger="none"
+                hx-trigger="click"
                 hx-indicator="#detailSidebar"
                 hx-swap="innerHTML"
                 hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
