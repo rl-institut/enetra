@@ -174,6 +174,10 @@ class ScenarioItem(models.Model):
     def layer_name(self):
         return f"{self._meta.model_name}"
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.circle_full"
+
     def icon(self) -> str:
         """The cotton template used as icon for this model"""
         return "icon.circle_full"
@@ -320,6 +324,13 @@ class Area(ScenarioItem):
 
     def layer_name(self):
         return f"{self.area_type}-{self._meta.model_name}"
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        if self.area_type == Area.AreaTypeChoices.BUILDING:
+            return "icon.building-list"
+        else:
+            return "icon.area-list"
 
     @classmethod
     def adjust_Form(
