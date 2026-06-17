@@ -86,8 +86,6 @@ class ItemTemplate(models.Model):
         related_name="+",
         editable=False,
     )
-    # mark templates for ease of filtering
-    is_template = models.BooleanField(default=True)
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table
@@ -104,7 +102,6 @@ class ScenarioItem(ItemTemplate):
     # Scenario specific id, which stays the same over scenarios
     internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
-    is_template = models.BooleanField(default=False)  # overload template tag
 
     scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
