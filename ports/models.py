@@ -551,6 +551,10 @@ class Generator(ElectricComponent):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.generator"
+
 
 class Heating(ElectricComponent):
     """Transforms energy source to heat"""
@@ -566,6 +570,10 @@ class Heating(ElectricComponent):
         if not self.carrier:
             return "Keine Angabe"
         return self.get_carrier_display()
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heating"
 
 
 class CHP(ElectricComponent):
@@ -588,6 +596,10 @@ class CHP(ElectricComponent):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.chp"
+
 
 class FuelCell(ElectricComponent):
     """Transform H2 into electricity"""
@@ -595,12 +607,20 @@ class FuelCell(ElectricComponent):
     # carrier is always hydrogen
     efficiency_thermal = models.FloatField(default=1.0)
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.fuelcell"
+
 
 class Electrolyzer(ElectricComponent):
     """Transform electricity into H2"""
 
     # carrier is always electricity
     efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.electrolyzer"
 
 
 class Heatpump(ElectricComponent):
@@ -622,6 +642,10 @@ class Heatpump(ElectricComponent):
     @classmethod
     def get_default_args(cls) -> dict:
         return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heat_pump"
 
 
 class Solar(ElectricComponent):
@@ -646,6 +670,10 @@ class Solar(ElectricComponent):
     surface_area_installed = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.solar"
 
 
 class Storage(ScenarioItem):
