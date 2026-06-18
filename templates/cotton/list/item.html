@@ -70,10 +70,12 @@ wrap everyting in a label so everything toggles the radio/checkbox
     Should the image be shown even without bulkselection?
   {% endcomment %}
   <div class="relative shrink-0 size-[12px]">
-    <img alt=""
-         class="block max-w-none size-full"
-         :src='isSelected ? "{{ selectedImg|default:'https://placehold.co/600x400/00FF00/FFFFFF/png' }}" : "{{ selectedImg|default:'https://placehold.co/600x400/FF0000/FF00FF/png' }}"'
-         :style='isSelected && `filter: "brightness(0) saturate(100%) invert(44%) sepia(51%) saturate(783%) hue-rotate(147deg) brightness(94%) contrast(91%)"`' />
+   <div x-show="!isSelected">
+      {{notSelectedIndicator}}
+    </div>
+     <div x-show="isSelected">
+      {{selectedIndicator}}
+    </div>
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
     {% comment %}

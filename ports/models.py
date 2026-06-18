@@ -181,6 +181,10 @@ class ScenarioItem(ItemTemplate):
     def layer_name(self):
         return f"{self._meta.model_name}"
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.circle_full"
+
     def icon(self) -> str:
         """The cotton template used as icon for this model"""
         return "icon.circle_full"
@@ -327,6 +331,13 @@ class Area(ScenarioItem):
 
     def layer_name(self):
         return f"{self.area_type}-{self._meta.model_name}"
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        if self.area_type == Area.AreaTypeChoices.BUILDING:
+            return "icon.building-list"
+        else:
+            return "icon.area-list"
 
     @classmethod
     def adjust_Form(
@@ -555,6 +566,10 @@ class AbstractGenerator(models.Model):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.generator"
+
     class Meta:
         abstract = True
 
@@ -581,6 +596,10 @@ class AbstractHeating(models.Model):
         if not self.carrier:
             return "Keine Angabe"
         return self.get_carrier_display()
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heating"
 
     class Meta:
         abstract = True
@@ -614,6 +633,10 @@ class AbstractCHP(models.Model):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.chp"
+
     class Meta:
         abstract = True
 
@@ -632,6 +655,10 @@ class AbstractFuelCell(models.Model):
     # carrier is always hydrogen
     efficiency_thermal = models.FloatField(default=1.0)
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.fuelcell"
+
     class Meta:
         abstract = True
 
@@ -649,6 +676,10 @@ class AbstractElectrolyzer(models.Model):
 
     # carrier is always electricity
     efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.electrolyzer"
 
     class Meta:
         abstract = True
@@ -681,6 +712,10 @@ class AbstractHeatpump(models.Model):
     @classmethod
     def get_default_args(cls) -> dict:
         return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heat_pump"
 
     class Meta:
         abstract = True
@@ -716,6 +751,10 @@ class AbstractSolar(models.Model):
     surface_area_installed = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.solar"
 
     class Meta:
         abstract = True

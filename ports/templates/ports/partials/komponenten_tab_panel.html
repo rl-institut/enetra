@@ -37,6 +37,12 @@
                     title='{{item.name}}'
                     radioName='internal_id'
                 >
+                  <c-slot name="notSelectedIndicator">
+                    <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
+                  </c-slot>
+                  <c-slot name="selectedIndicator">
+                    <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
+                  </c-slot>
                   <c-slot name="singleModeIcon">
                     {% include "ports/partials/list_item_ellipsis.html" %}
                   </c-slot>
