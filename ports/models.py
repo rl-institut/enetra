@@ -23,7 +23,6 @@ from django.utils.translation import gettext_lazy as _
 logger = logging.getLogger("django_ports")
 
 
-# Create your models here.
 # Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
 class Scenario(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
@@ -73,14 +72,10 @@ class Scenario(models.Model):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 
 
-class ScenarioItem(models.Model):
-    """All items which have a scenario as reference inherit some common functionality"""
+class ItemTemplate(models.Model):
+    """Abstract class for item templates"""
 
-    scenario_id: int
     id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
-    # Scenario specific id, which stays the same over scenarios
-    internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
-    scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
     name = models.TextField(blank=True, null=True, max_length=200)
     description = models.TextField(blank=True, null=True)
 
@@ -106,6 +101,23 @@ class ScenarioItem(models.Model):
         related_name="+",
         editable=False,
     )
+
+    class Meta:
+        abstract = True  # Important: makes this a base, not a table
+
+    def save(self, *args, **kwargs):
+        if self.pk is None and self.updated_user is None:
+            self.updated_user = self.manager
+        return super().save(*args, **kwargs)
+
+
+class ScenarioItem(ItemTemplate):
+    """All items which have a scenario as reference inherit some common functionality"""
+
+    # Scenario specific id, which stays the same over scenarios
+    internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
+    scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
+
     scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
 
@@ -158,11 +170,6 @@ class ScenarioItem(models.Model):
             sender=sender, instance=instance, created=kwargs.get("created")
         )
 
-    def save(self, *args, **kwargs):
-        if self.pk is None and self.updated_user is None:
-            self.updated_user = self.manager
-        return super().save(*args, **kwargs)
-
     def model_name(self):
         return self._meta.model_name
 
@@ -195,6 +202,10 @@ class ScenarioItem(models.Model):
 
     def layer_name(self):
         return f"{self._meta.model_name}"
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.circle_full"
 
     def icon(self) -> str:
         """The cotton template used as icon for this model"""
@@ -349,6 +360,13 @@ class Area(ScenarioItem):
             ("delete", "delete area"),
             ("change", "change area"),
         )
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        if self.area_type == Area.AreaTypeChoices.BUILDING:
+            return "icon.building-list"
+        else:
+            return "icon.area-list"
 
     @classmethod
     def adjust_Form(
@@ -506,10 +524,9 @@ class Grid(ScenarioItem):
     areas = models.ManyToManyField("Area")
 
 
-class ElectricComponent(ScenarioItem):
-    """Abstract electric component, defines shared characteristics"""
+class ElectricComponentTemplate(ItemTemplate):
+    """Abstract template for electric components, defines shared characteristics"""
 
-    area = models.ForeignKey(Area, verbose_name=_("Fläche"), on_delete=models.CASCADE)
     power_kw = models.FloatField(verbose_name=_("Leistung"), default=None, null=True, blank=True)
     efficiency = models.FloatField(verbose_name=_("Effizienz"), default=1.0)
     power_installed = models.FloatField(
@@ -526,18 +543,6 @@ class ElectricComponent(ScenarioItem):
 
     class Meta:
         abstract = True  # abstract table
-
-    def custom_fields(self):
-        generic_field_names = {f.name for f in ElectricComponent._meta.get_fields()}
-        for parent in ElectricComponent.__mro__[1:]:
-            if hasattr(parent, "_meta"):
-                generic_field_names |= {f.name for f in parent._meta.get_fields()}
-        return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
-
-    def area_verbose(self):
-        if not self.area:
-            return "Keine Angabe"
-        return f"{self.area} m^2"
 
     def power_kw_verbose(self):
         if not self.power_kw:
@@ -578,6 +583,27 @@ class ElectricComponent(ScenarioItem):
     def get_default_args(cls) -> dict:
         return {}
 
+
+class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
+    """Abstract electric component"""
+
+    area = models.ForeignKey(Area, verbose_name=_("Fläche"), on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True  # abstract table
+
+    def custom_fields(self):
+        generic_field_names = {f.name for f in ElectricComponent._meta.get_fields()}
+        for parent in ElectricComponent.__mro__[1:]:
+            if hasattr(parent, "_meta"):
+                generic_field_names |= {f.name for f in parent._meta.get_fields()}
+        return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
+
+    def area_verbose(self):
+        if not self.area:
+            return "Keine Angabe"
+        return f"{self.area} m^2"
+
     @classmethod
     def create_new(
         cls, scenario: Scenario, manager: User, area_internal_ids: list[str | uuid.UUID], **kwargs
@@ -603,7 +629,7 @@ class ElectricComponent(ScenarioItem):
         return components
 
 
-class Generator(ElectricComponent):
+class AbstractGenerator(models.Model):
     """Transforms fuel into electricity"""
 
     class CarrierChoices(models.TextChoices):
@@ -617,8 +643,23 @@ class Generator(ElectricComponent):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.generator"
 
-class Heating(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class GeneratorTemplate(AbstractGenerator, ElectricComponentTemplate):
+    pass
+
+
+class Generator(AbstractGenerator, ElectricComponent):
+    pass
+
+
+class AbstractHeating(models.Model):
     """Transforms energy source to heat"""
 
     class CarrierChoices(models.TextChoices):
@@ -633,8 +674,23 @@ class Heating(ElectricComponent):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heating"
 
-class CHP(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class HeatingTemplate(AbstractHeating, ElectricComponentTemplate):
+    pass
+
+
+class Heating(AbstractHeating, ElectricComponent):
+    pass
+
+
+class AbstractCHP(models.Model):
     """Combined heat and power (Blockheizkraftwerk)"""
 
     class CarrierChoices(models.TextChoices):
@@ -654,22 +710,67 @@ class CHP(ElectricComponent):
             return "Keine Angabe"
         return self.get_carrier_display()
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.chp"
 
-class FuelCell(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class CHPTemplate(AbstractCHP, ElectricComponentTemplate):
+    pass
+
+
+class CHP(AbstractCHP, ElectricComponent):
+    pass
+
+
+class AbstractFuelCell(models.Model):
     """Transform H2 into electricity"""
 
     # carrier is always hydrogen
     efficiency_thermal = models.FloatField(default=1.0)
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.fuelcell"
 
-class Electrolyzer(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class FuelCellTemplate(AbstractFuelCell, ElectricComponentTemplate):
+    pass
+
+
+class FuelCell(AbstractFuelCell, ElectricComponent):
+    pass
+
+
+class AbstractElectrolyzer(models.Model):
     """Transform electricity into H2"""
 
     # carrier is always electricity
     efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.electrolyzer"
 
-class Heatpump(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class ElectrolyzerTemplate(AbstractElectrolyzer, ElectricComponentTemplate):
+    pass
+
+
+class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
+    pass
+
+
+class AbstractHeatpump(models.Model):
     """Transform electricity into heat"""
 
     # carrier is always electricity
@@ -689,8 +790,23 @@ class Heatpump(ElectricComponent):
     def get_default_args(cls) -> dict:
         return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heat_pump"
 
-class Solar(ElectricComponent):
+    class Meta:
+        abstract = True
+
+
+class HeatpumpTemplate(AbstractHeatpump, ElectricComponentTemplate):
+    pass
+
+
+class Heatpump(AbstractHeatpump, ElectricComponent):
+    pass
+
+
+class AbstractSolar(models.Model):
     """Photovoltaics"""
 
     profile = models.ForeignKey(
@@ -713,8 +829,23 @@ class Solar(ElectricComponent):
     surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
 
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.solar"
 
-class Storage(ScenarioItem):
+    class Meta:
+        abstract = True
+
+
+class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
+    pass
+
+
+class Solar(AbstractSolar, ElectricComponent):
+    pass
+
+
+class AbstractStorage(models.Model):
     """Generic energy storage"""
 
     class CarrierChoices(models.TextChoices):
@@ -722,7 +853,6 @@ class Storage(ScenarioItem):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    area = models.ForeignKey(Area, on_delete=models.CASCADE)
     carrier = models.CharField(choices=CarrierChoices)
     efficiency_load = models.FloatField(default=1.0)
     efficiency_store = models.FloatField(default=1.0)
@@ -736,6 +866,17 @@ class Storage(ScenarioItem):
         if not self.carrier:
             return "Keine Angabe"
         return self.get_carrier_display()
+
+    class Meta:
+        abstract = True
+
+
+class StorageTemplate(AbstractStorage, ItemTemplate):
+    pass
+
+
+class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE)
 
 
 # --------------------------------------------------------------------------------

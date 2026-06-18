@@ -200,6 +200,8 @@ def changes_count(request, scenario_internal_id: UUID):
             for Model in port_models:
                 if Model in [Scenario, ChangedItem]:
                     continue
+                if not issubclass(Model, models.ScenarioItem):
+                    continue
                 if Model in [DeletedItem]:
                     filter = {
                         "created_at__gt": last_update,
@@ -260,9 +262,8 @@ def changes_count(request, scenario_internal_id: UUID):
         port_models = apps.get_app_config("ports").get_models()
         # Create a mapping for all scenario items
         for Model in port_models:
-            if Model in [Scenario]:
-                continue
-            count += Model.objects.filter(scenario=scenario).count()
+            if issubclass(Model, models.ScenarioItem):
+                count += Model.objects.filter(scenario=scenario).count()
 
     context["all_changes_count"] = count
     context["scenario"] = scenario
@@ -297,10 +298,10 @@ def changes(request, scenario_internal_id: UUID):
     port_models = apps.get_app_config("ports").get_models()
     # Create a mapping for all scenario items
     for Model in port_models:
-        if Model in [Scenario]:
-            continue
-        other_changes_count += Model.objects.filter(**filter).exclude(**other_exclude).count()
-        user_changes_count += Model.objects.filter(**user_filter).count()
+        # only count scenario items
+        if issubclass(Model, models.ScenarioItem):
+            other_changes_count += Model.objects.filter(**filter).exclude(**other_exclude).count()
+            user_changes_count += Model.objects.filter(**user_filter).count()
 
     exclude = {}
     if otherchanges:
@@ -316,6 +317,8 @@ def changes(request, scenario_internal_id: UUID):
     for Model in port_models:
         if Model in [DeletedItem, ChangedItem, Scenario]:
             continue
+        if not issubclass(Model, models.ScenarioItem):
+            continue
         original_items = Model.objects.filter(scenario=scenario)
         original_items_dict[Model] = {x.internal_id: x for x in original_items}
 
@@ -324,6 +327,8 @@ def changes(request, scenario_internal_id: UUID):
     port_models = apps.get_app_config("ports").get_models()
     for Model in port_models:
         if Model == Scenario:
+            continue
+        if not issubclass(Model, models.ScenarioItem):
             continue
         if Model == DeletedItem:
             for item in Model.objects.filter(**filter).exclude(**exclude):
