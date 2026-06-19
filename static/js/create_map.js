@@ -324,6 +324,18 @@ class MyMap {
 
 
 
+  fitToElements() {
+    const bounds = L.latLngBounds();
+    for (const featureGroup of Object.values(this.featureGroups)) {
+      if (featureGroup.getLayers().length > 0) {
+        bounds.extend(featureGroup.getBounds());
+      }
+    }
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds);
+    }
+  }
+
   toggleEditable() {
     this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
       if (layer.pm.enabled()) {
