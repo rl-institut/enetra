@@ -63,6 +63,7 @@ INTERNAL_IPS = [
 ]
 
 INSTALLED_APPS = [
+    "daphne",
     "unfold",  # before django.contrib.admin
     "unfold.contrib.guardian",  # optional, if django-guardian package is used
     "django.contrib.admin",
@@ -168,6 +169,7 @@ UNFOLD = {
 
 
 WSGI_APPLICATION = "enetra.wsgi.application"
+ASGI_APPLICATION = "enetra.asgi.application"
 
 
 # Database

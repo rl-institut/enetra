@@ -9,6 +9,11 @@
 {% endcomment %}
 {% block header %}
   {% include "ports/imports_app.html" %}
+  <script>
+
+rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_id %}")
+
+  </script>
 {% endblock header %}
 {% block sideBar %}
   <div>
@@ -16,8 +21,21 @@
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
       {% include "ports/partials/scenario_select.html" %}
+      {% comment %}
+
+      <div
+      hx-ext="sse"
+      sse-connect="{% url 'ports:scenario_updates' scenario.internal_id %}"
+      sse-swap="message"
+      hx-swap='beforeend'>
+      CONTENT
+      </div>
+      {% endcomment %}
     </div>
-    <div class="flex-1 overflow-auto p-[16px]">
+    <div class="flex-1 overflow-auto p-[16px]
+      "
+      hx-on::scenario_changed="console.log( 'bar')"
+    >
       <c-tabs.index variant='lined'>
 
       <c-tabs.tab>
@@ -33,6 +51,7 @@
         {% include 'ports/partials/allg_randbed.html' %}
       </c-tabs.tab>
       </c-tabs.index>
+
     </div>
   </div>
 {% endblock sideBar %}

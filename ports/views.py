@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import traceback
@@ -22,6 +23,7 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
+from django.http import StreamingHttpResponse
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -429,6 +431,51 @@ def get_home_context(user: User, scenario: Scenario):
         area_forms.append(AreaItemFormFactory()(instance=a))
     data["area_forms"] = area_forms
     return data
+
+
+def gen_message(msg: str | None = None, event: str | None = None) -> str:
+    lines = []
+    if event:
+        lines.append(f"event: {event}")
+    if msg:
+        for line in msg.splitlines():
+            lines.append(f"data: {line}")
+
+    return "\n".join(lines) + "\n\n"
+
+
+async def scenario_updates(request, scenario_internal_id: UUID):
+    """Async loop which checks for updates
+
+    When finding changes the client is notified via a custom event.
+    """
+    scenario: Scenario = await aget_object_or_404(Scenario, internal_id=scenario_internal_id)
+
+    # if not has_authorization(scenario, request.user, "details"):
+    #     return HttpResponseForbidden("No access")
+
+    async def event_stream():
+        updated_at = scenario.updated_at
+        last_update = updated_at
+        try:
+            while True:
+                await scenario.arefresh_from_db()
+                if scenario.updated_at > last_update:
+                    last_update = scenario.updated_at
+                    msg = gen_message(event="scenario_changed", msg="changed")
+                    yield msg
+                await asyncio.sleep(0.1)
+        except asyncio.CancelledError:
+            print("canceld")
+            # Handle disconnect
+            ...
+            return
+
+    response = StreamingHttpResponse(event_stream(), status=200, content_type="text/event-stream")
+    # set explicitly that no compression (gzipmiddleware) takes place.
+    # gzip gathers the streaming response into chunks to be large enough for efficient compression. we dont want that but the stream to be flushed on each yield
+    response["Content-Encoding"] = "Identity"
+    return response
 
 
 def home(request):

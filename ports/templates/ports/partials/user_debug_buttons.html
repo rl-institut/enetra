@@ -1,6 +1,12 @@
   {# DEBUG: user-switch buttons — remove before production #}
-{% load static %}
-<script src='{% static "htmx.min.js" %}'>'</script>
+<script>
+if (!window.htmx) {
+  var s = document.createElement('script');
+  s.src = 'https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js';
+  s.onload = function() { htmx.process(document.body); };
+  document.head.appendChild(s);
+}
+</script>
   <div class="user-debug-buttons bg-white p-2 border fixed bottom-4 right-4 z-[99999] flex flex-col gap-2"
     hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
     hx-swap="outerHTML"
