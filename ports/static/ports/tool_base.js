@@ -9,6 +9,20 @@ document.addEventListener("animationend", (event) => {
 
 })
 
+
+function rerouteServerEventsToElement(url) {
+    // create a sse connection with the server. The server responds with events and messages,
+    // which trigger events the dom can listen too
+    const event_source = htmx.createEventSource(url);
+    event_source.addEventListener("scenario_changed", e => {
+        document.body.dispatchEvent(
+            new CustomEvent("scenario_changed", {
+                detail: e.data
+            })
+        );
+    });
+}
+
 // Stop insertion of elements which should be unique
 document.addEventListener("htmx:oobBeforeSwap", (event) => {
     // Check if the event has a uniqueid identifier

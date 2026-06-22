@@ -4,7 +4,7 @@
   {% if all_changes_count == '' %}
   hx-trigger="load"
   {% else %}
-  hx-trigger="load delay:100s, click,keyup[key=='Enter'] from:body"
+  hx-trigger="load delay:100s, click,keyup[key=='Enter'] from:body, scenario_changed from:body"
   {% endif %}
   hx-swap="outerHTML"
   hx-target='this'
