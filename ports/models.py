@@ -287,7 +287,6 @@ class DeletedItem(ScenarioItem):
     """
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    pass
 
     def __repr__(self):
         return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
@@ -514,8 +513,9 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
 
     area = models.ForeignKey(Area, verbose_name=_("Fläche"), on_delete=models.CASCADE)
 
-    class Meta:
+    class Meta(ScenarioItem.Meta):
         abstract = True  # abstract table
+        # retain unique internal_id/scenario_id constraint from ScenarioItem Meta
 
     def custom_fields(self):
         generic_field_names = {f.name for f in ElectricComponent._meta.get_fields()}
@@ -574,11 +574,11 @@ class AbstractGenerator(models.Model):
         abstract = True
 
 
-class GeneratorTemplate(AbstractGenerator, ElectricComponentTemplate):
+class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
     pass
 
 
-class Generator(AbstractGenerator, ElectricComponent):
+class Generator(ElectricComponent, AbstractGenerator):
     pass
 
 
@@ -605,11 +605,11 @@ class AbstractHeating(models.Model):
         abstract = True
 
 
-class HeatingTemplate(AbstractHeating, ElectricComponentTemplate):
+class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
     pass
 
 
-class Heating(AbstractHeating, ElectricComponent):
+class Heating(ElectricComponent, AbstractHeating):
     pass
 
 
@@ -641,11 +641,11 @@ class AbstractCHP(models.Model):
         abstract = True
 
 
-class CHPTemplate(AbstractCHP, ElectricComponentTemplate):
+class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
     pass
 
 
-class CHP(AbstractCHP, ElectricComponent):
+class CHP(ElectricComponent, AbstractCHP):
     pass
 
 
@@ -663,11 +663,11 @@ class AbstractFuelCell(models.Model):
         abstract = True
 
 
-class FuelCellTemplate(AbstractFuelCell, ElectricComponentTemplate):
+class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
     pass
 
 
-class FuelCell(AbstractFuelCell, ElectricComponent):
+class FuelCell(ElectricComponent, AbstractFuelCell):
     pass
 
 
@@ -685,11 +685,11 @@ class AbstractElectrolyzer(models.Model):
         abstract = True
 
 
-class ElectrolyzerTemplate(AbstractElectrolyzer, ElectricComponentTemplate):
+class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
     pass
 
 
-class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
+class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
     pass
 
 
@@ -721,11 +721,11 @@ class AbstractHeatpump(models.Model):
         abstract = True
 
 
-class HeatpumpTemplate(AbstractHeatpump, ElectricComponentTemplate):
+class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
     pass
 
 
-class Heatpump(AbstractHeatpump, ElectricComponent):
+class Heatpump(ElectricComponent, AbstractHeatpump):
     pass
 
 
@@ -760,11 +760,11 @@ class AbstractSolar(models.Model):
         abstract = True
 
 
-class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
+class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
     pass
 
 
-class Solar(AbstractSolar, ElectricComponent):
+class Solar(ElectricComponent, AbstractSolar):
     pass
 
 
@@ -794,7 +794,7 @@ class AbstractStorage(models.Model):
         abstract = True
 
 
-class StorageTemplate(AbstractStorage, ItemTemplate):
+class StorageTemplate(ItemTemplate, AbstractStorage):
     pass
 
 
