@@ -253,6 +253,18 @@ def changes_count(request, scenario_internal_id: UUID):
                         item.has_authorization = True
                     item.checked_authorization = True
 
+            areas = [x.area for x in changed_items if vars(x).get("area_id")]
+            # Add authorization
+            for area in areas:
+                if area.id in allowed_details_ids_union:
+                    area.has_authorization = True
+                area.checked_authorization = True
+
+            # Add geom from to instances so they are updated
+            for area in areas:
+                area.geom_form = AreaItemFormFactory()(instance=area)
+
+            changed_items.extend(areas)
             context["created_items"] = created_items
             context["changed_items"] = changed_items
             context["deleted_items"] = deleted_items

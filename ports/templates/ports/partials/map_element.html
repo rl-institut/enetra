@@ -2,6 +2,7 @@
   id="geom_form_{{form.instance.internal_id}}"
   hx-post='{% url "ports:patch_area" scenario_internal_id=scenario.internal_id %}'
   hx-swap='none'
+  hx-swap-oob='true'
   hx-on::trigger="console.log('triggerd submit')"
   hx-trigger="submit, change"
   hx-on::after-request="htmx.trigger('body' ,'refresh-{{form.instance.internal_id}}');
