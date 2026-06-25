@@ -22,13 +22,47 @@ from django.utils.translation import gettext_lazy as _
 logger = logging.getLogger("django_ports")
 
 
-# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
-class Scenario(models.Model):
+# Each set of scenario is bundled via its project
+class Project(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
     name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
+    # Set to now() on the database side
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Related name + tells django not to create a reverse relation for user, e.g. user.scenario_set
+    manager = models.ForeignKey(
+        User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
+    )
+
+    @atomic()
+    def safe_delete(self):
+        """Safely delete the project by safely deleting all scenarios referencing it.
+        This is needed because of the nature of DeletedItems which are created during
+        deletion
+        """
+        scenarios = Scenario.objects.filter(project=self)
+        for s in scenarios:
+            s.safe_delete()
+        self.delete()
+
+
+# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
+class Scenario(models.Model):
+    # Project which bundles Scenarios
+    # on_delete is null since DeletedItems dont allow cascading delete on Scenario
+    # instead safe_delete has to be used on the scenarios
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
+    id = models.BigAutoField(primary_key=True, blank=True)
+    internal_id = models.UUIDField(
+        db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
+    )
+    name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -39,6 +73,9 @@ class Scenario(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    # Area of the scenario / Port region
+    geom = models.PolygonField(null=True, blank=True)
 
     class Meta:
         permissions = (("foo", "Assign foo"),)
@@ -217,6 +254,7 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created"""
+    # TODO: add project?
     scenario = instance.scenario
     scenario.items_updated_at = instance.updated_at
     scenario.save()

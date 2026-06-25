@@ -1,41 +1,19 @@
+{% extends "core/base_management.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Westhafen – Enetra</title>
-    {% include "core/imports.html" %}
-  </head>
-  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
-      <a href="{% url 'core:landing_page' %}">
-        <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
-      </a>
-      <nav class="flex gap-6 items-center">
-        <span class="text-sm text-slate-800">Projekte</span>
-        <div class="flex gap-2 items-center">
-          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
-          <span class="text-sm text-slate-800">Mein Konto</span>
-        </div>
-      </nav>
-    </header>
-
+{% block mainContent %}
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
 
         <!-- Breadcrumb -->
-        <a class="select-none flex items-center gap-2 w-fit text-slate-500 hover:text-slate-800 transition-colors duration-150" href="{% url 'core:project_overview' %}">
+        <a class="select-none flex items-center gap-2 w-fit text-slate-500 hover:text-slate-800 transition-colors duration-150" href="{% url 'core:projects' %}">
           <i data-lucide="arrow-left" class="w-4 h-4"></i>
           <span class="text-sm font-semibold">Zurück zu Projekte</span>
         </a>
 
         <!-- Project Info -->
         <div class="select-none flex flex-col gap-2">
-          <h1 class="text-3xl font-bold leading-normal text-slate-800">Westhafen</h1>
+          <h1 class="text-3xl font-bold leading-normal text-slate-800">{{project.name}}</h1>
           <div class="flex gap-6 items-center">
             <div class="flex gap-2 items-center">
               <i data-lucide="map-pin" class="w-5 h-5 text-slate-500"></i>
@@ -44,7 +22,7 @@
             </div>
             <div class="flex gap-2 items-center">
               <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
-              <span class="text-sm text-slate-500">Geändert: 27.06.2026</span>
+              <span class="text-sm text-slate-500">Geändert: {{project.updated_at|date:"j.n.Y "}}</span>
             </div>
             <a href="{% url 'core:user_rechte' %}" class="flex gap-2 items-center">
               <c-icon.user_rights />
@@ -55,17 +33,28 @@
 
         <!-- Szenarien -->
 
-
+        {% comment %}
+        removed these since scenario creation from a project without duplication does not
+        make a lot of sense
+        create_label="Technologie-Szenario erstellen"
+        create_icon="plus-circle"
+        {% endcomment %}
           <c-toolbar.index
             search_placeholder="Szenarien Durchsuchen..."
-            create_label="Technologie-Szenario erstellen"
-            create_icon="plus-circle"
           >
           <c-slot name="sort_buttons">
             <c-toolbar.sort_button sort_key='name' name="Name" />
             <c-toolbar.sort_button sort_key='last_update' name="Zuletzt Aktualisiert" />
             <c-toolbar.sort_button sort_key='status' name="Status" />
           </c-slot>
+
+            <c-slot name='button_slot'>
+            <button
+              class="select-none ml-auto px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 shrink-0 cursor-pointer">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-white"></i>
+              <span class="text-sm font-semibold text-white">Keine Funktion</span>
+            </button>
+            </c-slot>
           <c-slot name="card_view">
             <!-- Card View -->
             <!-- Grundszenario -->
@@ -104,10 +93,9 @@
             <!-- Technologie-Szenarien cards -->
             <div id="filterable_cards" class="grid grid-cols-3 gap-4">
               <!-- Wasserstoff-Integration -->
-              {% include 'core/partials/technology_scenario_card.html' with title="Wasserstoff-Integration" status="In Bearbeitung" last_update="2025.12.03" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="PV-Integration" status="success" last_update="2025.12.03" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="Ziel 2035"  status="success" last_update="2025.12.05" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="Ziel 2030"  status="failure" last_update="2025.12.04" %}
+              {% for scenario in project.scenario_set.all %}
+              {% include 'core/partials/technology_scenario_card.html' with scenario=scenario title=scenario.name status="In Bearbeitung" last_update="2025.12.03" %}
+              {% endfor %}
             </div>
 
           </c-slot>
@@ -171,11 +159,10 @@
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
-                {% include 'core/partials/technology_scenario_row.html' with title="Wasserstoff-Integration" last_update="2025.12.03" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="PV-Integration" status="success" last_update="2025.12.03" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="Ziel 2035"  status="success" last_update="2025.12.05" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="Ziel 2030"  status="failure" last_update="2025.12.04" %}
+              {% for scenario in project.scenario_set.all %}
+                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update_sortable=scenario.updated_at status="Berechnet" %}
 
+                {% endfor  %}
               </tbody>
             </table>
           </c-slot>
@@ -186,17 +173,4 @@
 
         </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
-      <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-4 object-contain" />
-      <nav class="flex gap-6 items-center">
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
-      </nav>
-    </footer>
-
-    <script>lucide.createIcons();</script>
-  </body>
-</html>
+{% endblock mainContent %}

@@ -45,4 +45,29 @@ urlpatterns = [
         views.DetailsView.as_view(created=False),
         name="details",
     ),
+    path(
+        "create_project/",
+        views.create_project,
+        name="create_project",
+    ),
+    path(
+        "create_scenario/<uuid:scenario_internal_id>/",
+        views.create_scenario,
+        name="create_scenario",
+    ),
+    path(
+        "delete_project_or_scenario/<str:model>/<uuid:internal_id>/",
+        views.delete_project_or_scenario,
+        name="delete_project_or_scenario",
+    ),
+    path(
+        "duplicate_project/<uuid:project_internal_id>/",
+        views.duplicate_project_view,
+        name="duplicate_project",
+    ),
+    path(
+        "duplicate_scenario/<uuid:scenario_internal_id>/",
+        views.duplicate_scenario_view,
+        name="duplicate_scenario",
+    ),
 ]

@@ -21,21 +21,27 @@ from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
 from django.shortcuts import redirect  # noqa
 from django.shortcuts import render  # noqa
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import View
 from django_oemof import models as oemof_models
 from django_oemof import simulation
 
 from ports import models
-from ports.create_placeholder_scenario import create_scenario
+from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
+from ports.forms import CreateProjectForm
+from ports.forms import CreateScenarioForm
 from ports.forms import ScenarioItemFormFactory
+from ports.util import duplicate_scenario
+from ports.util import get_template_scenarios
 
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import Load
+from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
 
@@ -256,11 +262,16 @@ def changes(request, scenario_internal_id: UUID):
 
 def get_home_context(scenario: Scenario | None = None):
     data = {}
-    scenario = scenario or Scenario.objects.last()
+    scenario = scenario or Scenario.objects.select_related("project").last()
     data["scenario"] = scenario
-    data["scenarios"] = Scenario.objects.all()
+    data["project"] = scenario.project
+    data["create_scenario_form"] = CreateScenarioForm(base_scenario=scenario)
+    data["scenarios"] = Scenario.objects.filter(project=scenario.project)
 
     electric_components = dict()
+    import time
+
+    t = time.time()
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
             # create queries for all electriccomponenent models like
@@ -270,12 +281,16 @@ def get_home_context(scenario: Scenario | None = None):
             data[key] = query
             electric_components[key] = list(query)
 
+    print("get electric in ", time.time() - t)
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
     data["Area"] = Area
 
+    t = time.time()
     # important:  prefetch all related models to avoid n+1 queries
     all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
+
+    print("get areas in ", time.time() - t)
     building_areas = list()
     open_areas = list()
     for area in all_areas:
@@ -293,15 +308,26 @@ def get_home_context(scenario: Scenario | None = None):
 
 
 def home(request):
+    scenario = None
     if request.GET.get("new"):
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
-        s = create_scenario()
+        s = create_placeholder_scenario()
         s.name = request.GET.get("new")
         s.save(update_fields=["name"])
+    if sid := request.GET.get("internal_id"):
+        scenario = Scenario.objects.get(internal_id=sid)
+    import time
 
-    context = get_home_context()
-    return render(request, "ports/tool_base.html", context)
+    t = time.time()
+    context = get_home_context(scenario=scenario)
+    print("context in ", time.time() - t)
+
+    t = time.time()
+    resp = render(request, "ports/tool_base.html", context)
+    print("render in ", time.time() - t)
+
+    return resp
 
 
 def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
@@ -510,7 +536,7 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
-        self.context |= get_home_context()
+        self.context |= get_home_context(scenario=self.scenario)
         self.context["created"] = True
         response = render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -579,7 +605,7 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
-        self.context |= get_home_context()
+        self.context |= get_home_context(self.scenario)
         self.context["update"] = True
 
         response = render(self.request, self.template, self.context)
@@ -604,11 +630,99 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        self.context |= get_home_context()
+        self.context |= get_home_context(self.scenario)
         self.context["update"] = True
         response = render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
+
+
+def create_project(request):
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    context = {}
+    context["id"] = "project-create-modal"
+    if request.method == "POST":
+        form = CreateProjectForm(
+            data=request.POST, template_queryset=get_template_scenarios(request.user)
+        )
+        success = False
+        if form.is_valid():
+            new_project = form.save(commit=True)
+            new_project.manager = request.user
+            scenario = form.cleaned_data["template_scenario_internal_id"]
+            if scenario:
+                new_scenario = duplicate_scenario(scenario, request.user)
+            else:
+                new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+            new_scenario.project = new_project
+            new_scenario.save()
+            success = True
+        context["form"] = form
+        context["success"] = success
+    return render(request, "core/partials/create_project.html", context)
+
+
+def create_scenario(request, scenario_internal_id: UUID):
+    """Create copy based on other scenario"""
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if request.user != scenario.manager and not request.user.is_superuser:
+        return HttpResponse("Not allowed")
+    context = {"id": "scenario-create-modal", "project": scenario.project}
+    if request.method == "POST":
+        form = CreateScenarioForm(data=request.POST, base_scenario=scenario, user=request.user)
+        success = False
+        if form.is_valid():
+            new_scenario = form.save()
+            redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
+            context["redirect_url"] = redirect_url
+            print(redirect_url)
+            success = True
+        context["form"] = form
+        context["success"] = success
+
+    return render(request, "ports/partials/create_scenario.html", context)
+
+
+def delete_project_or_scenario(request, model: str, internal_id: UUID):
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    Model = apps.get_model("ports", model)
+    assert Model in [Project, Scenario]
+    instance = Model.objects.get(internal_id=internal_id)
+    # TODO: add further permissions
+    if request.user != instance.manager and not request.user.is_superuser:
+        return HttpResponse("Not allowed")
+    instance.safe_delete()
+    response = HttpResponse("Gelöscht")
+    return response
+
+
+def duplicate_project_view(request, project_internal_id: UUID):
+    from .util import duplicate_project
+
+    project = get_object_or_404(Project, internal_id=project_internal_id)
+    # TODO: Add authentification
+    project.internal_id = uuid4()
+    project.name += " (Dupliziert)"
+    new_project = duplicate_project(project)
+    return HttpResponse(f"{new_project.name} created")
+
+
+def duplicate_scenario_view(request, scenario_internal_id: UUID):
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if request.user != scenario.manager and not request.user.is_superuser:
+        return HttpResponse("Not allowed")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    # TODO: Add authentification
+    # scenario.internal_id = uuid4()
+    # scenario.name += " (Dupliziert)"
+    new_scenario = duplicate_scenario(scenario, request.user)
+    return HttpResponse(f"{new_scenario} created")
 
 
 # Create your views here.

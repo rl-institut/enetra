@@ -1,4 +1,5 @@
 import django.forms as forms
+from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import QuerySet
@@ -10,7 +11,15 @@ from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
 from ports.models import Load
+from ports.models import Project
+from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.util import duplicate_scenario
+
+
+class ScenarioChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.name
 
 
 def AreaItemFormFactory():
@@ -24,6 +33,11 @@ def AreaItemFormFactory():
             "geom": GeoJSONWidget(),
         },
     )
+
+
+class ScenarioAreasForm(forms.Form):
+    geojson_ports_regions_file = forms.FileField(required=True)
+    geojson_ports_buildings_file = forms.FileField(required=True)
 
 
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
@@ -143,3 +157,49 @@ class UUIDMultipleChoiceField(CharField):
         if not isinstance(value, QuerySet):
             raise ValidationError(self.error_messages["required"], code="required")
         return value
+
+
+class CreateScenarioForm(forms.ModelForm):
+    base_scenario: Scenario | None = None
+    user: User | None = None
+
+    def __init__(self, *args, base_scenario: Scenario = None, user: User | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert base_scenario is not None
+        self.base_scenario = base_scenario
+        self.user = user
+
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def save(self, commit: bool = True):
+        assert self.base_scenario.manager == self.user
+        new_scenario = duplicate_scenario(self.base_scenario, self.user)
+        new_scenario.name = self.cleaned_data["name"]
+        new_scenario.description = self.cleaned_data["description"]
+        new_scenario.save()
+        return new_scenario
+
+
+class CreateProjectForm(forms.ModelForm):
+    template_scenario_internal_id = ScenarioChoiceField(
+        Scenario.objects, to_field_name="internal_id", required=False
+    )
+
+    def __init__(self, *args, template_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if template_queryset is not None:
+            self.fields["template_scenario_internal_id"].queryset = template_queryset
+
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }

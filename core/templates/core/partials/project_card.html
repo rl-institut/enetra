@@ -1,0 +1,57 @@
+<div
+  data-name="{{title}}"
+  data-last_update="{% firstof last_update_sortable last_update %}"
+  class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col gap-6">
+  <div class="pb-4 border-b border-slate-200 flex flex-col gap-2">
+    <div class="flex items-center justify-between">
+      <a href='{% url "core:project_overview" project.internal_id %}' class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">{{project.name|default:"Kein Projektname"}}</a>
+      <div class="relative" x-data="{ open: false }">
+        <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
+          <i data-lucide="ellipsis" class="w-4 h-4"></i>
+        </button>
+        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
+          <button
+            hx-post="{% url 'ports:duplicate_project' project.internal_id %}"
+            hx-swap="innerHTML"
+            hx-on::after-request="window.location.reload()"
+            class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+            <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
+          </button>
+          <a href='{% url "core:user_rechte" %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+            <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Nutzer verwalten
+          </a>
+          <hr class="border-slate-200" />
+          <button
+            hx-post="{% url 'ports:delete_project_or_scenario' 'project' project.internal_id %}"
+            hx-swap="innerHTML"
+            hx-confirm="Wollen Sie {{ project.name }} wirklich löschen?"
+            hx-on::after-request="window.location.reload()"
+            class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
+            <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Projekt löschen
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="select-none flex items-center gap-2">
+      <i data-lucide="map-pin" class="w-[19px] h-[19px] text-slate-500"></i>
+      <span class="text-sm text-slate-500">Berlin</span>
+    </div>
+  </div>
+  <div class="select-none flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <span class="text-sm text-slate-800">{{project.scenario_set.count}} Szenarien</span>
+      <div class="flex items-center gap-2">
+        <i data-lucide="users" class="w-4 h-4 text-slate-800"></i>
+        <span class="text-sm text-slate-800">5</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
+      <span class="text-sm text-slate-500">{{project.created_at|date:"j.n.Y"}}</span>
+    </div>
+  </div>
+  <a href='{% url "core:szenarienvergleich" %}' class="select-none flex-1 px-6 py-2 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 flex justify-center items-center gap-3 cursor-pointer">
+    <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+    <span class="text-sm font-semibold">Szenarienvergleich</span>
+  </a>
+</div>

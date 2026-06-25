@@ -9,6 +9,8 @@ from django.core import mail
 from django.core import signing
 from django.http import Http404
 from django.http import HttpResponse
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
@@ -16,8 +18,40 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.generic import TemplateView
 
+from ports.forms import CreateProjectForm
+from ports.models import Project
+from ports.util import get_template_scenarios
+from ports.util import get_user_projects
+
 from .forms import AuthForm
 from .forms import SignUpForm
+
+
+def projects_view(request):
+    if not request.user.is_authenticated:
+        # login may further redirect to the
+        # LOGIN_REDIRECT_URL
+        return redirect(reverse("core:login"))
+    context = {}
+    template_scenarios = get_template_scenarios(request.user)
+    context["projects"] = get_user_projects(request.user)
+    context["create_project_form"] = CreateProjectForm(template_queryset=template_scenarios)
+    return render(request, template_name="core/projects.html", context=context)
+
+
+def project_overview_view(request, project_internal_id):
+    if not request.user.is_authenticated:
+        # login may further redirect to the
+        # LOGIN_REDIRECT_URL
+        return redirect(reverse("core:login"))
+    project = get_object_or_404(Project, internal_id=project_internal_id)
+    # TODO: User permission
+    if project.manager != request.user and not request.user.is_superuser:
+        return HttpResponseForbidden("Not allowed")
+    context = {}
+    context["project"] = project
+    response = render(request, template_name="core/project-overview.html", context=context)
+    return response
 
 
 # ******** User management ******** #
