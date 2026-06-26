@@ -1,4 +1,4 @@
-{% load l10n %}
+{% load l10n widget_tweaks %}
 <form hx-indicator='this'
   id="form_{{instance.internal_id}}"
   hx-encoding="multipart/form-data"
@@ -77,10 +77,9 @@
         <div class="flex items-center gap-[8px]">
           <label class="relative shrink-0 flex items-center justify-center w-[36px] h-[36px] bg-white border border-[#cbd5e1] rounded cursor-pointer hover:bg-[#f1f5f9] transition-colors">
             <c-icon.upload class="w-[16px] h-[16px] text-[#64748b] pointer-events-none" aria-hidden="true" />
-            <input type="file" name="template_file" title="Datei auswählen" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
+            {{ upload_form.template_file|add_class:"absolute inset-0 opacity-0 w-full h-full cursor-pointer" }}
           </label>
-          <input type="number" name="timestep_minutes" min="1" value="15"
-            class="w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2">
+          {{ upload_form.timestep_minutes|add_class:"w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2" }}
           <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
           <button type="button"
               class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
@@ -95,6 +94,7 @@
             Hochladen
           </button>
         </div>
+        <p class="text-[11px] text-[#94a3b8]">Unterstützte Dateitypen: {{ upload_form.allowed_suffixes|join:", "|upper }}</p>
           <div id="templateError"></div>
       </div>
 

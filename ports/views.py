@@ -42,6 +42,7 @@ from guardian.shortcuts import remove_perm
 from ports import models
 from ports.create_placeholder_scenario import create_scenario
 from ports.forms import AreaItemFormFactory
+from ports.forms import LoadTemplateUploadForm
 from ports.forms import ScenarioItemFormFactory
 
 from .models import Area
@@ -557,7 +558,6 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     internal_load_id = request.GET.get("internal_id")
     load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
-    authorized = has_authorization(scenario, request.user, "view")
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -565,55 +565,28 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         response["HX-Reswap"] = "innerHTML"
         return response
 
+    authorized = has_authorization(scenario, request.user, "view")
     if not authorized:
         response = HttpResponseForbidden(b"You are not authorized for this function")
         return retargetForFailure(response)
-    file = request.FILES.get("template_file")
-    if not file:
-        response = HttpResponse("Keine Datei ausgewählt")
-        return retargetForFailure(response)
-    suffix = file.name.split(".")[-1].lower()
-    allowed_suffixes = ["csv"]
-    if suffix not in allowed_suffixes:
-        response = HttpResponse(
-            "Momentan sind nur die folgenden Dateitypen unterstützt: " + ",".join(allowed_suffixes)
+
+    form = LoadTemplateUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        form.save(scenario, load, request.user)
+        return redirect(
+            reverse(
+                "ports:details",
+                kwargs={
+                    "scenario_internal_id": scenario_internal_id,
+                    "model": model,
+                },
+            )
+            + f"?internal_id={internal_load_id}"
         )
-        return retargetForFailure(response)
-    values = LoadTemplate.values_from_csv(file=file)
-    if not values:
-        response = HttpResponse("Keine numerischen Werte gefunden")
-        return retargetForFailure(response)
-    timestep_minutes = request.POST.get("timestep_minutes", None)
-    if not timestep_minutes:
-        # number input strips non numeric content from request. We dont know its missing or not numeric
-        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
-        return retargetForFailure(response)
-    try:
-        timestep_minutes = float(timestep_minutes)
-    except ValueError:
-        response = HttpResponse("Fehlender oder nicht numerischer Zeitschritt")
-        return retargetForFailure(response)
-    template_load = LoadTemplate(
-        timeseries={"values": values, "timestep_minutes": timestep_minutes},
-        spec_load=sum(values) / len(values),
-    )
-    template_load.scenario = scenario
-    template_load.name = file.name
-    template_load.manager = request.user
-    template_load.save()
-    load.template = template_load
-    load.save()
-    response = redirect(
-        reverse(
-            "ports:details",
-            kwargs={
-                "scenario_internal_id": scenario_internal_id,
-                "model": model,
-            },
-        )
-        + f"?internal_id={internal_load_id}"
-    )
-    return response
+
+    errors = [e for field_errors in form.errors.values() for e in field_errors]
+    response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
+    return retargetForFailure(response)
 
 
 def get_pre(instance_or_uuid: "ScenarioItem | UUID"):
@@ -810,6 +783,7 @@ class DetailsView(View):
             # TODO: Are all templates available to every user?
             templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
             self.context["templates"] = templates
+            self.context["upload_form"] = LoadTemplateUploadForm()
         elif ElectricComponent in self.Model.mro():
             # nothing to do here
             # ElectricComponent does not reference other models and does not need
@@ -1007,6 +981,10 @@ class DetailsView(View):
             self.context["form"] = form
             if self.Model == Area:
                 self.context |= self.get_area_context()
+            elif self.Model == Load:
+                templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
+                self.context["templates"] = templates
+                self.context["upload_form"] = LoadTemplateUploadForm()
             if form.is_valid():
                 self.context["item"] = form.save()
                 group = Group.objects.get(name=self.scenario.group_name())
