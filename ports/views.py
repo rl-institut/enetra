@@ -22,6 +22,7 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
+from django.http import HttpResponseNotAllowed
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -550,9 +551,9 @@ def render_oob_updates(
 
 def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     if request.method != "POST":
-        return HttpResponseBadRequest(b"This method only allows POST requests")
+        return HttpResponseNotAllowed(b"This method only allows POST requests")
     if not request.user.is_authenticated:
-        return HttpResponseForbidden(b"You need to be logged in to use this function")
+        return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     internal_load_id = request.GET.get("internal_id")
     load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
@@ -806,11 +807,13 @@ class DetailsView(View):
             initial = {"is_public": "details" in get_perms(group, self.instance)}
             self.context |= self.get_area_context()
         elif self.Model == Load:
-            # TODO: Area all templates available to every user?
+            # TODO: Are all templates available to every user?
             templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
             self.context["templates"] = templates
         elif ElectricComponent in self.Model.mro():
             # nothing to do here
+            # ElectricComponent does not reference other models and does not need
+            # further data injected
             pass
         else:
             raise NotImplementedError("No template defined for this Model")
@@ -1007,10 +1010,11 @@ class DetailsView(View):
             if form.is_valid():
                 self.context["item"] = form.save()
                 group = Group.objects.get(name=self.scenario.group_name())
-                if self.Model == Area and form.cleaned_data.get("is_public"):
-                    assign_perm("details", group, form.instance)
-                else:
-                    remove_perm("details", group, form.instance)
+                if self.Model == Area:
+                    if form.cleaned_data.get("is_public"):
+                        assign_perm("details", group, form.instance)
+                    else:
+                        remove_perm("details", group, form.instance)
 
                 self.context["success"] = "Erfolgreich gespeichert"
             else:

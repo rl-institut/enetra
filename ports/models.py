@@ -87,12 +87,6 @@ class ItemTemplate(models.Model):
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
-    # the item was authorized. It can be shown in the frontend
-    has_authorization = False
-    # the items authorization was checked. It should be checked that only items with
-    # checked_authorization and has_authorization are shown.
-    checked_authorization = False
-
     updated_user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -120,6 +114,12 @@ class ScenarioItem(ItemTemplate):
 
     scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
+
+    # the item was authorized. It can be shown in the frontend
+    has_authorization = False
+    # the items authorization was checked. It should be checked that only items with
+    # checked_authorization and has_authorization are shown.
+    checked_authorization = False
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table

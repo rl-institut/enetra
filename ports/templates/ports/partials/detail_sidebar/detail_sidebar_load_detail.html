@@ -1,3 +1,4 @@
+{% load l10n %}
 <form hx-indicator='this'
   id="form_{{instance.internal_id}}"
   hx-encoding="multipart/form-data"
@@ -129,18 +130,17 @@
         </c-select.index>
       </div>
 
-
       <div
           x-data='{templates : {
           {% for template in templates %}
           "{{template.id}}": {
-          1: {{template.get_yearly_average}},
-          2: {{template.get_daily_average}},
-          3: {{template.get_hourly_average}},
+          1: {{template.get_yearly_average|unlocalize}},
+          2: {{template.get_daily_average|unlocalize}},
+          3: {{template.get_hourly_average|unlocalize}},
           },
           {% endfor %}
           },
-          selectedDuration: null,
+          selectedDuration: null
           }'
         >
 

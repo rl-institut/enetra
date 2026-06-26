@@ -51,7 +51,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         BaseForm.base_fields["is_public"] = forms.BooleanField(
             required=False,
             widget=forms.CheckboxInput(),
-            label="Für andere Projektmitarbeiter sichtbar machen",
+            label="Für andere im Projekt sichtbar machen",
         )
 
     elif ItemModel == Load or ElectricComponent in ItemModel.mro():
