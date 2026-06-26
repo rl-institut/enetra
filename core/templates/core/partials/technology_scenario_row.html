@@ -34,27 +34,36 @@
         <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Ergebnisse</span>
       </button>
-      <div class="relative" x-data="{ open: false }">
+      <div x-cloak class="relative" x-data="{ open: false }">
         <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
           <i data-lucide="more-vertical" class="w-4 h-4"></i>
         </button>
-        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-          <button
-            hx-post="{% url 'ports:duplicate_scenario' scenario.internal_id %}"
-            hx-swap="innerHTML"
-            hx-on::after-request="window.location.reload()"
-            class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-            <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Szenario duplizieren
-          </button>
+        <div x-cloak x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
+
+          <c-api-button
+            hx-post="{% url 'ports:api_duplicate' 'scenario' scenario.internal_id %}"
+            hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+            class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded"
+            x-cloak
+          >
+            <div  x-show="status=='default'"><i data-lucide="copy" class="w-4 h-4 shrink-0"></i>Szenario duplizieren<span class='htmx-indicator loader '></span></div>
+            <div  x-show="status=='success'">Dupliziert</div>
+            <div  x-show="status=='error'">Fehlgeschlagen</div>
+          </c-api-button>
           <hr class="border-slate-200" />
-          <button
-            hx-post="{% url 'ports:delete_project_or_scenario' 'scenario' scenario.internal_id %}"
-            hx-swap="innerHTML"
-            hx-confirm="Wollen Sie {{ scenario.name }} wirklich löschen?"
-            hx-on::after-request="window.location.reload()"
-            class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
-            <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Szenario löschen
-          </button>
+
+          {% url 'ports:api' 'scenario' scenario.internal_id as delete_url %}
+          <c-api-button
+            :hx-delete=delete_url
+            hx-confirm="Willst du {{scenario.name}} wirklich löschen?"
+            hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+            class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
+            x-cloak
+          >
+            <div  x-show="status=='default'"> <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Szenario Löschen<span class='htmx-indicator loader align-middle'></span></div>
+            <div  x-show="status=='success'">Gelöscht</div>
+            <div  x-show="status=='error'">Fehlgeschlagen</div>
+          </c-api-button>
         </div>
       </div>
     </div>

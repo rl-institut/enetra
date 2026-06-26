@@ -16,6 +16,7 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -44,6 +45,7 @@ from .models import Load
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
+from .util import duplicate_project
 
 logger = logging.getLogger("django-ports")
 
@@ -686,43 +688,63 @@ def create_scenario(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/create_scenario.html", context)
 
 
-def delete_project_or_scenario(request, model: str, internal_id: UUID):
-    if not request.user.is_authenticated:
-        return HttpResponse("Not allowed")
-    Model = apps.get_model("ports", model)
-    assert Model in [Project, Scenario]
-    instance = Model.objects.get(internal_id=internal_id)
-    # TODO: add further permissions
-    if request.user != instance.manager and not request.user.is_superuser:
-        return HttpResponse("Not allowed")
-    instance.safe_delete()
-    response = HttpResponse("Gelöscht")
-    return response
+class ApiView(View):
+    """Handle delete and duplicate for Project and Scenario, returning JSON responses."""
 
+    action = None
+    ALLOWED_MODELS = (Project, Scenario)
 
-def duplicate_project_view(request, project_internal_id: UUID):
-    from .util import duplicate_project
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {"status": "failure", "message": "Authentication required"}, status=401
+            )
+        try:
+            self.Model = apps.get_model("ports", kwargs["model"])
+        except LookupError:
+            return JsonResponse(
+                {"status": "error", "message": f"Unknown model: {kwargs['model']}"}, status=400
+            )
+        if self.Model not in self.ALLOWED_MODELS:
+            return JsonResponse({"status": "error", "message": "Model not supported"}, status=400)
+        self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
+        if self.action == "duplicate":
+            return self.duplicate(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
 
-    project = get_object_or_404(Project, internal_id=project_internal_id)
-    # TODO: Add authentification
-    project.internal_id = uuid4()
-    project.name += " (Dupliziert)"
-    new_project = duplicate_project(project)
-    return HttpResponse(f"{new_project.name} created")
+    def _check_permission(self, request):
+        if request.user != self.instance.manager and not request.user.is_superuser:
+            return JsonResponse({"status": "failure", "message": "Not allowed"}, status=403)
+        return None
 
+    def delete(self, request, *args, **kwargs):
+        denied = self._check_permission(request)
+        if denied:
+            return denied
+        self.instance.safe_delete()
+        return JsonResponse({"status": "success", "message": "Deleted"}, status=200)
 
-def duplicate_scenario_view(request, scenario_internal_id: UUID):
-    if not request.user.is_authenticated:
-        return HttpResponse("Not allowed")
-    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if request.user != scenario.manager and not request.user.is_superuser:
-        return HttpResponse("Not allowed")
-    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    # TODO: Add authentification
-    # scenario.internal_id = uuid4()
-    # scenario.name += " (Dupliziert)"
-    new_scenario = duplicate_scenario(scenario, request.user)
-    return HttpResponse(f"{new_scenario} created")
+    def duplicate(self, request, *args, **kwargs):
+        try:
+            denied = self._check_permission(request)
+            if denied:
+                return denied
+            if self.Model == Project:
+                self.instance.internal_id = uuid4()
+                self.instance.name += " (Dupliziert)"
+                new_instance = duplicate_project(self.instance)
+            else:
+                new_instance = duplicate_scenario(self.instance, request.user)
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": f"{new_instance.name} created",
+                    "internal_id": str(new_instance.internal_id),
+                },
+                status=201,
+            )
+        except:  # noqa
+            return JsonResponse({"status": "failure", "message": "Duplicating failed"}, status=400)
 
 
 # Create your views here.

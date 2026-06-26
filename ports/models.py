@@ -96,6 +96,9 @@ class Scenario(models.Model):
         DeletedItem.objects.filter(scenario=self).delete()
         self.delete()
 
+    def prepare_deepcopy(self):
+        self.internal_id = uuid.uuid4()
+
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 

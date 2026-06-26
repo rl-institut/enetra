@@ -1,0 +1,27 @@
+<c-vars class default="Speichern", success="Gespeichert", error="Fehlgeschlagen" ></c-vars>
+        <button
+         type='button'
+        {{attrs}}
+          x-data="{
+            'status':'default',
+          }"
+          hx-swap="none"
+          hx-indicator="find span"
+          hx-disabled-elt="this"
+          class="{{class}}"
+          @htmx:after-request="
+                const r = JSON.parse($event.detail.xhr.responseText);
+                const ok = (r.status=='success');
+                console.log(r);
+                if (ok){
+                    $dispatch('success')
+                    status = 'success';
+                } else {
+                    $dispatch('error');
+                    status = 'error';
+                }
+                setTimeout(()=>status='default', 2000)
+                "
+            >
+            {{slot}}
+        </button>

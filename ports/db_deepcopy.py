@@ -93,6 +93,8 @@ def deepcopy(  # noqa
             return object.pk
 
         old_pk = object.id
+        if hasattr(object, "prepare_deepcopy"):
+            object.prepare_deepcopy()
         try:
             model_pks[object.__class__] += 1
         except KeyError:

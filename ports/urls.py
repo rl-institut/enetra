@@ -56,18 +56,13 @@ urlpatterns = [
         name="create_scenario",
     ),
     path(
-        "delete_project_or_scenario/<str:model>/<uuid:internal_id>/",
-        views.delete_project_or_scenario,
-        name="delete_project_or_scenario",
+        "api/<str:model>/<uuid:internal_id>/",
+        views.ApiView.as_view(),
+        name="api",
     ),
     path(
-        "duplicate_project/<uuid:project_internal_id>/",
-        views.duplicate_project_view,
-        name="duplicate_project",
-    ),
-    path(
-        "duplicate_scenario/<uuid:scenario_internal_id>/",
-        views.duplicate_scenario_view,
-        name="duplicate_scenario",
+        "api/<str:model>/<uuid:internal_id>/duplicate/",
+        views.ApiView.as_view(action="duplicate"),
+        name="api_duplicate",
     ),
 ]
