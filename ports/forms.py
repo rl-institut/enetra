@@ -159,6 +159,26 @@ class UUIDMultipleChoiceField(CharField):
         return value
 
 
+class ChangeProjectForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ChangeScenarioForm(forms.ModelForm):
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
 class CreateScenarioForm(forms.ModelForm):
     base_scenario: Scenario | None = None
     user: User | None = None
