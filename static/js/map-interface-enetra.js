@@ -67,7 +67,7 @@ function getPopUps() {
   var popups = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
-    const templateContent = el.querySelector('template.map-content-only').content || el;
+    const templateContent = el.querySelector('template.map-content-only')?.content || el;
     const popup = templateContent.querySelector('.map-popup-content');
     if (!popup) return
     const input = el.querySelector('textarea[name=geom],input[name=geom]');
@@ -83,7 +83,7 @@ function getMarkers() {
   var markers = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
-    const templateContent = el.querySelector('template.map-content-only').content || el;
+    const templateContent = el.querySelector('template.map-content-only')?.content || el;
     const found_markers = templateContent.querySelectorAll('.map-marker');
     if (found_markers.length < 1) return
     const input = el.querySelector('textarea[name=geom],input[name=geom]');

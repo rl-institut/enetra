@@ -85,16 +85,15 @@
     These elements represent the state of the map elements.
     Hidden by default, but can be inspected for debugging purposes
     {% endcomment %}
-    <div id="geom_forms_container" class="hidden h-30 border-2 m-2 overflow-y-scroll overflow-clip">
-      {% for geom_form in area_forms %}
-          <div id="geom_form_container_{{geom_form.instance.internal_id}}"
-              hx-swap-oob='true'
-          >
-          {% include 'ports/partials/map_element.html' with form=geom_form %}
-          </div>
-      {% endfor %}
-    </div>
 
+
+    <div id="geom_forms_container" class="hidden h-30 border-2 m-2 overflow-y-scroll overflow-clip"
+      hx-get="{% url 'ports:geometries' scenario.internal_id %}"
+      hx-trigger="load"
+      hx-swap='innerHTML'
+      hx-on::after-request=" htmx.trigger('body' ,'map-redraw');"
+    >
+    </div>
 
     {% partialdef add-gebaeudeflaeche-button inline %}
       <button type='button'
