@@ -41,6 +41,11 @@ urlpatterns = [
         name="changes",
     ),
     path(
+        "geometries/<uuid:scenario_internal_id>/",
+        views.geometries,
+        name="geometries",
+    ),
+    path(
         "details/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=False),
         name="details",
