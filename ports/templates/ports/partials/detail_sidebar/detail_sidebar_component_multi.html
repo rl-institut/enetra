@@ -172,10 +172,3 @@
 
   {% include 'ports/partials/komponenten_tab_panel.html' %}
 {% endif %}
-
-{% for instance in instances %}
-
-{% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
- {% endif %}
-{% endfor %}

@@ -918,6 +918,8 @@ class DetailsView(View):
                 self.Model, multi=self.multi, scenario=self.scenario
             )
             self.instances = self.Model.objects.bulk_create(new_items)
+            # Trigger the change event for the scenario
+            self.instances[0].save()
             if not self.multi:
                 self.instance = self.instances[0]
                 self.instances = []
