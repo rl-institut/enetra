@@ -10,7 +10,7 @@
       <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
         <i data-lucide="more-vertical" class="w-4 h-4 shrink-0"></i>
       </button>
-      {% include 'core/partials/scenario_ellipsis_dropdown.html' %}
+      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='card' %}
     </div>
   </div>
   <div class="flex-1 pt-6 flex flex-col justify-between gap-6">

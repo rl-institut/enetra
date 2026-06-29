@@ -1,0 +1,52 @@
+{% load i18n %}
+<dialog id="rename_{{key}}_{{project.internal_id}}"
+        closedby='any'
+        class="fixed inset-0 bg-transparent p-0 m-auto overflow-visible backdrop:bg-black/80">
+  <form>
+  <div class="bg-white flex flex-col gap-5 p-6 rounded-2xl shadow-[0px_8px_32px_rgba(0,0,0,0.18)] w-full max-w-[500px]">
+
+    <div class="flex items-center justify-between">
+      <h2 class="text-slate-800 text-lg font-semibold">Projekt umbenennen</h2>
+      <button type='button'
+              commandfor="rename_{{key}}_{{project.internal_id}}" command="close"
+              class="size-6 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
+        <c-icon.close />
+      </button>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-slate-800 text-sm font-semibold">{% translate 'Name' %}</label>
+      <input type="text" value='{{project.name|default:"Kein Name"}}' name='name'
+             class="bg-white border border-slate-300 px-4 py-3 rounded w-full text-slate-800 text-sm outline-none focus:border-cyan-600 transition-colors" />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-slate-800 text-sm font-semibold">Beschreibung</label>
+      <textarea placeholder="Du kannst das Projekt beschreiben" name='description'
+                class="bg-white border border-slate-300 h-[88px] px-4 py-3 rounded w-full text-slate-800 text-sm outline-none resize-none placeholder-slate-400 focus:border-cyan-600 transition-colors">{{project.description}}</textarea>
+    </div>
+
+    <div class="flex flex-col gap-2">
+
+  <c-api-button
+    hx-post="{% url 'ports:api' 'project' project.internal_id %}"
+    hx-include="closest form"
+    @htmx:after-settle="if (!(status==='success'))return;setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 10)"
+    class="bg-[#0e7490] [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 justify-center px-4 py-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-base"
+    x-cloak
+  >
+    <div x-show="status=='default'"><i data-lucide="save" class="w-4 h-4 shrink-0"></i>Speichern <span class='htmx-indicator loader align-middle'></span></div>
+    <div x-show="status=='success'">Gespeichert</div>
+    <div x-show="status=='error'">Fehlgeschlagen</div>
+  </c-api-button>
+      <button type='button' commandfor="rename_{{key}}_{{project.internal_id}}" command="close"
+              class="bg-white flex gap-2 items-center justify-center px-4 py-2 rounded-full w-full border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors text-slate-800 text-sm">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="5">
+          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        {% translate 'Abbrechen' %}
+      </button>
+    </div>
+  </div>
+  </form>
+</dialog>

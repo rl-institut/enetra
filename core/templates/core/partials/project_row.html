@@ -31,12 +31,7 @@
         <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Szenarienvergleich</span>
       </a>
-      <div x-cloak class="relative" x-data="{ open: false }">
-        <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
-          <i data-lucide="ellipsis" class="w-4 h-4"></i>
-        </button>
-        {% include "core/partials/project_ellipsis_dropdown.html" %}
-      </div>
+        {% include "core/partials/project_ellipsis_dropdown.html" with key='row' project=project %}
     </div>
   </td>
 </tr>

@@ -31,6 +31,8 @@ from django_oemof import simulation
 from ports import models
 from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
+from ports.forms import ChangeProjectForm
+from ports.forms import ChangeScenarioForm
 from ports.forms import CreateProjectForm
 from ports.forms import CreateScenarioForm
 from ports.forms import ScenarioItemFormFactory
@@ -716,6 +718,20 @@ class ApiView(View):
         if request.user != self.instance.manager and not request.user.is_superuser:
             return JsonResponse({"status": "failure", "message": "Not allowed"}, status=403)
         return None
+
+    def post(self, request, *args, **kwargs):
+        denied = self._check_permission(request)
+        if denied:
+            return denied
+        match self.instance:
+            case Project():
+                form = ChangeProjectForm(data=request.POST, instance=self.instance)
+            case Scenario():
+                form = ChangeScenarioForm(data=request.POST, instance=self.instance)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({"status": "success", "message": "Changed"}, status=200)
+        return JsonResponse({"status": "failure", "message": form.errors.as_text()}, status=200)
 
     def delete(self, request, *args, **kwargs):
         denied = self._check_permission(request)

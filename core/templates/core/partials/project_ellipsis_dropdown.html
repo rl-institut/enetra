@@ -1,79 +1,46 @@
 {% load i18n %}
-<div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-  <c-api-button
-    hx-post="{% url 'ports:api_duplicate' 'project' project.internal_id %}"
-    hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
-    class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded"
-    x-cloak
-  >
-    <div x-show="status=='default'"><i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren <span class='htmx-indicator loader align-middle'></span></div>
-    <div x-show="status=='success'">Dupliziert</div>
-    <div x-show="status=='error'">Fehlgeschlagen</div>
-  </c-api-button>
-  <a href='{% url "core:user_rechte" %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-    <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Nutzer verwalten
-  </a>
-  <button
-    type='button'
-    command="show-modal"
-    commandfor="rename_{{project.internal_id}}"
-    class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-    <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i> Projekt umbenennen
+<div x-cloak class="relative" x-data="{ open: false }">
+  <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
+    <i data-lucide="ellipsis" class="w-4 h-4"></i>
   </button>
-  <hr class="border-slate-200" />
-  {% url 'ports:api' 'project' project.internal_id as delete_url %}
-  <c-api-button
-    :hx-delete=delete_url
-    hx-confirm="Willst du {{project.name}} wirklich löschen?"
-    hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
-    class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
-    x-cloak
-  >
-    <div x-show="status=='default'"><i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Projekt löschen <span class='htmx-indicator loader align-middle'></span></div>
-    <div x-show="status=='success'">Gelöscht</div>
-    <div x-show="status=='error'">Fehlgeschlagen</div>
-  </c-api-button>
-</div>
-
-<dialog id="rename_{{project.internal_id}}"
-        closedby='any'
-        class="fixed inset-0 bg-transparent p-0 m-auto overflow-visible backdrop:bg-black/80">
-  <div class="bg-white flex flex-col gap-5 p-6 rounded-2xl shadow-[0px_8px_32px_rgba(0,0,0,0.18)] w-full max-w-[500px]">
-
-    <div class="flex items-center justify-between">
-      <h2 class="text-slate-800 text-lg font-semibold">Projekt umbenennen</h2>
-      <button type='button'
-              commandfor="rename_{{project.internal_id}}" command="close"
-              class="size-6 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
-        <c-icon.close />
-      </button>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label class="text-slate-800 text-sm font-semibold">{% translate 'Name' %}</label>
-      <input type="text" value='{{project.name|default:"Kein Name"}}'
-             class="bg-white border border-slate-300 px-4 py-3 rounded w-full text-slate-800 text-sm outline-none focus:border-cyan-600 transition-colors" />
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label class="text-slate-800 text-sm font-semibold">Beschreibung</label>
-      <textarea placeholder="Du kannst das Projekt beschreiben"
-                class="bg-white border border-slate-300 h-[88px] px-4 py-3 rounded w-full text-slate-800 text-sm outline-none resize-none placeholder-slate-400 focus:border-cyan-600 transition-colors">{{project.description}}</textarea>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <button type='button'
-              class="bg-[#0e7490] flex items-center justify-center px-4 py-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-base">
-        {% translate 'Speichern' %}
-      </button>
-      <button type='button' commandfor="rename_{{project.internal_id}}" command="close"
-              class="bg-white flex gap-2 items-center justify-center px-4 py-2 rounded-full w-full border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors text-slate-800 text-sm">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="5">
-          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        {% translate 'Abbrechen' %}
-      </button>
-    </div>
-
+  <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
+    <c-api-button
+      hx-post="{% url 'ports:api_duplicate' 'project' project.internal_id %}"
+      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded"
+      x-cloak
+    >
+      <div x-show="status=='default'"><i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren <span class='htmx-indicator loader align-middle'></span></div>
+      <div x-show="status=='success'">Dupliziert</div>
+      <div x-show="status=='error'">Fehlgeschlagen</div>
+    </c-api-button>
+    <a href='{% url "core:user_rechte" %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+      <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Nutzer verwalten
+    </a>
+    <button
+      type='button'
+      command="show-modal"
+      @click='open=false'
+      commandfor="rename_{{key}}_{{project.internal_id}}"
+      class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+      <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i> Projekt umbenennen
+    </button>
+    <hr class="border-slate-200" />
+    {% url 'ports:api' 'project' project.internal_id as delete_url %}
+    <c-api-button
+      :hx-delete=delete_url
+      hx-confirm="Willst du {{project.name}} wirklich löschen?"
+      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
+      x-cloak
+    >
+      <div x-show="status=='default'"><i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Projekt löschen <span class='htmx-indicator loader align-middle'></span></div>
+      <div x-show="status=='success'">Gelöscht</div>
+      <div x-show="status=='error'">Fehlgeschlagen</div>
+    </c-api-button>
   </div>
-</dialog>
+</div>
+{% comment %}
+The modal is outside the dropdown div, so hiding the dropdown, does not hide the modal
+{% endcomment %}
+{% include 'ports/partials/change_project_modal.html' with key=key project=project %}

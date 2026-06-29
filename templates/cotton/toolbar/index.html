@@ -11,11 +11,16 @@
           init() {
             const parent_table = document.getElementById('filterable_table');
             const parent_cards = document.getElementById('filterable_cards');
+
+            searchName(this.search, parent_table);
+            searchName(this.search, parent_cards);
             this.$watch('search', search => {
             searchName(search, parent_table);
             searchName(search, parent_cards);
             });
 
+            sortContainer(parent_table, this.sort_key);
+            sortContainer(parent_cards, this.sort_key);
             this.$watch('sort_key', key => {
             sortContainer(parent_table, key);
             sortContainer(parent_cards, key);
