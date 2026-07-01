@@ -117,9 +117,6 @@ class ScenarioItem(ItemTemplate):
 
     # the item was authorized. It can be shown in the frontend
     has_authorization = False
-    # the items authorization was checked. It should be checked that only items with
-    # checked_authorization and has_authorization are shown.
-    checked_authorization = False
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table

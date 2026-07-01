@@ -54,7 +54,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             label="Für andere im Projekt sichtbar machen",
         )
 
-    elif ItemModel == Load or ElectricComponent in ItemModel.mro():
+    elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
