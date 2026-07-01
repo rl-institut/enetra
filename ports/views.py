@@ -273,9 +273,7 @@ def get_home_context(scenario: Scenario | None = None):
     data["scenarios"] = Scenario.objects.filter(project=scenario.project)
 
     electric_components = dict()
-    import time
 
-    t = time.time()
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
             # create queries for all electriccomponenent models like
@@ -285,16 +283,13 @@ def get_home_context(scenario: Scenario | None = None):
             data[key] = query
             electric_components[key] = list(query)
 
-    print("get electric in ", time.time() - t)
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
     data["Area"] = Area
 
-    t = time.time()
     # important:  prefetch all related models to avoid n+1 queries
     all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
 
-    print("get areas in ", time.time() - t)
     building_areas = list()
     open_areas = list()
     for area in all_areas:
@@ -321,15 +316,10 @@ def home(request):
         s.save(update_fields=["name"])
     if sid := request.GET.get("internal_id"):
         scenario = Scenario.objects.get(internal_id=sid)
-    import time
 
-    t = time.time()
     context = get_home_context(scenario=scenario)
-    print("context in ", time.time() - t)
 
-    t = time.time()
     resp = render(request, "ports/tool_base.html", context)
-    print("render in ", time.time() - t)
 
     return resp
 

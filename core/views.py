@@ -22,6 +22,7 @@ from ports.forms import CreateProjectForm
 from ports.models import Project
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
+from ports.util import prefetch_projects_users
 
 from .forms import AuthForm
 from .forms import SignUpForm
@@ -34,7 +35,9 @@ def projects_view(request):
         return redirect(reverse("core:login"))
     context = {}
     template_scenarios = get_template_scenarios(request.user)
-    context["projects"] = get_user_projects(request.user)
+    projects = get_user_projects(request.user)
+    context["projects"] = projects
+    prefetch_projects_users(projects)
     context["create_project_form"] = CreateProjectForm(template_queryset=template_scenarios)
     return render(request, template_name="core/projects.html", context=context)
 

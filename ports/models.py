@@ -1,6 +1,9 @@
 import logging
 import uuid
+from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
+from typing import ClassVar
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -38,6 +41,29 @@ class Project(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    def group_name(self) -> str:
+        return f"group_project_{self.id}"
+
+    @property
+    def users(self) -> "dict[str, models.QuerySet[User]]":
+        if not hasattr(self, "_users_cache"):
+            from django.contrib.contenttypes.models import ContentType
+            from guardian.utils import get_group_obj_perms_model
+
+            GroupObjectPermission = get_group_obj_perms_model()
+            perms = (
+                GroupObjectPermission.objects.filter(
+                    content_type=ContentType.objects.get_for_model(self.__class__),
+                    object_pk=self.pk,
+                )
+                .select_related("permission")
+                .prefetch_related("group__user_set")
+            )
+            self._users_cache = {
+                perm.permission.codename: perm.group.user_set.all() for perm in perms
+            }
+        return self._users_cache
 
     @atomic()
     def safe_delete(self):
@@ -77,24 +103,28 @@ class Scenario(models.Model):
     # Area of the scenario / Port region
     geom = models.PolygonField(null=True, blank=True)
 
+    # Class variable which keeps track of scenarios which should be deleted
+    # This disables DeletedItem creation which is slow for large queries
+    _being_deleted: ClassVar[set[int]] = set()
+
     class Meta:
         permissions = (("foo", "Assign foo"),)
 
+    @staticmethod
+    @contextmanager
+    def true_delete(scenario_ids: Iterable[int]):
+        ids = set(scenario_ids)
+        Scenario._being_deleted.update(ids)
+        try:
+            yield
+        finally:
+            Scenario._being_deleted.difference_update(ids)
+
     @atomic()
     def safe_delete(self):
-        """Delete Scenario by first deleting all references. When deleting the
-        scenario in the usual way, django iterates over other models to delete
-        them. this triggers post_delete which creates deletedItems. these
-        deletedItems are not cleaned up by django. this is handled with this
-        function. Maybe a better approach would be use a 'deleted' boolean flag
-        per item or use custom delete functions on the models."""
-        # iterate over all related objects
-        for rel in self._meta.get_fields():
-            if rel.one_to_many:  # reverse FK
-                related_manager = getattr(self, rel.get_accessor_name())
-                related_manager.all().delete()
-        DeletedItem.objects.filter(scenario=self).delete()
-        self.delete()
+        """Disable DeletedItem creation during deletion"""
+        with self.true_delete([self.id]):
+            self.delete()
 
     def prepare_deepcopy(self):
         self.internal_id = uuid.uuid4()
@@ -249,6 +279,9 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
     # We use post_delete to only create these items when the item is really deleted.
     # using pre_delete leads to errors if deletion fails
     if sender in [DeletedItem, ChangedItem]:
+        return
+    # No DeletedItem creation in cases where the scenario is marked for deletion
+    if instance.scenario_id in Scenario._being_deleted:
         return
     deleted_item = DeletedItem.from_scenario_item(instance)
     deleted_item.save()

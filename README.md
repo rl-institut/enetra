@@ -134,6 +134,32 @@ This site make use of the django package ecosystem and uses the following packag
     7. Set up django (inside the virtual environment)
         1. Set up the database: `uv run manage.py migrate`
         2. Create admin account: `uv run manage.py createsuperuser`
+        3. The migration automatically creates a `data` superuser used as the manager for imported scenario data.
+           Set `DATA_USER_PASSWORD` in `.env` to give it a real password; otherwise the account has an unusable
+           password and can only be managed via another superuser in the admin panel.
+
+    8. Import scenario seed data (optional)
+
+       Place GeoJSON data in subdirectories of `data/` whose names start with `scenario_area_data_`.
+       Each directory must contain exactly one file with `regions` in its name and one with `buildings`:
+       ```
+       data/
+         scenario_area_data_hamburg/
+           hamburg_regions.geojson
+           hamburg_buildings.geojson
+       ```
+       Then run:
+       ```bash
+       uv run manage.py import_scenario_data
+       ```
+       Options:
+       ```
+       --username USERNAME   Manager user for imported scenarios (default: data)
+       --dir DIR             Directory to scan (default: BASE_DIR/data)
+       ```
+
+       > **Warning: this command is not idempotent.** Running it more than once against the same data
+       > directory will create duplicate Scenarios and Areas. Check the database before re-running.
 
 ```
 
