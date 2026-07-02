@@ -199,6 +199,8 @@ if CELERY_TASK_ALWAYS_EAGER:
     CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=True)
     # if set, eager tasks will save results in backend
     CELERY_TASK_STORE_EAGER_RESULT = env.bool("CELERY_TASK_STORE_EAGER_RESULT", default=True)
+
+CELERY_TASK_TRACK_STARTED = True
 CELERY_BROKER_URL = env("REDIS_URL", default=None)
 CELERY_RESULT_BACKEND = env("REDIS_URL", default=None)
 

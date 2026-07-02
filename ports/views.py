@@ -9,13 +9,16 @@ from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
+from celery.result import AsyncResult
 from django.apps.registry import apps
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -26,10 +29,13 @@ from django.views.generic import View
 from django_oemof import models as oemof_models
 from django_oemof import simulation
 
+from core.models import Progress
+from core.models import Task
 from ports import models
 from ports.create_placeholder_scenario import create_scenario
 from ports.forms import AreaItemFormFactory
 from ports.forms import ScenarioItemFormFactory
+from ports.tasks import simulate_w_celery
 
 from .models import Area
 from .models import ChangedItem
@@ -147,6 +153,88 @@ def changes_count(request, scenario_internal_id: UUID):
     context["all_changes_count"] = count
     context["scenario"] = scenario
     return render(request, "ports/partials/changes_count.html", context)
+
+
+def calculate_modal(request, scenario_internal_id: UUID):
+    """View for modal to start simulation/calculation"""
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    context = {"scenario": scenario, "id": f"calculate-scenario-modal-{scenario.internal_id}"}
+    # TODO: Permission
+    if not get_authentification(scenario, request.user, "read"):
+        return HttpResponseForbidden("No access")
+
+    # TODO: Compare to some other scenario?
+    base_scenario = None
+    if base_scenario:
+        pass
+
+    # simply count components for now. aggregate powers
+    context |= get_home_context(scenario)
+    components = []
+    for model, comps in context["electric_components"].items():
+        # TODO: add summary as model method or a summary factory per model
+        d = {
+            "name": model,
+            "count": len(comps),
+            "summary": f"({sum(x.power_kw for x in comps)} kWp)",
+        }
+        components.append(d)
+
+    # FIXME:
+    # TODO: What can we show in the summary without leaking information?
+    context["components"] = components
+    ct = ContentType.objects.get_for_model(Scenario)
+    progress = Progress.objects.filter(task__content_type=ct, task__object_id=scenario.id).first()
+    context["progress"] = progress
+    print(progress.get_progress())
+
+    return render(request, "ports/partials/scenario_calculation_modal.html", context)
+
+
+def progress(request, scenario_internal_id: UUID, task_type: str):
+    # TODO: Add permission
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not get_authentification(scenario, request.user, "read"):
+        return HttpResponseForbidden("No access")
+
+    ct = ContentType.objects.get_for_model(Scenario)
+    tasks = Task.objects.filter(type=task_type, content_type=ct, object_id=scenario.id)
+    progress = tasks.first().progress_set.first()
+    data = {"status": progress.status, "progress": progress.get_progress()}
+    if request.GET.get("json"):
+        return JsonResponse(data=data)
+    context = {"progress": progress, "scenario": scenario}
+    return render(request, "ports/partials/sticky_progressbar.html", context)
+
+
+def simulate(request, scenario_internal_id: UUID):
+    # TODO: Add permission
+    scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not get_authentification(scenario, request.user, "read"):
+        return HttpResponseForbidden("No access")
+
+    task_type = Task.Type.RUN_SIMULATION
+    ct = ContentType.objects.get_for_model(Scenario)
+
+    tasks = Task.objects.filter(type=task_type, content_type=ct, object_id=scenario.id)
+    if tasks.count() == 0:
+        _uuid = uuid4()
+        task = Task.objects.create(type=task_type, content_object=scenario, celery_task_id=_uuid)
+    else:
+        assert tasks.count() == 1
+        task = tasks.first()
+    progress, created = Progress.objects.get_or_create(
+        defaults={"status": Progress.Status.WAITING}, task=task
+    )
+    if progress.status == Progress.Status.RUNNING:
+        result = AsyncResult(str(task.celery_task_id))
+        if result.state == "STARTED":
+            return HttpResponse("simulating already")
+    progress.reset()
+    _async_result = simulate_w_celery.apply_async(
+        (scenario.id, progress.id), task_id=str(task.celery_task_id)
+    )
+    return HttpResponse("started simulating " + str(task.celery_task_id))
 
 
 def changes(request, scenario_internal_id: UUID):

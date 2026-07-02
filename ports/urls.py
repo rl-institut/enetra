@@ -16,9 +16,19 @@ urlpatterns = [
         name="home",
     ),
     path(
-        "simulate/",
+        "simulate_oemof/",
         views.testview,
-        name="test",
+        name="test_oemof",
+    ),
+    path(
+        "progress/<uuid:scenario_internal_id>/<str:task_type>/",
+        views.progress,
+        name="progress",
+    ),
+    path(
+        "simulate/<uuid:scenario_internal_id>/",
+        views.simulate,
+        name="simulate",
     ),
     path(
         "details_create/<uuid:scenario_internal_id>/<str:model>/",
@@ -34,6 +44,11 @@ urlpatterns = [
         "patch_area/<uuid:scenario_internal_id>/",
         views.patch_area,
         name="patch_area",
+    ),
+    path(
+        "calculate_modal/<uuid:scenario_internal_id>/",
+        views.calculate_modal,
+        name="calculate_modal",
     ),
     path(
         "changes/<uuid:scenario_internal_id>/",

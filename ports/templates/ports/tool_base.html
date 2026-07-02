@@ -10,6 +10,15 @@
 {% block header %}
   {% include "ports/imports_app.html" %}
 {% endblock header %}
+{% block navbar %}
+  {% include "core/navbar.html" %}
+  {% comment %}
+    Hardcoded placeholder progress bar (no backend wiring yet). Sits below the
+    navbar but above the sidebar/map split so it spans the full site width.
+  {% endcomment %}
+
+{% include "ports/partials/sticky_progressbar.html" %}
+{% endblock navbar %}
 {% block sideBar %}
   <div>
     <div class='bg-blue-50 z-[9999]'>

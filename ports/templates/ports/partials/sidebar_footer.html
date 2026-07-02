@@ -7,11 +7,26 @@
 >
   <!-- {/* Szenario berechnen Button */} -->
   <button
-        command="show-modal"
-        commandfor="{{ id }}"
-          class="w-full bg-[#0e7490] text-white font-bold text-[16px] hover:bg-[#0c647a] transition-colors py-[12px] rounded-full">
+    hx-target='#calculate-modal'
+    hx-swap='innerHTML'
+    {% if request.GET.calculate %}
+    hx-trigger='load, click'
+    {% endif %}
+    hx-indicator="find div"
+    hx-on::after-request="htmx.find('#calculate-modal>dialog').showModal()"
+    {% comment %}
+    'ports/partials/scenario_calculation_modal.html'
+    {% endcomment %}
+    hx-get='{% url 'ports:calculate_modal' scenario.internal_id %}'
+    class="w-full bg-[#0e7490] text-white font-bold text-[16px] hover:bg-[#0c647a] transition-colors py-[12px] rounded-full  ">
+
+  <div class="htmx-indicator loader"></div>
     Szenario berechnen
   </button>
+  <!-- {/* Calculation Modal */} -->
+  <div id='calculate-modal'>
+  </div>
+
   <!-- {/* Changes Indicator */} -->
   {% comment %}
   I would like this better with an listener for this event fetching the
@@ -30,8 +45,6 @@
         <span class="w-full h-full">🔄️</span>
         {% include 'ports/partials/changes_count.html' with all_changes_count=all_changes_count %}
   </button>
-  <!-- {/* Calculation Modal */} -->
-        {% include 'ports/partials/scenario_calculation_modal.html' with id=id%}
 
 
 

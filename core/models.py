@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 import pytz
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -12,6 +13,7 @@ class Task(models.Model):
     class Type(models.TextChoices):
         RUN_SIMULATION = "Simulation"
 
+    celery_task_id = models.UUIDField(db_index=True, null=True, blank=True, default=uuid.uuid4)
     # tasks may have a tree like structure
     parent_task = models.ForeignKey("Task", null=True, on_delete=models.CASCADE)
     type = models.CharField(max_length=100, choices=Type.choices)
