@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
@@ -41,7 +42,15 @@ class Scenario(models.Model):
     )
 
     class Meta:
-        permissions = (("foo", "Assign foo"),)
+        permissions = (
+            ("view", "view scenario"),
+            ("details", "details scenario"),
+            ("delete", "delete scenario"),
+            ("change", "change scenario"),
+        )
+
+    def group_name(self):
+        return f"Scenario_{self.id}_group"
 
     @atomic()
     def safe_delete(self):
@@ -106,6 +115,9 @@ class ScenarioItem(ItemTemplate):
     scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
 
+    # the item was authorized. It can be shown in the frontend
+    has_authorization = False
+
     class Meta:
         abstract = True  # Important: makes this a base, not a table
         constraints = [
@@ -115,6 +127,13 @@ class ScenarioItem(ItemTemplate):
             )
         ]
         ordering = ["scenario", "id"]  # Optional: share common Meta options
+
+        permissions = (
+            ("view", "view item with limited attributes"),
+            ("details", "read item with all attributes"),
+            ("delete", "delete item"),
+            ("change", "change item"),
+        )
 
     """
     The scenario contains different types of models, which should share some common functionality.
@@ -190,7 +209,7 @@ class ScenarioItem(ItemTemplate):
         return "icon.circle_full"
 
     @classmethod
-    def create_new(cls, scenario: Scenario, **kwargs):
+    def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         raise NotImplementedError("Missing implementation of Model specific empty Instance")
 
@@ -331,6 +350,13 @@ class Area(ScenarioItem):
     def layer_name(self):
         return f"{self.area_type}-{self._meta.model_name}"
 
+    class Meta:
+        permissions = (
+            ("details", "View area details"),
+            ("delete", "delete area"),
+            ("change", "change area"),
+        )
+
     def list_icon(self) -> str:
         """The cotton template used as icon for this model inside lists"""
         if self.area_type == Area.AreaTypeChoices.BUILDING:
@@ -355,7 +381,7 @@ class Area(ScenarioItem):
         return FormClass
 
     @classmethod
-    def create_new(cls, scenario: Scenario, **kwargs):
+    def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
         allowed_attributes = ["area_type"]
@@ -368,12 +394,13 @@ class Area(ScenarioItem):
         instance = cls(
             scenario=scenario,
             name=new_name,
+            manager=manager,
             **extra_args,
-            # TODO: manager=request.user
         )
         return instance
 
 
+# FIXME: A load template is not part of an area. What permission state should it have?
 class LoadTemplate(ScenarioItem):
     """Template for timeseries, mostly power series"""
 
@@ -381,6 +408,47 @@ class LoadTemplate(ScenarioItem):
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
         default=None
     )
+
+    @classmethod
+    def values_from_csv(cls, file: InMemoryUploadedFile) -> list:
+        values = []
+        for line in file:
+            row = line.decode().strip()
+            vals = row.split(",")
+            try:
+                value = float(vals[-1])
+                values.append(value)
+            except ValueError:
+                pass
+        return values
+
+    def get_hourly_average(self) -> float:
+        if not hasattr(self, "hourlyAvg"):
+            self.annotateAverages()
+        return self.hourlyAvg
+
+    def get_daily_average(self) -> float:
+        if not hasattr(self, "dailyAvg"):
+            self.annotateAverages()
+        return self.dailyAvg
+
+    def get_yearly_average(self) -> float:
+        if not hasattr(self, "yearlyAvg"):
+            self.annotateAverages()
+        return self.yearlyAvg
+
+    def annotateAverages(self) -> "LoadTemplate":
+        timestep_min = self.timeseries.get("timestep_minutes", 15)
+        values = self.timeseries.get("values", [0])
+        total_time_min = len(values) * timestep_min
+        sum_values = sum(values)
+        hourlyAverage = sum_values / (total_time_min / 60)
+        dailyAverage = sum_values / (total_time_min / (60 * 24))
+        yearlyAverage = sum_values / (total_time_min / (365 * 24 * 60))
+        self.hourlyAvg = hourlyAverage
+        self.dailyAvg = dailyAverage
+        self.yearlyAvg = yearlyAverage
+        return self
 
 
 class Load(ScenarioItem):
@@ -398,7 +466,11 @@ class Load(ScenarioItem):
 
     @classmethod
     def create_new(
-        cls, scenario: Scenario, area_internal_ids: list[uuid.UUID | str] = None, **kwargs
+        cls,
+        scenario: Scenario,
+        manager: User,
+        area_internal_ids: list[uuid.UUID | str] = None,
+        **kwargs,
     ):
         if area_internal_ids is None:
             area_internal_ids = []
@@ -419,8 +491,8 @@ class Load(ScenarioItem):
                 Load(
                     scenario=scenario,
                     name=new_name,
+                    manager=manager,
                     **extra_args,
-                    # TODO: manager=request.user
                 )
             )
         return loads
@@ -530,7 +602,9 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
         return f"{self.area} m^2"
 
     @classmethod
-    def create_new(cls, scenario: Scenario, area_internal_ids: list[str | uuid.UUID], **kwargs):
+    def create_new(
+        cls, scenario: Scenario, manager: User, area_internal_ids: list[str | uuid.UUID], **kwargs
+    ):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
@@ -545,8 +619,8 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
                 cls(
                     scenario=scenario,
                     name=new_name,
+                    manager=manager,
                     **extra_args,
-                    # TODO: manager=request.user
                 )
             )
         return components

@@ -39,27 +39,27 @@
       Click the layer to show me
     </c-map-element.popup>
       {% endcomment %}
-    <div class="hidden">
       <!-- Put a label on the map. works inside a c-map-element -->
+      {% if form.instance.has_authorization %}
       <c-map-element.marker :name='form.instance.name'>
 
-    {% for component in  form.instance.generator_set.all %}
-        <!-- Put a marker icon on the map -->
-        <c-map-element.marker-icon>
-          <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
-          <!-- Give the icon a popup -->
-          <c-slot name='popup'>
-            <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
-            <c-map-element-popup :instance=component >
-              <c-slot name='icon'>
-                <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
-              </c-slot>
-            </c-map-element-popup>
-          </c-slot>
-        </c-map-element.marker-icon>
-      {% endfor %}
+      {% for component in  form.instance.generator_set.all %}
+          <!-- Put a marker icon on the map -->
+          <c-map-element.marker-icon>
+            <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
+            <!-- Give the icon a popup -->
+            <c-slot name='popup'>
+              <!-- This is a content specific cotton component. it should accept a model instance and create proper popup content -->
+              <c-map-element-popup :instance=component >
+                <c-slot name='icon'>
+                  <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
+                </c-slot>
+              </c-map-element-popup>
+            </c-slot>
+          </c-map-element.marker-icon>
+        {% endfor %}
       </c-map-element.marker>
-    </div>
+      {% endif %}
     </template>
   </c-map-element.index>
 </form>
