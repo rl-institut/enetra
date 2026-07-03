@@ -2,29 +2,35 @@
  floatformat with u turns of localization
 {% endcomment %}
 {% if progress %}
-  <div class="group sticky top-0 z-[9999] h-1 w-full shrink-0 bg-[#e2e8f0]"
-      hx-get='{% url "ports:progress" scenario.internal_id 'Simulation' %}'
-      {% if progress.status != progress.Status.FINISHED %}
-      hx-trigger='every 1s, check_progress from:body'
-      {% else %}
-      hx-trigger='check_progress from:body'
-      {% endif %}
-      hx-swap="morph:outerHTML"
-       role="progressbar"
-       aria-label="Scenario progress"
+<div
+    class="group sticky top-0 z-[9999] h-1 w-full shrink-0">
+    <div
+        class="h-full -w-full bg-[#e2e8f0]"
+        id='progress_poller_{{scenario.internal_id}}'
+        hx-select='#progress_poller_{{scenario.internal_id}}'
+        hx-get='{% url "ports:progress" scenario.internal_id 'Simulation' %}'
+        {% if progress.status != progress.Status.FINISHED %}
+        hx-trigger='every 1s, check_progress from:body'
+        {% else %}
+        hx-trigger='check_progress from:body'
+        {% endif %}
+        hx-swap="outerHTML"
+        role="progressbar"
+        aria-label="Scenario progress"
         aria-valuenow="{{progress.get_progress|floatformat:"2u"}}"
-       aria-valuemin="0"
-       aria-valuemax="100">
-    <div id='progress_simulation_{{scenario.internal_id}}' class="h-full bg-[#0e7490] transition-[width] duration-700 ease-out" style="width: {{progress.get_progress|floatformat:"2u"}}%;"></div>
-    <div class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 translate-y-1 rounded-md bg-[#1e293b] px-2 py-1 font-['Inter:Regular',sans-serif] text-[12px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-      {{progress.status}} Simulationsfortschritt: {{progress.get_progress|floatformat:"2u"}}%
+        aria-valuemin="0"
+        aria-valuemax="100">
+        <div id='progress_simulation_{{scenario.internal_id}}' class="h-full bg-[#0e7490] transition-[width] duration-700 ease-out" style="width: {{progress.get_progress|floatformat:"2u"}}%;"></div>
+        <div id='foogarbaz' class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 translate-y-1 rounded-md bg-[#1e293b] px-2 py-1 font-['Inter:Regular',sans-serif] text-[12px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+            {{progress.status}} Simulationsfortschritt: {{progress.get_progress|floatformat:"2u"}}%
+        </div>
     </div>
-  </div>
+</div>
 {% else %}
-  <div
-      hx-get='{% url "ports:progress" scenario.internal_id 'Simulation' %}'
-      hx-trigger='check_progress from:body'
-      hx-swap="outerHTML"
-  >
-  </div>
+<div
+    hx-get='{% url "ports:progress" scenario.internal_id 'Simulation' %}'
+    hx-trigger='check_progress from:body'
+    hx-swap="outerHTML"
+>
+</div>
 {% endif %}
