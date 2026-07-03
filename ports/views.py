@@ -176,7 +176,7 @@ def calculate_modal(request, scenario_internal_id: UUID):
         d = {
             "name": model,
             "count": len(comps),
-            "summary": f"({sum(x.power_kw for x in comps)} kWp)",
+            "summary": f"({sum(x.power_kw for x in comps if isinstance(x.power_kw, float))} kWp)",
         }
         components.append(d)
 
