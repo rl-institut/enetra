@@ -4,12 +4,14 @@ from collections import defaultdict
 from contextlib import contextmanager
 from uuid import uuid4
 
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.gdal import DataSource
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db.models import QuerySet
 from django.db.transaction import atomic
+from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
 from shapely import STRtree
 from shapely import wkt
@@ -141,18 +143,53 @@ def scenarios_and_areas_from_file(region_file, buildings_file, user):
 
 
 def duplicate_project(project: Project):
+    # deepcopy may reassign the instance pk in memory, so resolve the old group first
+    old_group = Group.objects.filter(name=project.group_name()).first()
     new_project, _ = deepcopy(project, exclude_models={User}, max_depth=2)
+
+    # Authorization is not directly linked through foreign keys but through foreign_objects
+    # Therefor the group is not deepcopied. Maybe make the group part of the object?
+    # This would break down if multiple groups per project exist
+    group = Group.objects.create(name=new_project.group_name())
+    assign_perm("view", group, new_project)
+    assign_perm("details", group, new_project)
+    group.user_set.set(old_group.user_set.all())
+
     return new_project
 
 
 def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     # Scenario internal_id must be unique. by changing the in memory internal_id
     # the deepcopy does not create a collision
+    from guardian.models import GroupObjectPermission
+
     scenario.internal_id = uuid4()
     new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
     new_scenario.name += suffix
     new_scenario.manager = user
     new_scenario.save()
+    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
+    old_areas = Area.objects.filter(scenario=scenario)
+    new_areas = Area.objects.filter(scenario=new_scenario)
+    assert len(old_areas) == len(new_areas)
+    old_d = {x.id: x for x in old_areas}
+    new_d = {x.internal_id: x for x in new_areas}
+
+    group = Group.objects.get(name=scenario.project.group_name())
+    content_type = ContentType.objects.get_for_model(Area)
+    ids = [a.id for a in old_areas]
+    group_perms = GroupObjectPermission.objects.filter(
+        group=group, content_type=content_type, object_pk__in=ids
+    )
+    new_group_perms = []
+    for gp in group_perms:
+        gp.id = None
+        # Lookup the original instance of the group permission. Use the interal_id
+        # to lookup the copied id, since all copies share the same internal_id
+        gp.object_pk = new_d[old_d[int(gp.object_pk)].internal_id].id
+        new_group_perms.append(gp)
+    GroupObjectPermission.objects.bulk_create(new_group_perms)
+
     return new_scenario
 
 
@@ -187,7 +224,7 @@ def get_user_projects(user: User):
 
 def get_template_scenarios(user: User):
     # TODO: template user, e.g. add data as user TEMPLATE or smth?
-    template_user = User.objects.get(username="admin")
+    template_user = User.objects.filter(is_superuser=True).get(username="data")
     if user.is_superuser:
         return Scenario.objects.all()
     return Scenario.objects.filter(manager__in=[user, template_user])

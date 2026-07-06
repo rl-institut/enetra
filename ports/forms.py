@@ -1,3 +1,5 @@
+from typing import Any
+
 import django.forms as forms
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
@@ -15,6 +17,7 @@ from ports.models import Load
 from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.models import has_authorization
 from ports.util import duplicate_scenario
 
 
@@ -220,8 +223,15 @@ class CreateScenarioForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def clean(self) -> dict[str, Any] | None:
+        if not has_authorization(self.base_scenario.project, self.user, "details"):
+            raise ValidationError(
+                self.error_messages["no_authorization"],
+                code="no_authorization",
+            )
+        return super().clean()
+
     def save(self, commit: bool = True):
-        assert self.base_scenario.manager == self.user
         new_scenario = duplicate_scenario(self.base_scenario, self.user)
         new_scenario.name = self.cleaned_data["name"]
         new_scenario.description = self.cleaned_data["description"]

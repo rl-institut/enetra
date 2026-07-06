@@ -17,6 +17,7 @@ from ports.models import Area
 from ports.models import Generator
 from ports.models import Load
 from ports.models import LoadTemplate
+from ports.models import Project
 from ports.models import Scenario
 
 
@@ -31,8 +32,9 @@ class DetailsViewBase(TestCase):
         # a shared object's fields, or work on a local copy instead.
         cls.user = User.objects.create_user("testuser", password="pass", is_superuser=True)
 
-        cls.scenario = Scenario.objects.create(name="Test Scenario")
-        Group.objects.get_or_create(name=cls.scenario.group_name())
+        cls.project = Project.objects.create(name="Test Projekt")
+        cls.scenario = Scenario.objects.create(name="Test Scenario", project=cls.project)
+        Group.objects.get_or_create(name=cls.project.group_name())
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -466,7 +468,7 @@ class DetailsViewPermissionsTest(TestCase):
 
     Design:
     - user_a is the area/scenario manager → always has access
-    - user_b is a scenario group member → access depends on Guardian object perms
+    - user_b is a project group member → access depends on Guardian object perms
     - Sentinel strings in component names are searched in raw response content
       to detect data leakage without relying on response.context
 
@@ -479,11 +481,17 @@ class DetailsViewPermissionsTest(TestCase):
     def setUpTestData(cls):
         cls.user_a = User.objects.create_user("perm_user_a", password="pass")
         cls.user_b = User.objects.create_user("perm_user_b", password="pass")
-        cls.scenario = Scenario.objects.create(name="Perm Test Scenario", manager=cls.user_a)
-        cls.scenario_group, _ = Group.objects.get_or_create(name=cls.scenario.group_name())
-        cls.scenario_group.user_set.add(cls.user_b)
-        # Grant scenario-level view so the area check is the gating decision
-        assign_perm("view", cls.scenario_group, cls.scenario)
+        cls.project = Project.objects.create(name="Test Projekt")
+        cls.scenario = Scenario.objects.create(
+            name="Perm Test Scenario", manager=cls.user_a, project=cls.project
+        )
+        cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
+
+        # Detailviews are gated by project access. Therefore users need to be added to project group
+        cls.project_group.user_set.add(cls.user_a)
+        cls.project_group.user_set.add(cls.user_b)
+        # Grant project-level view so the area check is the gating decision
+        assign_perm("view", cls.project_group, cls.project)
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -560,7 +568,7 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
 
     def test_area_detail_no_longer_blocked_after_made_public(self):
-        assign_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
@@ -568,7 +576,7 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertNotIn(b"not allowed", response.content.lower())
 
     def test_public_area_components_visible_in_detail_response(self):
-        assign_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
@@ -577,8 +585,8 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
 
     def test_revoking_public_blocks_detail_access_again(self):
-        assign_perm("details", self.scenario_group, self.area)
-        remove_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
+        remove_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}

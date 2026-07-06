@@ -29,6 +29,7 @@
     <div class="flex flex-col gap-2">
 
   <c-api-button
+    type='submit'
     hx-post="{% url 'ports:api' 'project' project.internal_id %}"
     hx-include="closest form"
     @htmx:after-settle="if (!(status==='success'))return;setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 10)"
