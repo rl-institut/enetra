@@ -6,14 +6,14 @@ app_name = "ports"
 
 urlpatterns = [
     path(
-        "map/",
-        views.test,
-        name="map",
-    ),
-    path(
         "",
         views.home,
         name="home",
+    ),
+    path(
+        "<uuid:scenario_internal_id>/",
+        views.enetra_tool,
+        name="enetra_tool",
     ),
     path(
         "simulate/",
@@ -64,5 +64,10 @@ urlpatterns = [
         "api/<str:model>/<uuid:internal_id>/duplicate/",
         views.ApiView.as_view(action="duplicate"),
         name="api_duplicate",
+    ),
+    path(
+        "debug/switch-user/<str:username>/",
+        views.debug_switch_user,
+        name="debug_switch_user",
     ),
 ]

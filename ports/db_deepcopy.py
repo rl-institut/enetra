@@ -219,7 +219,7 @@ def deepcopy(  # noqa
     else:
         raise Exception("Deepcopying could not create Objects. Database restrictions aren't met?")
 
-    # Make sure to iterate of copies and not the filtered _copies version
+    # Make sure to iterate over copies and not the filtered _copies version
     # At this point all instances are created. Update fields which might have not been updated before
     logger.debug("Check for missing updates")
     managers.extend(
@@ -339,9 +339,16 @@ def bulk_create_objects(copies, stack_pre, rev_stack_pre, stack_post, rev_stack_
 
 
 def replace_many2many(managers):
+    """In some cases the manager is stale pointing to a pre creation id
+    therefore we update the manager here
+    """
     for manager, new_foreign_values in managers:
-        logger.debug(manager)
-        manager.add(*new_foreign_values)
+        try:
+            new_manager = getattr(manager.instance, manager.prefetch_cache_name)
+        except AttributeError:
+            new_manager = manager
+        logger.debug(new_manager)
+        new_manager.add(*new_foreign_values)
 
 
 def replace_keys_and_get_managers(

@@ -5,10 +5,13 @@ single and multi-instance modes across Area, Load, and Generator.
 
 from uuid import uuid4
 
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase
 from django.urls import reverse
+from guardian.shortcuts import assign_perm
+from guardian.shortcuts import remove_perm
 
 from ports.models import Area
 from ports.models import Generator
@@ -26,8 +29,10 @@ class DetailsViewBase(TestCase):
         # without a matching DB save is NOT rolled back and leaks to later tests
         # in alphabetical order. Always call refresh_from_db() before relying on
         # a shared object's fields, or work on a local copy instead.
-        cls.user = User.objects.create_user("testuser", password="pass")
+        cls.user = User.objects.create_user("testuser", password="pass", is_superuser=True)
+
         cls.scenario = Scenario.objects.create(name="Test Scenario")
+        Group.objects.get_or_create(name=cls.scenario.group_name())
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -47,7 +52,7 @@ class DetailsViewBase(TestCase):
         cls.load_template = LoadTemplate.objects.create(
             scenario=cls.scenario,
             name="Template",
-            timeseries=[],
+            timeseries={},
             spec_load=0.0,
         )
         cls.load = Load.objects.create(
@@ -77,6 +82,9 @@ class DetailsViewBase(TestCase):
             area=cls.area,
             carrier=Generator.CarrierChoices.DIESEL,
         )
+
+    def setUp(self):
+        self.client.force_login(self.user)
 
     def details_url(self, model_name):
         return reverse(
@@ -450,3 +458,203 @@ class DetailsViewCreateTest(DetailsViewBase):
             Load.objects.filter(scenario=self.scenario).count(),
             initial_count + 2,
         )
+
+
+class DetailsViewPermissionsTest(TestCase):
+    """
+    Tests that area-level Guardian permissions gate access to area details.
+
+    Design:
+    - user_a is the area/scenario manager → always has access
+    - user_b is a scenario group member → access depends on Guardian object perms
+    - Sentinel strings in component names are searched in raw response content
+      to detect data leakage without relying on response.context
+
+    Scenario-level "view" permission is granted to the scenario group in
+    setUpTestData so that the area-level check is the deciding factor.
+    Per-test assign_perm/remove_perm calls are rolled back after each test.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user_a = User.objects.create_user("perm_user_a", password="pass")
+        cls.user_b = User.objects.create_user("perm_user_b", password="pass")
+        cls.scenario = Scenario.objects.create(name="Perm Test Scenario", manager=cls.user_a)
+        cls.scenario_group, _ = Group.objects.get_or_create(name=cls.scenario.group_name())
+        cls.scenario_group.user_set.add(cls.user_b)
+        # Grant scenario-level view so the area check is the gating decision
+        assign_perm("view", cls.scenario_group, cls.scenario)
+
+        cls.area = Area.objects.create(
+            scenario=cls.scenario,
+            name="SENTINEL_AREA_XYZ_9f3a",
+            area_type=Area.AreaTypeChoices.BUILDING,
+            usage=Area.BuildingUsageChoices.OFFICE,
+            geom=GEOSGeometry("SRID=4326;POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))"),
+            manager=cls.user_a,
+        )
+        cls.load_template = LoadTemplate.objects.create(
+            scenario=cls.scenario,
+            name="Template",
+            timeseries={},
+            spec_load=0.0,
+        )
+        cls.load = Load.objects.create(
+            scenario=cls.scenario,
+            name="SENTINEL_LOAD_XYZ_9f3a",
+            area=cls.area,
+            template=cls.load_template,
+            factor=1.0,
+            manager=cls.user_a,
+        )
+        cls.generator = Generator.objects.create(
+            scenario=cls.scenario,
+            name="SENTINEL_GEN_XYZ_9f3a",
+            area=cls.area,
+            carrier=Generator.CarrierChoices.DIESEL,
+            manager=cls.user_a,
+        )
+
+    def area_detail_url(self):
+        return reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "area",
+            },
+        )
+
+    def tool_base_url(self):
+        return reverse(
+            "ports:home",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+            },
+        )
+
+    def test_area_detail_returns_not_allowed_for_non_owner(self):
+        self.client.force_login(self.user_b)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"not allowed", response.content.lower())
+
+    def test_private_area_components_not_in_detail_response(self):
+        self.client.force_login(self.user_b)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertNotIn(b"SENTINEL_LOAD_XYZ_9f3a", response.content)
+        self.assertNotIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
+
+    def test_owner_can_access_own_area_details(self):
+        self.client.force_login(self.user_a)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b"not allowed", response.content.lower())
+        self.assertIn(b"SENTINEL_AREA_XYZ_9f3a", response.content)
+        self.assertIn(b"SENTINEL_LOAD_XYZ_9f3a", response.content)
+        self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
+
+    def test_area_detail_no_longer_blocked_after_made_public(self):
+        assign_perm("details", self.scenario_group, self.area)
+        self.client.force_login(self.user_b)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertNotIn(b"not allowed", response.content.lower())
+
+    def test_public_area_components_visible_in_detail_response(self):
+        assign_perm("details", self.scenario_group, self.area)
+        self.client.force_login(self.user_b)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertIn(b"SENTINEL_LOAD_XYZ_9f3a", response.content)
+        self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
+
+    def test_revoking_public_blocks_detail_access_again(self):
+        assign_perm("details", self.scenario_group, self.area)
+        remove_perm("details", self.scenario_group, self.area)
+        self.client.force_login(self.user_b)
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertIn(b"not allowed", response.content.lower())
+
+    def test_unauthenticated_user_cannot_access_area_details(self):
+        response = self.client.get(
+            self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
+        )
+        self.assertNotIn(b"SENTINEL_LOAD_XYZ_9f3a", response.content)
+        self.assertNotIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
+
+    def test_post_load_blocked_for_non_owner(self):
+        self.client.force_login(self.user_b)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "internal_id": str(self.load.internal_id),
+                "name": "TAMPERED_BY_USER_B",
+                "factor": "9.9",
+                "template": self.load_template.pk,
+            },
+        )
+        self.assertIn(b"not allowed", response.content.lower())
+        self.load.refresh_from_db()
+        self.assertNotEqual(self.load.name, "TAMPERED_BY_USER_B")
+
+    def test_post_load_description_allowed_for_owner(self):
+        self.client.force_login(self.user_a)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "internal_id": str(self.load.internal_id),
+                "name": self.load.name,
+                "description": "Owner set description",
+                "factor": "1.0",
+                "template": self.load_template.pk,
+            },
+        )
+        self.assertNotIn(b"not allowed", response.content.lower())
+        self.load.refresh_from_db()
+        self.assertEqual(self.load.description, "Owner set description")
+
+    def test_multi_post_load_blocked_for_non_owner(self):
+        self.client.force_login(self.user_b)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "internal_ids": str(self.load.internal_id),
+                "description": "TAMPERED_MULTI_BY_USER_B",
+                "factor": "9.9",
+                "template": self.load_template.pk,
+            },
+        )
+        self.assertIn(b"not allowed", response.content.lower())
+        self.load.refresh_from_db()
+        self.assertNotEqual(self.load.description, "TAMPERED_MULTI_BY_USER_B")
