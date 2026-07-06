@@ -20,6 +20,7 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
+from django.http import HttpResponseNotAllowed
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -652,6 +653,7 @@ class DetailsView(View):
             # TODO: Are all templates available to every user?
             templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
             self.context["templates"] = templates
+            self.context["upload_form"] = LoadTemplateUploadForm()
         elif issubclass(self.Model, ElectricComponent):
             # nothing to do here
             # ElectricComponent does not reference other models and does not need
@@ -871,6 +873,45 @@ class DetailsView(View):
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
+
+
+def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(b"This method only allows POST requests")
+    if not request.user.is_authenticated:
+        return HttpResponse(b"You need to be logged in to use this function", status=401)
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    internal_load_id = request.GET.get("internal_id")
+    load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
+
+    def retargetForFailure(response):
+        response["HX-Retarget"] = "#templateError"
+        response["HX-Reselect"] = "unset"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+
+    authorized = has_authorization(scenario, request.user, "view")
+    if not authorized:
+        response = HttpResponseForbidden(b"You are not authorized for this function")
+        return retargetForFailure(response)
+
+    form = LoadTemplateUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        form.save(scenario, load, request.user)
+        return redirect(
+            reverse(
+                "ports:details",
+                kwargs={
+                    "scenario_internal_id": scenario_internal_id,
+                    "model": model,
+                },
+            )
+            + f"?internal_id={internal_load_id}"
+        )
+
+    errors = [e for field_errors in form.errors.values() for e in field_errors]
+    response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
+    return retargetForFailure(response)
 
 
 # Create your views here.
