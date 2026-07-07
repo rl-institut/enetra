@@ -16,6 +16,8 @@ from pathlib import Path
 import django_stubs_ext
 import environ
 from django.templatetags.static import static
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 
 django_stubs_ext.monkeypatch()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -162,8 +164,28 @@ TEMPLATES = [
 UNFOLD = {
     "STYLES": [
         lambda request: static("unfold.css"),
+        lambda request: static("css/output.css"),
     ],
     "SCRIPTS": [],
+    "SIDEBAR": {
+        "show_search": False,
+        "command_search": False,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": _("Tools"),
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": _("Szenarien aus Geojson erstellen"),
+                        "icon": "build",
+                        "link": reverse_lazy("admin:scenario_from_geojson"),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 
