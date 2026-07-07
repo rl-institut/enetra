@@ -1,6 +1,10 @@
 import logging
 import uuid
+from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
+from typing import ClassVar
+from typing import Literal
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -10,6 +14,9 @@ from django.contrib.gis.db import models
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
+from django.db.models import ForeignKey
+from django.db.models import ManyToManyField
+from django.db.models import QuerySet
 from django.db.models.functions import Now
 from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
@@ -19,17 +26,83 @@ from django.dispatch import receiver
 from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from guardian.shortcuts import get_objects_for_user
 
 logger = logging.getLogger("django_ports")
 
 
-# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
-class Scenario(models.Model):
+# Each set of scenario is bundled via its project
+class Project(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
     name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
+    # Set to now() on the database side
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Related name + tells django not to create a reverse relation for user, e.g. user.scenario_set
+    manager = models.ForeignKey(
+        User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
+    )
+
+    class Meta:
+        permissions = (
+            ("view", "view project"),
+            ("details", "details project"),
+            ("delete", "delete project"),
+            ("change", "change project"),
+        )
+
+    def group_name(self) -> str:
+        return f"group_project_{self.id}"
+
+    @property
+    def users(self) -> "dict[str, models.QuerySet[User]]":
+        if not hasattr(self, "_users_cache"):
+            from django.contrib.contenttypes.models import ContentType
+            from guardian.utils import get_group_obj_perms_model
+
+            GroupObjectPermission = get_group_obj_perms_model()
+            perms = (
+                GroupObjectPermission.objects.filter(
+                    content_type=ContentType.objects.get_for_model(self.__class__),
+                    object_pk=self.pk,
+                )
+                .select_related("permission")
+                .prefetch_related("group__user_set")
+            )
+            self._users_cache = {
+                perm.permission.codename: perm.group.user_set.all() for perm in perms
+            }
+        return self._users_cache
+
+    @atomic()
+    def safe_delete(self):
+        """Safely delete the project by safely deleting all scenarios referencing it.
+        This is needed because of the nature of DeletedItems which are created during
+        deletion
+        """
+        scenarios = Scenario.objects.filter(project=self)
+        for s in scenarios:
+            s.safe_delete()
+        self.delete()
+
+
+# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
+class Scenario(models.Model):
+    # Project which bundles Scenarios
+    # on_delete is null since DeletedItems dont allow cascading delete on Scenario
+    # instead safe_delete has to be used on the scenarios or project
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
+    id = models.BigAutoField(primary_key=True, blank=True)
+    internal_id = models.UUIDField(
+        db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
+    )
+    name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -44,6 +117,10 @@ class Scenario(models.Model):
     # Area of the scenario / Port region
     geom = models.PolygonField(null=True, blank=True)
 
+    # Class variable which keeps track of scenarios which should be deleted
+    # This disables DeletedItem creation which is slow for large queries
+    _being_deleted: ClassVar[set[int]] = set()
+
     class Meta:
         permissions = (
             ("view", "view scenario"),
@@ -55,21 +132,26 @@ class Scenario(models.Model):
     def group_name(self):
         return f"Scenario_{self.id}_group"
 
+    @staticmethod
+    @contextmanager
+    def true_delete(scenario_ids: Iterable[int]):
+        """Context manager so no DeletedItems for these scenarios are created"""
+        ids = set(scenario_ids)
+        Scenario._being_deleted.update(ids)
+        try:
+            yield
+        finally:
+            Scenario._being_deleted.difference_update(ids)
+
     @atomic()
     def safe_delete(self):
-        """Delete Scenario by first deleting all references. When deleting the
-        scenario in the usual way, django iterates over other models to delete
-        them. this triggers post_delete which creates deletedItems. these
-        deletedItems are not cleaned up by django. this is handled with this
-        function. Maybe a better approach would be use a 'deleted' boolean flag
-        per item or use custom delete functions on the models."""
-        # iterate over all related objects
-        for rel in self._meta.get_fields():
-            if rel.one_to_many:  # reverse FK
-                related_manager = getattr(self, rel.get_accessor_name())
-                related_manager.all().delete()
-        DeletedItem.objects.filter(scenario=self).delete()
-        self.delete()
+        """Disable DeletedItem creation during deletion"""
+        with self.true_delete([self.id]):
+            self.delete()
+
+    def prepare_deepcopy(self):
+        """Adjust the instance so it can be deepcopied"""
+        self.internal_id = uuid.uuid4()
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
@@ -232,6 +314,9 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
     # using pre_delete leads to errors if deletion fails
     if sender in [DeletedItem, ChangedItem]:
         return
+    # No DeletedItem creation in cases where the scenario is marked for deletion
+    if instance.scenario_id in Scenario._being_deleted:
+        return
     deleted_item = DeletedItem.from_scenario_item(instance)
     deleted_item.save()
 
@@ -239,6 +324,7 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created"""
+    # TODO: add project?
     scenario = instance.scenario
     scenario.items_updated_at = instance.updated_at
     scenario.save()
@@ -915,6 +1001,100 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
         path = Path(instance.file.path)
         if path.exists():
             path.unlink()
+
+
+def get_related_model_values(
+    instances: QuerySet[ScenarioItem], model: type[ScenarioItem], field_name: str
+):
+    """Find the values of field_name on all related instances of type model for the given queryset
+
+    Used to find all area_internal_ids for a given QuerySet of ScenarioItems, so the permission
+    can be checked on those areas
+    """
+    all_fields = instances.model._meta.get_fields()
+    fk_fields = [
+        f for f in all_fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
+    ]
+    m2m_fields = [
+        f
+        for f in all_fields
+        if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
+    ]
+    if not fk_fields and not m2m_fields:
+        return None
+
+    if fk_fields:
+        instances = instances.select_related(*[f.name for f in fk_fields])
+    if m2m_fields:
+        instances = instances.prefetch_related(*[f.name for f in m2m_fields])
+
+    values = []
+    for instance in instances:
+        for field in fk_fields:
+            related_instance = getattr(instance, field.name)
+            if related_instance is not None:
+                values.append(getattr(related_instance, field_name))
+        for field in m2m_fields:
+            values.extend(getattr(instance, field.name).values_list(field_name, flat=True))
+    return values
+
+
+def has_area_authorization_from_uuids(
+    uuids: list[uuid.UUID | str],
+    user: User,
+    crud: Literal["view", "create", "details", "change", "delete"],
+    scenario: Scenario,
+    model: type[ScenarioItem],
+):
+    if model is Area:
+        area_uuids = uuids
+    else:
+        instances = model.objects.filter(scenario=scenario, internal_id__in=uuids)
+        area_uuids = get_related_model_values(instances, Area, "internal_id")
+    areas = Area.objects.filter(scenario=scenario, internal_id__in=area_uuids).exclude(manager=user)
+    non_managed_areas_internal_ids = areas.values_list("internal_id", flat=True)
+    allowed_internal_ids = get_objects_for_user(user, crud, areas).values_list(
+        "internal_id", flat=True
+    )
+    missing_permissions = len(set(non_managed_areas_internal_ids).difference(allowed_internal_ids))
+    return missing_permissions == 0
+
+
+def has_authorization(
+    item: Project | ScenarioItem,
+    user: User,
+    crud: Literal["view", "create", "details", "change", "delete"],
+) -> bool:
+    """
+    View: See an item with limited set of attributes
+    details: See an item with all its attributes
+    Change: Change an item
+    Delete: Delete an item
+    Create: Create an item
+    """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    if user == item.manager:
+        return True
+
+    # For now short the authorization for ScenarioItems, since their authorization is
+    # based only on areas for now
+    if isinstance(item, ScenarioItem):
+        return has_area_authorization_from_uuids(
+            [item.internal_id], user, crud, item.scenario, item.model()
+        )
+
+    has_perm = False
+    match crud:
+        case "delete" | "details":
+            has_perm = user.has_perm("details", item)
+        case "view":
+            has_perm = user.has_perm("view", item)
+        case _:
+            print("no matching crud found for " + crud)
+    return has_perm
 
 
 # Custom Exceptions

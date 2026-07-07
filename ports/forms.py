@@ -1,4 +1,7 @@
+from typing import Any
+
 import django.forms as forms
+from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import ForeignKey
@@ -11,7 +14,16 @@ from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
 from ports.models import Load
+from ports.models import Project
+from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.models import has_authorization
+from ports.util import duplicate_scenario_with_permissions
+
+
+class ScenarioChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.name
 
 
 def AreaItemFormFactory():
@@ -171,3 +183,76 @@ class UUIDMultipleChoiceField(CharField):
         if not isinstance(value, QuerySet):
             raise ValidationError(self.error_messages["required"], code="required")
         return value
+
+
+class ChangeProjectForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ChangeScenarioForm(forms.ModelForm):
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class CreateScenarioForm(forms.ModelForm):
+    base_scenario: Scenario | None = None
+    user: User | None = None
+
+    def __init__(self, *args, base_scenario: Scenario = None, user: User | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert base_scenario is not None
+        self.base_scenario = base_scenario
+        self.user = user
+
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean(self) -> dict[str, Any] | None:
+        if not has_authorization(self.base_scenario.project, self.user, "details"):
+            raise ValidationError(
+                self.error_messages["no_authorization"],
+                code="no_authorization",
+            )
+        return super().clean()
+
+    def save(self, commit: bool = True):
+        new_scenario = duplicate_scenario_with_permissions(self.base_scenario, self.user)
+        new_scenario.name = self.cleaned_data["name"]
+        new_scenario.description = self.cleaned_data["description"]
+        new_scenario.save()
+        return new_scenario
+
+
+class CreateProjectForm(forms.ModelForm):
+    template_scenario_internal_id = ScenarioChoiceField(
+        Scenario.objects, to_field_name="internal_id", required=False
+    )
+
+    def __init__(self, *args, template_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if template_queryset is not None:
+            self.fields["template_scenario_internal_id"].queryset = template_queryset
+
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }

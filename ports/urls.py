@@ -46,6 +46,26 @@ urlpatterns = [
         name="details",
     ),
     path(
+        "create_project/",
+        views.create_project,
+        name="create_project",
+    ),
+    path(
+        "create_scenario/<uuid:scenario_internal_id>/",
+        views.create_scenario,
+        name="create_scenario",
+    ),
+    path(
+        "api/<str:model>/<uuid:internal_id>/",
+        views.ApiView.as_view(),
+        name="api",
+    ),
+    path(
+        "api/<str:model>/<uuid:internal_id>/duplicate/",
+        views.ApiView.as_view(action="duplicate"),
+        name="api_duplicate",
+    ),
+    path(
         "debug/switch-user/<str:username>/",
         views.debug_switch_user,
         name="debug_switch_user",

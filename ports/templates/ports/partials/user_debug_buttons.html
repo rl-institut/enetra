@@ -1,6 +1,16 @@
   {# DEBUG: user-switch buttons — remove before production #}
 {% load static %}
-<script src='{% static "htmx.min.js" %}'>'</script>
+<script>
+// condititonally import htmx. Only needed for the helper view when trying to access a scenario/project without authorization
+  if (typeof htmx === "undefined") {
+    var htmxScript = document.createElement("script");
+    htmxScript.src = '{% static "htmx.min.js" %}';
+    htmxScript.onload = function () {
+      htmx.process(document.body);
+    };
+    document.head.appendChild(htmxScript);
+  }
+</script>
   <div class="user-debug-buttons bg-white p-2 border fixed bottom-4 right-4 z-[99999] flex flex-col gap-2"
     hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
     hx-swap="outerHTML"
@@ -48,6 +58,19 @@
       user2 (ba@ba)
     </button>
 
+    <button
+      hx-post="{% url 'ports:debug_switch_user' 'ca@ca' %}"
+      hx-on::before-request="
+     function h(e){
+       if(e.detail.elt===htmx.find('.user-debug-buttons')){
+      console.log( 'found')
+     document.removeEventListener('htmx:afterSettle',h);
+      window.location =window.location;
+     }else{console.log(e.detail.elt)} } document.addEventListener('htmx:afterSettle',h);
+     "
+      class="px-3 py-1 text-xs font-mono rounded shadow bg-sky-300 hover:bg-sky-400 opacity-80">
+      user3 (ca@ca) not in project group
+    </button>
     <button
       hx-post="{% url 'ports:debug_switch_user' 'fo@fo' %}"
       class="px-3 py-1 text-xs font-mono rounded shadow bg-amber-100 hover:bg-amber-200 opacity-80"
