@@ -301,7 +301,6 @@ def bulk_create_objects(copies, stack_pre, rev_stack_pre, stack_post, rev_stack_
         # returned instances have a pk set from the db
         try:
             instances = inner_object_class.objects.bulk_create(instances)
-            print(f"{len(instances)} {inner_object_class} created")
         except Exception:
             # Something failed. restore the pks
             for pk, instance in zip(instance_lut, instances, strict=False):
