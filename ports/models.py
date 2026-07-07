@@ -41,6 +41,9 @@ class Scenario(models.Model):
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
+    # Area of the scenario / Port region
+    geom = models.PolygonField(null=True, blank=True)
+
     class Meta:
         permissions = (
             ("view", "view scenario"),
