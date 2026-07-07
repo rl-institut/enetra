@@ -132,7 +132,7 @@
 
       <div
           x-data='{templates : {
-          {% for template in templates %}
+          {% for template in form.template.field.queryset %}
           "{{template.id}}": {
           1: {{template.get_yearly_average|unlocalize}},
           2: {{template.get_daily_average|unlocalize}},

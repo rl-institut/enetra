@@ -14,6 +14,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.db.models import ForeignKey
 from django.db.models import ManyToManyField
+from django.db.models import Q
 from django.db.models import QuerySet
 from django.forms import model_to_dict
 from django.http import Http404
@@ -563,7 +564,25 @@ class DetailsView(View):
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
         self.Form = ScenarioItemFormFactory(self.Model, multi=self.multi, scenario=self.scenario)
+        # Adjust the form
+        if not self.created:
+            instance = self.instances[0] if self.multi else self.instance
+            self.Form = self.adjust_form(instance)
         self.template = self.get_template()
+
+    def adjust_form(self, instance):
+        form_kwargs = {}
+        if self.Model == Load:
+            templates = LoadTemplate.objects.filter(
+                manager=self.request.user, scenario=self.scenario
+            )
+            if instance.template:
+                templates = LoadTemplate.objects.filter(
+                    Q(manager=self.request.user, scenario=self.scenario)
+                    | Q(id=instance.template_id)
+                )
+            form_kwargs = {"templates_queryset": templates}
+        return self.Model.adjust_Form(self.Form, instance=instance, **form_kwargs)
 
     def get_template(self) -> str:
         suffix = ""
@@ -642,7 +661,6 @@ class DetailsView(View):
         initial = {}
         if self.Model not in [Area, Load] and not issubclass(self.Model, ElectricComponent):
             raise Http404("This model does not exist or is not implemented yet")
-        self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
         if self.Model == Area:
             group = Group.objects.get(name=self.scenario.group_name())
             # If Object permissions are queried multiple times consider using a
@@ -650,9 +668,6 @@ class DetailsView(View):
             initial = {"is_public": "details" in get_perms(group, self.instance)}
             self.context |= self.get_area_context()
         elif self.Model == Load:
-            # TODO: Are all templates available to every user?
-            templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
-            self.context["templates"] = templates
             self.context["upload_form"] = LoadTemplateUploadForm()
         elif issubclass(self.Model, ElectricComponent):
             # nothing to do here
@@ -661,6 +676,7 @@ class DetailsView(View):
             pass
         else:
             raise NotImplementedError("No template defined for this Model")
+
         self.context["form"] = self.Form(initial=initial, instance=self.instance)
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -707,18 +723,17 @@ class DetailsView(View):
             self.instances = self.Model.objects.bulk_create(new_items)
             if not self.multi:
                 self.instance = self.instances[0]
+                self.Form = self.adjust_form(self.instance)
                 self.instances = []
                 self.instance.has_authorization = True
                 self.context["instance"] = self.instance
-                self.context["form"] = self.Model.adjust_Form(self.Form, instance=self.instance)(
-                    instance=self.instance
-                )
                 self.context["internal_id"] = str(self.instance.internal_id)
             else:
                 # Template choice earlier works for direct instance access.
                 # For creation this is decided here, since self.multi might have been overwritten
                 self.template = self.get_template()
                 self.context["instances"] = self.instances
+                self.Form = self.adjust_form(self.instances[0])
                 for item in self.instances:
                     item.has_authorization = True
 
@@ -726,10 +741,11 @@ class DetailsView(View):
                 self.context["internal_ids"] = ",".join(
                     [str(x.internal_id) for x in self.instances]
                 )
-                self.context["form"] = self.Model.adjust_Form(
-                    self.Form, instance=self.instances[0]
-                )(instance=self.instance)
                 self.context["area_internal_ids"] = ",".join(area_internal_ids)
+
+            self.context["form"] = self.Form(
+                instance=self.instance,
+            )
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
@@ -770,7 +786,6 @@ class DetailsView(View):
             response["HX-Reselect"] = "unset"
             response["HX-Reswap"] = "innerHTML"
             return response
-        self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
 
         if self.Model == Area or issubclass(self.Model, ElectricComponent):
             merged_data = model_to_dict(self.instances[0])
@@ -801,7 +816,6 @@ class DetailsView(View):
             response["HX-Reselect"] = "unset"
             response["HX-Reswap"] = "innerHTML"
             return response
-        self.Form = self.Model.adjust_Form(self.Form, instance=self.instances[0])
         try:
             form = self.Form(data=request.POST)
             self.context["form"] = form
@@ -843,17 +857,20 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            self.Form = self.Model.adjust_Form(self.Form, instance=self.instance)
             form = self.Form(data=request.POST, instance=self.instance)
-            self.context["form"] = form
             if self.Model == Area:
                 self.context |= self.get_area_context()
             elif self.Model == Load:
-                templates = list(LoadTemplate.objects.filter(scenario=self.scenario))
-                self.context["templates"] = templates
                 self.context["upload_form"] = LoadTemplateUploadForm()
+
+            self.context["form"] = form
             if form.is_valid():
+                instance = form.save()
                 self.context["item"] = form.save()
+                # refresh the form, with the newly created instance.
+                # For Load forms this adjusts the selectable LoadTemplates
+                form = self.adjust_form(instance)(data=request.POST, instance=instance)
+                self.context["form"] = form
                 group = Group.objects.get(name=self.scenario.group_name())
                 if self.Model == Area:
                     if form.cleaned_data.get("is_public"):

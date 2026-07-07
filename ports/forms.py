@@ -139,7 +139,7 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
         super().__init__(queryset, **kwargs)
 
 
-ALLOWED_UPLOAD_SUFFIXES = ["csv"]
+ALLOWED_UPLOAD_SUFFIXES = [".csv", ".xlsx"]
 
 
 class LoadTemplateUploadForm(forms.Form):
@@ -151,7 +151,7 @@ class LoadTemplateUploadForm(forms.Form):
         label="Vorlagedatei",
         widget=forms.FileInput(
             attrs={
-                "accept": "." + ",".join(ALLOWED_UPLOAD_SUFFIXES),
+                "accept": ",".join(ALLOWED_UPLOAD_SUFFIXES),
                 "title": "Datei auswählen",
             }
         ),
@@ -169,7 +169,7 @@ class LoadTemplateUploadForm(forms.Form):
         if not file:
             raise ValidationError("Keine Datei ausgewählt")
 
-        suffix = file.name.split(".")[-1].lower()
+        suffix = "." + file.name.split(".")[-1].lower()
         if suffix not in ALLOWED_UPLOAD_SUFFIXES:
             raise ValidationError(
                 "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
@@ -184,14 +184,14 @@ class LoadTemplateUploadForm(forms.Form):
         values = self._parsed_values
         timestep_minutes = self.cleaned_data["timestep_minutes"]
         file = self.cleaned_data["template_file"]
-        template_load = LoadTemplate(
+        template_load = LoadTemplate.objects.create(
             timeseries={"values": values, "timestep_minutes": timestep_minutes},
             spec_load=sum(values) / len(values),
+            scenario=scenario,
+            name=file.name,
+            manager=user,
         )
-        template_load.scenario = scenario
-        template_load.name = file.name
-        template_load.manager = user
-        template_load.save()
+
         load.template = template_load
         load.save()
         return template_load

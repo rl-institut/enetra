@@ -52,6 +52,7 @@ class DetailsViewBase(TestCase):
         cls.load_template = LoadTemplate.objects.create(
             scenario=cls.scenario,
             name="Template",
+            manager=cls.user,
             timeseries={},
             spec_load=0.0,
         )
@@ -495,6 +496,14 @@ class DetailsViewPermissionsTest(TestCase):
         )
         cls.load_template = LoadTemplate.objects.create(
             scenario=cls.scenario,
+            name="Template",
+            manager=cls.user_a,
+            timeseries={},
+            spec_load=0.0,
+        )
+        cls.load_template_b = LoadTemplate.objects.create(
+            scenario=cls.scenario,
+            manager=cls.user_b,
             name="Template",
             timeseries={},
             spec_load=0.0,
