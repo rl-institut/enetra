@@ -41,7 +41,7 @@ from ports.forms import ChangeScenarioForm
 from ports.forms import CreateProjectForm
 from ports.forms import CreateScenarioForm
 from ports.forms import ScenarioItemFormFactory
-from ports.util import duplicate_scenario
+from ports.util import duplicate_scenario_with_permissions
 from ports.util import get_template_scenarios
 
 from .models import Area
@@ -57,6 +57,7 @@ from .models import has_area_authorization_from_uuids
 from .models import has_authorization
 from .util import atomic
 from .util import duplicate_project
+from .util import duplicate_scenario
 
 logger = logging.getLogger("django-ports")
 
@@ -822,14 +823,16 @@ def create_project(request):
                 new_scenario.project = new_project
                 new_scenario.save()
 
+                # FIXME: If a scenario is copied into a new project, all users should have access to the new project
+                # Must make sure not to overwrite area access to new scenario/project manager
                 # Setup Group Permissions and add user to group
                 group = Group.objects.create(name=new_project.group_name())
                 # Group is allowed to view generic and details of Project object
                 assign_perm("view", group, new_project)
                 assign_perm("details", group, new_project)
                 request.user.groups.add(group)
-                # User has permissions for areas
-                areas = Area.objects.filter(scenario=new_scenario)
+                # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
+                areas = Area.objects.filter(scenario=new_scenario, manager="data")
                 areas.update(manager=request.user)
                 assign_perm("details", request.user, areas)
 
@@ -924,7 +927,7 @@ class ApiView(View):
                 self.instance.name += " (Dupliziert)"
                 new_instance = duplicate_project(self.instance)
             else:
-                new_instance = duplicate_scenario(self.instance, request.user)
+                new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
             return JsonResponse(
                 {
                     "status": "success",

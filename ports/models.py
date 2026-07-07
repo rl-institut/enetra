@@ -95,7 +95,7 @@ class Project(models.Model):
 class Scenario(models.Model):
     # Project which bundles Scenarios
     # on_delete is null since DeletedItems dont allow cascading delete on Scenario
-    # instead safe_delete has to be used on the scenarios
+    # instead safe_delete has to be used on the scenarios or project
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
@@ -150,6 +150,7 @@ class Scenario(models.Model):
             self.delete()
 
     def prepare_deepcopy(self):
+        """Adjust the instance so it can be deepcopied"""
         self.internal_id = uuid.uuid4()
 
     def changed_event(self):

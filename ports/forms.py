@@ -18,7 +18,7 @@ from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
 from ports.models import has_authorization
-from ports.util import duplicate_scenario
+from ports.util import duplicate_scenario_with_permissions
 
 
 class ScenarioChoiceField(forms.ModelChoiceField):
@@ -232,7 +232,7 @@ class CreateScenarioForm(forms.ModelForm):
         return super().clean()
 
     def save(self, commit: bool = True):
-        new_scenario = duplicate_scenario(self.base_scenario, self.user)
+        new_scenario = duplicate_scenario_with_permissions(self.base_scenario, self.user)
         new_scenario.name = self.cleaned_data["name"]
         new_scenario.description = self.cleaned_data["description"]
         new_scenario.save()

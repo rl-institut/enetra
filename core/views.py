@@ -20,6 +20,7 @@ from django.views.generic import TemplateView
 
 from ports.forms import CreateProjectForm
 from ports.models import Project
+from ports.models import has_authorization
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
 from ports.util import prefetch_projects_users
@@ -48,8 +49,8 @@ def project_overview_view(request, project_internal_id):
         # LOGIN_REDIRECT_URL
         return redirect(reverse("core:login"))
     project = get_object_or_404(Project, internal_id=project_internal_id)
-    # TODO: User permission
-    if project.manager != request.user and not request.user.is_superuser:
+
+    if not has_authorization(project, request.user, "view"):
         return HttpResponseForbidden("Not allowed")
     context = {}
     context["project"] = project

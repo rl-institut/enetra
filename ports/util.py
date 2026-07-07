@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.gdal import DataSource
 from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.db.models import Q
 from django.db.models import QuerySet
 from django.db.transaction import atomic
 from guardian.shortcuts import assign_perm
@@ -44,7 +45,7 @@ def process_datasources_to_scenarios(ds_regions: DataSource, ds_buildings: DataS
         """Depending on datasource a feature field can be a
         django.contrib.gis.gdal.field.OFTReal object
         or the plain value.
-        For the first we have to explicity ask for the value
+        For the first we have to explicitly ask for the value
         """
         if field not in feature.fields:
             return None
@@ -158,17 +159,8 @@ def duplicate_project(project: Project):
     return new_project
 
 
-def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
-    # Scenario internal_id must be unique. by changing the in memory internal_id
-    # the deepcopy does not create a collision
-    from guardian.models import GroupObjectPermission
-
-    scenario.internal_id = uuid4()
-    new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
-    new_scenario.name += suffix
-    new_scenario.manager = user
-    new_scenario.save()
-    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
+def transferGroupPermissions(scenario, new_scenario):
+    """Add all area permissions of the scenario to the new_scenario"""
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
     assert len(old_areas) == len(new_areas)
@@ -178,6 +170,7 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     group = Group.objects.get(name=scenario.project.group_name())
     content_type = ContentType.objects.get_for_model(Area)
     ids = [a.id for a in old_areas]
+    GroupObjectPermission = get_group_obj_perms_model()
     group_perms = GroupObjectPermission.objects.filter(
         group=group, content_type=content_type, object_pk__in=ids
     )
@@ -189,6 +182,27 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
         gp.object_pk = new_d[old_d[int(gp.object_pk)].internal_id].id
         new_group_perms.append(gp)
     GroupObjectPermission.objects.bulk_create(new_group_perms)
+
+
+def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
+    """Duplicate scenario without transferring group permissions.
+    Group permissions should not be transferred in cases of scenario duplication for a new project
+    The previous group should not be authorized to view a scenario or its items from a different project
+    """
+    # Scenario internal_id must be unique. by changing the in memory internal_id
+    # the deepcopy does not create a collision
+    scenario.internal_id = uuid4()
+    new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
+    new_scenario.name += suffix
+    new_scenario.manager = user
+    new_scenario.save()
+    return new_scenario
+
+
+def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
+    new_scenario = duplicate_scenario(scenario, user, suffix)
+    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
+    transferGroupPermissions(scenario, new_scenario)
 
     return new_scenario
 
@@ -216,10 +230,21 @@ def prefetch_projects_users(projects: QuerySet[Project]) -> None:
 
 
 def get_user_projects(user: User):
-    # TODO: Add all scenarios with permission for the user not just managed
     if user.is_superuser:
         return Project.objects.all().prefetch_related("scenario_set")
-    return Project.objects.filter(manager=user).prefetch_related("scenario_set")
+    # All projects a group of the user has the "view" object permission on
+    GroupObjectPermission = get_group_obj_perms_model()
+    project_ct = ContentType.objects.get_for_model(Project)
+    project_ids = GroupObjectPermission.objects.filter(
+        content_type=project_ct,
+        permission__codename="view",
+        group__in=user.groups.all(),
+    ).values_list("object_pk", flat=True)
+    # object_pk is a CharField on guardian's generic permission model
+    project_ids = [int(pk) for pk in project_ids]
+    return Project.objects.filter(Q(manager=user) | Q(id__in=project_ids)).prefetch_related(
+        "scenario_set"
+    )
 
 
 def get_template_scenarios(user: User):
