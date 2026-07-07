@@ -26,7 +26,7 @@
             </div>
             <a href="{% url 'core:user_rechte' %}" class="flex gap-2 items-center">
               <c-icon.user_rights />
-              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">5 Nutzer</span>
+              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
             </a>
           </div>
         </div>
@@ -103,7 +103,7 @@
             <div id="filterable_cards" class="grid grid-cols-3 gap-4">
               <!-- Wasserstoff-Integration -->
               {% for scenario in project.scenario_set.all %}
-              {% include 'core/partials/technology_scenario_card.html' with scenario=scenario title=scenario.name status="In Bearbeitung" last_update="2025.12.03" %}
+              {% include 'core/partials/technology_scenario_card.html' with scenario=scenario title=scenario.name status="In Bearbeitung" last_update=scenario.updated_at %}
               {% endfor %}
             </div>
 
