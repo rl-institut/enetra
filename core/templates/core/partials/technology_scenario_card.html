@@ -5,21 +5,8 @@
   data-last_update="{% firstof last_update_sortable last_update %}"
   class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col justify-between">
   <div class="pb-4 border-b border-slate-200 flex items-center justify-between">
-    <a href="#" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">{{title|default:"Kein Titel"}}</a>
-    <div class="relative" x-data="{ open: false }">
-      <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
-        <i data-lucide="more-vertical" class="w-4 h-4 shrink-0"></i>
-      </button>
-      <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-        <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-          <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-        </button>
-        <hr class="border-slate-200" />
-        <button class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
-          <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Projekt löschen
-        </button>
-      </div>
-    </div>
+    <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">{{title|default:"Kein Titel"}}</a>
+      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='card' %}
   </div>
   <div class="flex-1 pt-6 flex flex-col justify-between gap-6">
     <div class="select-none flex items-center justify-between">

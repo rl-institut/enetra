@@ -1,0 +1,37 @@
+
+<tr
+  data-name="{{title}}"
+  data-last_update="{% firstof last_update_sortable last_update %}"
+  class="hover:bg-slate-50 transition-colors duration-100">
+  <td class="px-6 py-4">
+    <a href={% url 'core:project_overview' project.internal_id %} class="select-none font-semibold text-cyan-700 hover:underline">{{project.name}}</a>
+  </td>
+  <td class="px-6 py-4">
+    <div class="select-none flex items-center gap-2 text-slate-500">
+      <i data-lucide="map-pin" class="w-4 h-4 shrink-0"></i>
+      <span>Berlin</span>
+    </div>
+  </td>
+  <td class="px-6 py-4 text-slate-800 select-none">{{project.scenario_set.count}}</td>
+  <td class="px-6 py-4">
+    <div class="select-none flex items-center gap-2 text-slate-800">
+      <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
+      <span>{{project.users.view.count}}</span>
+    </div>
+  </td>
+  <td class="px-6 py-4">
+    <div class="select-none flex items-center gap-2 text-slate-500">
+      <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
+      <span>{{project.created_at|date:"j.n.Y "}}</span>
+    </div>
+  </td>
+  <td class="px-6 py-4">
+    <div class="flex items-center justify-end gap-3">
+      <a href='{% url 'core:project_overview' project.internal_id %}' class="select-none flex items-center gap-2 px-4 py-1.5 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 cursor-pointer whitespace-nowrap">
+        <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
+        <span class="text-xs font-semibold">Szenarienvergleich</span>
+      </a>
+        {% include "core/partials/project_ellipsis_dropdown.html" with key='row' project=project %}
+    </div>
+  </td>
+</tr>

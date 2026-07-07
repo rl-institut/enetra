@@ -9,7 +9,7 @@
   <td
 
     class="px-6 py-4">
-    <a href="#" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
+    <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
   </td>
   <td
       class="px-6 py-4">
@@ -34,20 +34,7 @@
         <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Ergebnisse</span>
       </button>
-      <div class="relative" x-data="{ open: false }">
-        <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
-          <i data-lucide="more-vertical" class="w-4 h-4"></i>
-        </button>
-        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-          <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-            <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-          </button>
-          <hr class="border-slate-200" />
-          <button class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
-            <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Projekt löschen
-          </button>
-        </div>
-      </div>
+      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='row' %}
     </div>
   </td>
 </tr>

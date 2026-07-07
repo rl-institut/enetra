@@ -1,0 +1,13 @@
+{% load static %}
+    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
+      <a href="{% url 'core:landing_page' %}">
+        <img src='{% static "img/enetra-logo.svg" %}' alt="Enetra" class="h-5 w-32 object-contain" />
+      </a>
+      <nav class="flex gap-6 items-center">
+        <a href="{% url "core:projects" %}" class="text-sm font-semibold text-slate-800">Projekte</a>
+        <div class="flex gap-2 items-center">
+          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
+          <a href="{% url "core:einstellungen" %}" class="text-sm text-slate-800">Mein Konto</a>
+        </div>
+      </nav>
+    </header>
