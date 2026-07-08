@@ -135,8 +135,17 @@ class GeoJSONWidget(forms.Textarea):
 
 class InternalIDModelChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, **kwargs):
-        kwargs.setdefault("to_field_name", "internal_id")
+        # ForeignKey.formfield() always passes to_field_name="id".
+        # Needs hard overwrite
+        kwargs["to_field_name"] = "internal_id"
         super().__init__(queryset, **kwargs)
+
+    def prepare_value(self, value):
+        # ModelForm initial data holds the related object's pk,
+        # while the choices are keyed by internal_id
+        if isinstance(value, int):
+            value = self.queryset.filter(pk=value).values_list("internal_id", flat=True).first()
+        return super().prepare_value(value)
 
 
 ALLOWED_UPLOAD_SUFFIXES = [".csv", ".xlsx"]

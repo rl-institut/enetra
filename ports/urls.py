@@ -51,6 +51,11 @@ urlpatterns = [
         name="details",
     ),
     path(
+        "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        views.api_load_template,
+        name="api_load_template",
+    ),
+    path(
         "debug/switch-user/<str:username>/",
         views.debug_switch_user,
         name="debug_switch_user",

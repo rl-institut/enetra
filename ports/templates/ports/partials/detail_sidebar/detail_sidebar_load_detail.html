@@ -64,9 +64,24 @@
             class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
         </c-input>
         <c-field-errors :field="form.template" />
-      <c-input type='file' x-data=""
+        <c-input type='file' x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Datei Hochladen">
         </c-input>
+        <c-expand.index >
+          <c-slot name='title'>
+            Plot der ausgewählten Zeitreihe
+          </c-slot>
+          <div id="load_template_container"
+            x-data='{
+              data_url :null,
+              template_url : {
+            {% for template in form.template.field.queryset %}
+            "{{template.internal_id}}": "{% url "ports:api_load_template" scenario.internal_id template.internal_id %}",{% endfor %} } } '
+              class="w-full" x-effect="loadPlot(template_url[selectedTemplate], $refs.plot)"
+          >
+              <div x-ref="plot" class="h-64 w-full"></div>
+          </div>
+        </c-expand.index>
 
         <div class="flex items-center gap-[8px] text-[12px] text-[#94a3b8]">
           <div class="flex-1 h-px bg-[#e2e8f0]"></div>
@@ -98,7 +113,7 @@
           <div id="templateError"></div>
       </div>
 
-<div class="flex flex-col gap-[8px]">
+    <div class="flex flex-col gap-[8px]">
           <div>
             <label class="font-semibold text-[14px] text-[#1e293b]">Multiplikator</label>
             <c-field-required :field="form.factor" />
@@ -133,7 +148,7 @@
       <div
           x-data='{templates : {
           {% for template in form.template.field.queryset %}
-          "{{template.id}}": {
+          "{{template.internal_id}}": {
           1: {{template.get_yearly_average|unlocalize}},
           2: {{template.get_daily_average|unlocalize}},
           3: {{template.get_hourly_average|unlocalize}},

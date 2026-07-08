@@ -194,7 +194,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_id": str(self.load.internal_id),
             "name": "Updated Load",
             "factor": "2.0",
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -273,7 +273,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": str(self.load.internal_id),
             "internal_id": str(self.load.internal_id),
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
             "factor": "not-a-float",
         }
         response = self.client.post(url, data)
@@ -294,7 +294,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_ids": internal_ids,
             "description": "Bulk updated",
             "factor": "3.5",
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -616,7 +616,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_id": str(self.load.internal_id),
                 "name": "TAMPERED_BY_USER_B",
                 "factor": "9.9",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())
@@ -639,7 +639,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "name": self.load.name,
                 "description": "Owner set description",
                 "factor": "1.0",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertNotIn(b"not allowed", response.content.lower())
@@ -661,7 +661,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_ids": str(self.load.internal_id),
                 "description": "TAMPERED_MULTI_BY_USER_B",
                 "factor": "9.9",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())

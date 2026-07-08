@@ -22,6 +22,7 @@ from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseNotAllowed
+from django.http import JsonResponse
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -929,6 +930,28 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     errors = [e for field_errors in form.errors.values() for e in field_errors]
     response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
     return retargetForFailure(response)
+
+
+def api_load_template(request, scenario_internal_id: UUID, internal_id: UUID):
+    """Return a LoadTemplate as JSON. Only accessible to the template's manager."""
+    if not request.user.is_authenticated:
+        return HttpResponse(b"You need to be logged in to use this function", status=401)
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    template = get_object_or_404(LoadTemplate, scenario=scenario, internal_id=internal_id)
+    if request.user != template.manager and not request.user.is_superuser:
+        return HttpResponseForbidden(b"You are not authorized for this function")
+
+    data = {
+        "internal_id": str(template.internal_id),
+        "scenario_internal_id": str(scenario.internal_id),
+        "name": template.name,
+        "description": template.description,
+        "timeseries": template.timeseries,
+        "spec_load": template.spec_load,
+        "created_at": template.created_at.isoformat(),
+        "updated_at": template.updated_at.isoformat(),
+    }
+    return JsonResponse(data)
 
 
 # Create your views here.
