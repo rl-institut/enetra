@@ -4,6 +4,7 @@ import traceback
 from collections.abc import Iterable
 from datetime import datetime
 from datetime import timedelta
+from itertools import chain
 from typing import Literal
 from uuid import UUID
 from uuid import uuid4
@@ -12,6 +13,7 @@ import numpy as np
 from django.apps.registry import apps
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import ForeignKey
 from django.db.models import ManyToManyField
 from django.db.models import Q
@@ -104,6 +106,9 @@ def has_area_authorization_from_uuids(
         area_uuids = uuids
     else:
         instances = model.objects.filter(scenario=scenario, internal_id__in=uuids)
+        # Not all instances where found. Return save state of missing permission
+        if len(instances) != len(uuids):
+            return False
         area_uuids = get_related_model_values(instances, Area, "internal_id")
     areas = Area.objects.filter(scenario=scenario, internal_id__in=area_uuids).exclude(manager=user)
     non_managed_areas_internal_ids = areas.values_list("internal_id", flat=True)
@@ -577,7 +582,7 @@ class DetailsView(View):
             templates = LoadTemplate.objects.filter(
                 manager=self.request.user, scenario=self.scenario
             )
-            if instance.template:
+            if instance and instance.template:
                 templates = LoadTemplate.objects.filter(
                     Q(manager=self.request.user, scenario=self.scenario)
                     | Q(id=instance.template_id)
@@ -704,12 +709,14 @@ class DetailsView(View):
             self.context["createItemCallback"] = "this.click()"
             self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
         elif self.Model == Load or issubclass(self.Model, ElectricComponent):
+            if self.Model == Load:
+                self.context["upload_form"] = LoadTemplateUploadForm()
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
             # Check permissions for creation for all areas that are not managed by the request user
             has_permission = has_area_authorization_from_uuids(
-                area_internal_ids, request.user, "details", scenario=self.scenario, model=self.Model
+                area_internal_ids, request.user, "details", scenario=self.scenario, model=Area
             )
             if not has_permission:
                 return HttpResponse(
@@ -799,6 +806,26 @@ class DetailsView(View):
             form = self.Form(data=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
+        elif self.Model == Load:
+            self.context["upload_form"] = LoadTemplateUploadForm()
+            merged_data = model_to_dict_w_internal_id(self.instances[0])
+            for x in self.instances:
+                data = model_to_dict_w_internal_id(x)
+                for key, value in data.items():
+                    if merged_data.get(key) != value and key in merged_data:
+                        del merged_data[key]
+            self.context["area_internal_ids"] = ",".join(
+                str(y)
+                for y in (
+                    Area.objects.filter(
+                        id__in=[x.area_id for x in self.context["instances"]]
+                    ).values_list("internal_id", flat=True)
+                )
+            )
+
+            form = self.Form(data=merged_data)
+            self.context["form"] = form
+            return self.details_render(self.request, self.template, self.context)
 
         raise NotImplementedError(f"Multi Get not implemented for {self.Model.__name__}")
 
@@ -830,6 +857,8 @@ class DetailsView(View):
             traceback.print_exc()
 
         if self.Model == Load or issubclass(self.Model, ElectricComponent):
+            if self.Model == Load:
+                self.context["upload_form"] = LoadTemplateUploadForm()
             # Multi post request for Load needs references to areas
             self.context["area_internal_ids"] = ",".join(
                 str(y)
@@ -868,16 +897,17 @@ class DetailsView(View):
             if form.is_valid():
                 instance = form.save()
                 self.context["item"] = form.save()
-                # refresh the form, with the newly created instance.
-                # For Load forms this adjusts the selectable LoadTemplates
-                form = self.adjust_form(instance)(data=request.POST, instance=instance)
-                self.context["form"] = form
                 group = Group.objects.get(name=self.scenario.group_name())
                 if self.Model == Area:
                     if form.cleaned_data.get("is_public"):
                         assign_perm("details", group, form.instance)
                     else:
                         remove_perm("details", group, form.instance)
+                elif self.Model == Load:
+                    # refresh the form, with the newly created instance.
+                    # For Load forms this adjusts the selectable LoadTemplates
+                    form = self.adjust_form(instance)(data=request.POST, instance=instance)
+                    self.context["form"] = form
 
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
@@ -899,8 +929,22 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     if not request.user.is_authenticated:
         return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    internal_load_id = request.GET.get("internal_id")
-    load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
+
+    loads = None
+    if internal_load_id := request.GET.get("internal_id"):
+        load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
+        authorized_load = has_authorization(load, request.user, "details")
+    else:
+        internal_load_ids = request.POST.get("internal_ids").split(",")
+        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids)
+        # Check authorization for all requested loads
+        authorized_load = True
+        for load in loads:
+            authorized_load = authorized_load and has_authorization(load, request.user, "details")
+        # Raise 404 if a single load is missing
+        if len(loads) != len(internal_load_ids):
+            raise Http404("Item does not exist")
+        load = loads[0]
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -908,14 +952,31 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    authorized = has_authorization(scenario, request.user, "view")
-    if not authorized:
+    authorized_scenario = has_authorization(scenario, request.user, "view")
+    if not (authorized_load and authorized_scenario):
         response = HttpResponseForbidden(b"You are not authorized for this function")
         return retargetForFailure(response)
 
     form = LoadTemplateUploadForm(request.POST, request.FILES)
     if form.is_valid():
-        form.save(scenario, load, request.user)
+        load_template = form.save(scenario, load, request.user)
+        if loads:
+            updated = []
+            for load in loads:
+                load.template = load_template
+                updated.append(load)
+            Load.objects.bulk_update(updated, fields=["template"])
+            return redirect(
+                reverse(
+                    "ports:details",
+                    kwargs={
+                        "scenario_internal_id": scenario_internal_id,
+                        "model": model,
+                    },
+                )
+                + f"?internal_ids={request.POST.get('internal_ids')}"
+            )
+
         return redirect(
             reverse(
                 "ports:details",
@@ -992,6 +1053,49 @@ def testview(request: HttpRequest):
         }
     }
     return HttpResponse(json.dumps(data), content_type="application/json")
+
+
+# from /django/forms/models.py
+def model_to_dict_w_internal_id(instance, fields=None, exclude=None):
+    """Patches the model_to_dict function to return internal_ids instead of ids
+    Return a dict containing the data in ``instance`` suitable for passing as
+    a Form's ``initial`` keyword argument.
+
+    ``fields`` is an optional list of field names. If provided, return only the
+    named.
+
+    ``exclude`` is an optional list of field names. If provided, exclude the
+    named from the returned dict, even if they are listed in the ``fields``
+    argument.
+    """
+    opts = instance._meta
+    data = {}
+    for f in chain(opts.concrete_fields, opts.private_fields, opts.many_to_many):
+        if not getattr(f, "editable", False):
+            continue
+        if fields is not None and f.name not in fields:
+            continue
+        if exclude and f.name in exclude:
+            continue
+
+        value = f.value_from_object(instance)
+        if f.is_relation and value is not None and has_internal_id(f.related_model):
+            if f.many_to_many:
+                # value_from_object returns the related instances
+                value = [related.internal_id for related in value]
+            else:
+                related_instance = getattr(instance, f.name)
+                value = related_instance.internal_id if related_instance else None
+        data[f.name] = value
+    return data
+
+
+def has_internal_id(model) -> bool:
+    try:
+        model._meta.get_field("internal_id")
+    except FieldDoesNotExist:
+        return False
+    return True
 
 
 def serialize_string_default(
