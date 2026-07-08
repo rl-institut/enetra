@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from django.conf import settings
@@ -5,7 +6,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
-from ports.util import scenarios_and_areas_from_file
+from ports.util import process_geojson_dict_to_scenarios
 
 
 class Command(BaseCommand):
@@ -56,7 +57,11 @@ class Command(BaseCommand):
             if not regions_file or not buildings_file:
                 continue
             count += 1
-            scenarios_and_areas_from_file(regions_file, buildings_file, user)
+            with open(regions_file) as f:
+                regions = json.load(f)
+            with open(buildings_file) as f:
+                buildings = json.load(f)
+            process_geojson_dict_to_scenarios(regions, buildings, user)
         if count > 0:
             self.stdout.write(self.style.SUCCESS(f"Done. {count} folder(s) imported."))
         else:

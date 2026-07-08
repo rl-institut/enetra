@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from django.contrib import admin
@@ -11,7 +12,7 @@ from .forms import ScenarioAreasForm
 from .models import ElectricComponent
 from .models import Scenario
 from .models import ScenarioItem
-from .util import scenarios_and_areas_from_file
+from .util import process_geojson_dict_to_scenarios
 
 # Register your models here.
 # class ScenarioAdmin(ModelAdmin, GuardedModelAdmin):
@@ -68,8 +69,11 @@ class PortRegionsUploadView(UnfoldModelAdminViewMixin, TemplateView):
         if form.is_valid():
             region_file = form.cleaned_data["geojson_ports_regions_file"]
             buildings_file = form.cleaned_data["geojson_ports_buildings_file"]
-            new_scenarios, areas = scenarios_and_areas_from_file(
-                region_file, buildings_file, request.user
+            regions = json.loads(region_file.read())
+            buildings = json.loads(buildings_file.read())
+
+            new_scenarios, areas = process_geojson_dict_to_scenarios(
+                regions, buildings, request.user
             )
             return HttpResponse(
                 f"Success: created {len(areas)} Areas and {len(new_scenarios)} Scenarios"

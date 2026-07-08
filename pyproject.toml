@@ -53,7 +53,6 @@ dependencies = [
     "gunicorn>=23.0.0",
     "django-widget-tweaks>=1.5.0",
     "whitenoise>=6.12.0",
-    "shapely>=2.1.2",
 ]
 [dependency-groups]
 dev = [
