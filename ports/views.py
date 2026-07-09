@@ -106,7 +106,7 @@ def has_area_authorization_from_uuids(
         area_uuids = uuids
     else:
         instances = model.objects.filter(scenario=scenario, internal_id__in=uuids)
-        # Not all instances where found. Return save state of missing permission
+        # Not all instances were found. Return save state of missing permission
         if len(instances) != len(uuids):
             return False
         area_uuids = get_related_model_values(instances, Area, "internal_id")
@@ -931,12 +931,14 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
 
     loads = None
+    # check if single or multi upload
     if internal_load_id := request.GET.get("internal_id"):
+        # single upload
         load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
         authorized_load = has_authorization(load, request.user, "details")
-    else:
-        internal_load_ids = request.POST.get("internal_ids").split(",")
-        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids)
+    elif internal_load_ids := request.POST.get("internal_ids"):
+        # multi upload
+        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids.split(","))
         # Check authorization for all requested loads
         authorized_load = True
         for load in loads:
@@ -945,6 +947,9 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         if len(loads) != len(internal_load_ids):
             raise Http404("Item does not exist")
         load = loads[0]
+    else:
+        #  missing internal_id
+        return HttpResponseBadRequest("Missing load internal_id")
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -1015,7 +1020,6 @@ def api_load_template(request, scenario_internal_id: UUID, internal_id: UUID):
     return JsonResponse(data)
 
 
-# Create your views here.
 def testview(request: HttpRequest):
     # Example with some hooks
     logger.info(request.GET.get("scenario"))
