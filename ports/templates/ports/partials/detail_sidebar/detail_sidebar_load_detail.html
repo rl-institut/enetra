@@ -187,7 +187,6 @@
             <input
               type="text"
               @change='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
-              @input='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
               x-bind:value='templates[selectedTemplate][selectedDuration]*multiplicator'
               class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
             />
