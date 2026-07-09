@@ -579,16 +579,20 @@ class DetailsView(View):
     def adjust_form(self, instance):
         form_kwargs = {}
         if self.Model == Load:
-            templates = LoadTemplate.objects.filter(
-                manager=self.request.user, scenario=self.scenario
+            templates = self.get_loadtemplates_for_user(
+                self.request.user, self.scenario, self.instance
             )
-            if instance and instance.template:
-                templates = LoadTemplate.objects.filter(
-                    Q(manager=self.request.user, scenario=self.scenario)
-                    | Q(id=instance.template_id)
-                )
             form_kwargs = {"templates_queryset": templates}
         return self.Model.adjust_Form(self.Form, instance=instance, **form_kwargs)
+
+    @staticmethod
+    def get_loadtemplates_for_user(user: User, scenario: Scenario, instance: Load | None = None):
+        templates = LoadTemplate.objects.filter(manager=user, scenario=scenario)
+        if instance and instance.template:
+            templates = LoadTemplate.objects.filter(
+                Q(manager=user, scenario=scenario) | Q(id=instance.template_id)
+            )
+        return templates
 
     def get_template(self) -> str:
         suffix = ""
@@ -933,12 +937,15 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
     loads = None
     # check if single or multi upload
     if internal_load_id := request.GET.get("internal_id"):
+        multi = False
         # single upload
         load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
         authorized_load = has_authorization(load, request.user, "details")
-    elif internal_load_ids := request.POST.get("internal_ids"):
+    elif internal_load_ids_str := request.POST.get("internal_ids"):
+        internal_load_ids = internal_load_ids_str.split(",")
+        multi = True
         # multi upload
-        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids.split(","))
+        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids)
         # Check authorization for all requested loads
         authorized_load = True
         for load in loads:
@@ -962,9 +969,29 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         response = HttpResponseForbidden(b"You are not authorized for this function")
         return retargetForFailure(response)
 
-    form = LoadTemplateUploadForm(request.POST, request.FILES)
-    if form.is_valid():
-        load_template = form.save(scenario, load, request.user)
+    # Early return if file form is invalid
+    file_form = LoadTemplateUploadForm(request.POST, request.FILES)
+    if not file_form.is_valid():
+        errors = [e for field_errors in file_form.errors.values() for e in field_errors]
+        response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
+        return retargetForFailure(response)
+
+    # Save Loads so the current user input persists. Authorization is checked already
+    templates = DetailsView.get_loadtemplates_for_user(
+        request.user, scenario=scenario, instance=load
+    )
+    Form = ScenarioItemFormFactory(Load, multi=multi, scenario=scenario)
+    Form = Load.adjust_Form(Form, load, templates_queryset=templates)
+    Form.base_fields.pop("template")
+    # template is not required and will be set to the just uploaded file
+    load_form = Form(request.POST, instance=load) if not multi else Form(request.POST)
+    if load_form.is_valid():
+        load_form.save()
+
+    file_form = LoadTemplateUploadForm(request.POST, request.FILES)
+    if file_form.is_valid():
+        load.refresh_from_db()
+        load_template = file_form.save(scenario, load, request.user)
         if loads:
             updated = []
             for load in loads:
@@ -992,10 +1019,6 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
             )
             + f"?internal_id={internal_load_id}"
         )
-
-    errors = [e for field_errors in form.errors.values() for e in field_errors]
-    response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
-    return retargetForFailure(response)
 
 
 def api_load_template(request, scenario_internal_id: UUID, internal_id: UUID):
