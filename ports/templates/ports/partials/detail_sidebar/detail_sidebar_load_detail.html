@@ -29,7 +29,7 @@
 
 <details-sidebar-content>
   <div class="px-[24px] py-[24px]"
-      x-data="{selectedTemplate:null,
+      x-data="{selectedTemplate:'{{form.template.value}}',
                multiplicator: null,
       }"
     >
@@ -58,11 +58,14 @@
             <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
             <c-field-required :field="form.template" />
           </div>
-
-        <c-input :field=form.template x-data=""
+          <div
+            x-data
             @change="selectedTemplate=event.target.value"
-            class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
-        </c-input>
+            x-init="$('select', $el).select2({width: '100%' });"
+          >
+            {{form.template}}
+          </div>
+
         <c-field-errors :field="form.template" />
         <c-input type='file' x-data=""
           class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Datei Hochladen">

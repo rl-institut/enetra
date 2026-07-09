@@ -58,9 +58,9 @@
   {% comment %}
     Allow htmx injection via content. Useful for debugging /desinging htmx_components
   {% endcomment %}
-  {% with sidebar_open=content|yesno:"True,False" %}
+  {% with sidebar_open=sidebar_content|yesno:"True,False" %}
   <c-detail-sidebar.index :open=sidebar_open id='detailSidebar' class='z-[9998]' class='bg-white'>
-    {{content}}
+    {{sidebar_content}}
   </c-detail-sidebar>
   {% endwith %}
 

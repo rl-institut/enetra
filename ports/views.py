@@ -510,7 +510,7 @@ class DetailsView(View):
                 using=using,
             )
             context = get_home_context(user=request.user, scenario=self.scenario)
-            context["content"] = content
+            context["sidebar_content"] = content
         return render(
             request,
             "ports/tool_base.html",
