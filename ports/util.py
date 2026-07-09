@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 
 from django.contrib.auth.models import User
@@ -5,6 +6,8 @@ from django.contrib.gis.geos import Polygon
 
 from .models import Area
 from .models import Scenario
+
+logger = logging.getLogger(__name__)
 
 
 def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User):
@@ -40,9 +43,9 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
         if port_name is None:
             continue
         if port_name in scenario_lut:
-            print(f"{port_name} was processed already and is skipped.")
+            logger.warning("%s was processed already and is skipped.", port_name)
             continue
-        print(port_name)
+        logger.info(port_name)
         scenario = Scenario(name=port_name, geom=geom, manager=user)
         scenario_lut[port_name] = scenario
 

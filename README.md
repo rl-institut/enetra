@@ -137,6 +137,8 @@ uvx ruff check filepath [--fix]
     7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
+    # optional: password for the auto-created 'data' superuser (see step 7.3)
+    DATA_USER_PASSWORD=SomePassword
      ````
 
     7. Set up django (inside the virtual environment)

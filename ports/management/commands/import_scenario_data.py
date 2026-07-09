@@ -20,7 +20,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--dir",
-            default=None,
+            default=settings.BASE_DIR / "data",
             help="Directory to scan (default: BASE_DIR/data).",
         )
 
@@ -32,7 +32,7 @@ class Command(BaseCommand):
                 f"User '{options['username']}' does not exist."
             ) from User.DoesNotExist
 
-        data_dir = Path(options["dir"]) if options["dir"] else settings.BASE_DIR / "data"
+        data_dir = Path(options["dir"])
         if not data_dir.exists():
             raise CommandError(f"Directory does not exist: {data_dir}")
 
@@ -51,10 +51,12 @@ class Command(BaseCommand):
             return
         count = 0
         for folder in folders:
+            # get regions file and buildings file
             files = list(folder.iterdir())
             regions_file = next((f for f in files if "regions" in f.name.lower()), None)
             buildings_file = next((f for f in files if "buildings" in f.name.lower()), None)
             if not regions_file or not buildings_file:
+                # either file does not exist -> skip folder
                 continue
             count += 1
             with open(regions_file) as f:
