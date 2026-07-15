@@ -1,10 +1,14 @@
 import datetime
 
 import pytz
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db import transaction
 from django.db.models.functions import Now
+from django.utils import timezone
 
 
 # Create your models here.
@@ -22,6 +26,13 @@ class Task(models.Model):
     # on_delete=CASCADE is the behaviour of GenericForeignKey.
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
+
+
+# Maybe move to choices.py
+class Role(models.TextChoices):
+    MANAGER = "manager", "Ersteller"
+    EDITOR = "editor", "Bearbeiter"
+    OBSERVER = "observer", "Beobachter"
 
 
 class Progress(models.Model):
@@ -75,3 +86,54 @@ class Progress(models.Model):
         self.created = Now()
         self.errors = []
         self.save()
+
+
+class InviteError(Exception):
+    """Base class for errors when redeeming an invite token."""
+
+
+class InviteEmailMismatchError(InviteError):
+    def __init__(self):
+        super().__init__("Email from invite is not identical with this user")
+
+
+class InviteExpiredError(InviteError):
+    def __init__(self):
+        super().__init__("Token expired")
+
+
+class InviteUsedUpError(InviteError):
+    def __init__(self):
+        super().__init__("Token is used up")
+
+
+# Used to track invite status. this allows single use tokens for login or accepting of
+# invites.
+# Project User Management is supposed to show invite status. This is not possible
+# via static tokenization of user and project
+# since the user might not exist yet we store the email in the payload
+class Invite(models.Model):
+    token = models.CharField(max_length=64, unique=True)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    expires_at = models.DateTimeField(null=True)
+    max_uses = models.PositiveIntegerField(default=1)
+    uses = models.PositiveIntegerField(default=0)
+    payload = models.JSONField(default=dict, null=True)
+
+    @classmethod
+    @transaction.atomic
+    def add_user_to_group_from_token(cls, token, user) -> None:
+        """Add the user or raise an InviteError"""
+        # Lock the row during the transaction so uses is properly checked and incremented
+        invite = Invite.objects.select_for_update().get(token=token)
+        if user.email != invite.payload["email"]:
+            raise InviteEmailMismatchError
+        if invite.expires_at and invite.expires_at < timezone.make_aware(datetime.datetime.now()):
+            raise InviteExpiredError
+        if invite.uses >= invite.max_uses:
+            raise InviteUsedUpError
+        invite.uses += 1
+        # TODO: Different permission levels on project, e.g. Roles?
+        invite.group.user_set.add(user)
+        invite.save()

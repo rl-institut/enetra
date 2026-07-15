@@ -67,8 +67,13 @@ urlpatterns = [
         name="projects",
     ),
     path(
-        "user_rechte/",
-        lambda x: render(x, template_name="core/user-rechte.html"),
+        "invite/",
+        views.handle_invite,
+        name="invite",
+    ),
+    path(
+        "user_rechte/<uuid:project_internal_id>",
+        views.user_rights_view,
         name="user_rechte",
     ),
     path(

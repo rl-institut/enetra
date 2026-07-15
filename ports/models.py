@@ -62,21 +62,10 @@ class Project(models.Model):
     @property
     def users(self) -> "dict[str, models.QuerySet[User]]":
         if not hasattr(self, "_users_cache"):
-            from django.contrib.contenttypes.models import ContentType
-            from guardian.utils import get_group_obj_perms_model
+            print("getting users")
+            from .util import prefetch_projects_users
 
-            GroupObjectPermission = get_group_obj_perms_model()
-            perms = (
-                GroupObjectPermission.objects.filter(
-                    content_type=ContentType.objects.get_for_model(self.__class__),
-                    object_pk=self.pk,
-                )
-                .select_related("permission")
-                .prefetch_related("group__user_set")
-            )
-            self._users_cache = {
-                perm.permission.codename: perm.group.user_set.all() for perm in perms
-            }
+            prefetch_projects_users([self])
         return self._users_cache
 
     @atomic()

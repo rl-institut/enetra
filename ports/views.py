@@ -11,6 +11,7 @@ import numpy as np
 from django.apps.registry import apps
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.core import signing
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -32,7 +33,10 @@ from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import get_perms
 from guardian.shortcuts import remove_perm
+from guardian.utils import clean_orphan_obj_perms
 
+from core.models import Invite
+from core.views import ensure_project_rights
 from ports import models
 from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
@@ -864,6 +868,46 @@ def create_scenario(request, scenario_internal_id: UUID):
         context["success"] = success
 
     return render(request, "ports/partials/create_scenario.html", context)
+
+
+@ensure_project_rights
+def remove_project_user(request, project_internal_id: UUID, email, project: Project):
+    # only superusers and project managers can remove users for now
+    if not request.user.is_superuser and project.manager != request.user:
+        return HttpResponseForbidden("Not Allowed")
+    group = Group.objects.get(name=project.group_name())
+    user = get_object_or_404(User, email=email)
+    remove_user_content(project, user)
+    group.user_set.remove(user)
+    # clean up stale permissions, e.g. user permission or group permission
+    # on deleted items
+    clean_orphan_obj_perms()
+    return JsonResponse({"status": "success", "message": "User removed"}, status=200)
+
+
+def remove_user_content(project: Project, user: User):
+    port_models = apps.get_app_config("ports").get_models()
+    # NOTE: LoadTemplate deletion cascades Load Deletion
+    # TODO: If ChangedItem or DeletedItem should ever store sensitive information they need to be deleted too
+    for Model in port_models:
+        if not issubclass(Model, ScenarioItem):
+            continue
+        Model.objects.filter(scenario__project=project, manager=user).delete()
+
+
+def remove_project_invite(request, signed_invite_id: str):
+    invite_id = int(signing.loads(signed_invite_id, salt="invite_id"))
+    # assert permission
+    invite = Invite.objects.get(id=invite_id)
+
+    # for now only project manager and superusers see delete links in
+    # project user management
+    internal_id = invite.payload["project_internal_id"]
+    project = Project.objects.get(internal_id=internal_id)
+    if not request.user.is_superuser and request.user != project.manager:
+        return HttpResponseForbidden("Not Allowed")
+    invite.delete()
+    return JsonResponse({"status": "success", "message": "Invite removed"}, status=200)
 
 
 class ApiView(View):

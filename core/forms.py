@@ -4,6 +4,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
+from core.models import Role
+
 
 class SignUpForm(UserCreationForm):
     first_name = forms.CharField(label=_("Vorname (optional)"), max_length=64, required=False)
@@ -47,6 +49,25 @@ class SignUpForm(UserCreationForm):
         if User.objects.filter(username=email.lower()).exists():
             raise forms.ValidationError(email.lower() + _(" existiert bereits."))
         return email
+
+
+class InviteForm(forms.Form):
+    email = forms.EmailField(
+        label="E-Mail",
+        max_length=254,
+        required=True,
+    )
+    role = forms.ChoiceField(
+        choices=[
+            (s.value, s.label)
+            for s in [
+                Role.EDITOR,
+                Role.OBSERVER,
+            ]
+        ],
+        initial=Role.EDITOR,
+        required=True,
+    )
 
 
 class AuthForm(AuthenticationForm):

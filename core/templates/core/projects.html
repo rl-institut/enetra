@@ -3,6 +3,10 @@
 {% block mainContent %}
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
+
+      {% if debug %}
+      {% include 'ports/partials/user_debug_buttons.html' %}
+      {% endif %}
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
 
         <!-- Page Header -->

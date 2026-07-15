@@ -14,7 +14,7 @@
       <div x-show="status=='success'">Dupliziert</div>
       <div x-show="status=='error'">Fehlgeschlagen</div>
     </c-api-button>
-    <a href='{% url "core:user_rechte" %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+    <a href='{% url "core:user_rechte" project_internal_id=project.internal_id %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
       <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Nutzer verwalten
     </a>
     <button

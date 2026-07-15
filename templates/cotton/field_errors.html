@@ -1,5 +1,6 @@
+<c-vars class field></c-vars>
 {% if field.errors %}
-<c-alert variant="danger" :icon=False >
+<c-alert class=class attrs=attrs variant="danger" :icon=False >
 <c-slot name="title">Fehler</c-slot>
     {% for error in field.errors %}
     <span>{{error}}</span>

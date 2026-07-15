@@ -474,6 +474,9 @@
   .mb-0 {
     margin-bottom: calc(var(--spacing) * 0);
   }
+  .mb-0\! {
+    margin-bottom: calc(var(--spacing) * 0) !important;
+  }
   .mb-1 {
     margin-bottom: calc(var(--spacing) * 1);
   }
@@ -803,6 +806,9 @@
   }
   .w-\[min-content\] {
     width: min-content;
+  }
+  .w-auto\! {
+    width: auto !important;
   }
   .w-fit {
     width: fit-content;

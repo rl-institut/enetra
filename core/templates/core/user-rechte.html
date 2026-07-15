@@ -1,66 +1,46 @@
+{% extends "core/base_management.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nutzer – Westhafen – Enetra</title>
-    {% include "core/imports.html" %}
-  </head>
-  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
-      <a href="{% url 'core:landing_page' %}">
-        <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
-      </a>
-      <nav class="flex gap-6 items-center">
-        <span class="text-sm font-semibold text-slate-800">Projekte</span>
-        <div class="flex gap-2 items-center">
-          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
-          <span class="text-sm text-slate-800">Mein Konto</span>
-        </div>
-      </nav>
-    </header>
-
+{% block mainContent %}
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
+      {% if debug %}
+        {% include 'ports/partials/user_debug_buttons.html' %}
+      {% endif %}
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
 
         <!-- Page Header -->
         <div class="select-none flex flex-col gap-2">
           <h1 class="text-[40px] font-bold leading-normal text-slate-800">Nutzer</h1>
-          <p class="text-base text-slate-500">Zugriffsrechte für das Projekt Westhafen</p>
+          <p class="text-base text-slate-500">Zugriffsrechte für das Projekt <a href='{% url 'core:project_overview' project.internal_id %}' title="Zurück zur Projekt-Ubersicht">{{project.name}}</a></p>
         </div>
 
         <!-- Invite + Table -->
         <div class="border-t-2 border-slate-200 flex flex-col gap-6 pt-8">
-
-          <!-- Invite row -->
-          <div class="flex gap-4 items-center">
-            <!-- Email input -->
-            <div class="w-80 h-10 bg-white px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4">
-              <i data-lucide="mail" class="w-4 h-4 text-slate-500 shrink-0"></i>
-              <input type="email" placeholder="E-Mail-Adresse eingeben..." class="text-sm text-slate-500 placeholder:text-slate-500 bg-transparent outline-none w-full" />
-            </div>
-            <!-- Role dropdown -->
-            <div class="relative" x-data="{ open: false, selected: 'Bearbeiter' }">
-              <button @click="open = !open" class="select-none h-10 bg-white hover:bg-slate-50 transition-colors duration-150 px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4 cursor-pointer">
-                <span class="text-sm font-semibold text-slate-800" x-text="selected"></span>
-                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-800"></i>
-              </button>
-              <div x-show="open" @click.outside="open = false" class="absolute left-0 top-full mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-slate-200 z-10 min-w-full py-1">
-                <button @click="selected = 'Bearbeiter'; open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150">Bearbeiter</button>
-                <button @click="selected = 'Betrachter'; open = false" class="select-none w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150">Betrachter</button>
+          {% if request.user.is_superuser or request.user == project.manager %}
+          <form method="post">
+            {% csrf_token %}
+            <!-- Invite row -->
+            <div>
+            <div class="flex gap-4 items-center">
+              <!-- Email input -->
+              <div class="w-80 h-10 bg-white px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4">
+                <i data-lucide="mail" class="w-4 h-4 text-slate-500 shrink-0"></i>
+                <c-input :field=form.email placeholder="E-Mail-Adresse eingeben..." class="text-sm text-slate-500 placeholder:text-slate-500 bg-transparent outline-none w-full" />
               </div>
+                <c-input :field=form.role containerClass="w-auto!" classButton="" />
+              <!-- Invite button -->
+              <button type='submit' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+                <i data-lucide="user-plus" class="w-4 h-4 text-white"></i>
+                <span class="text-sm font-semibold text-white">Einladen</span>
+              </button>
             </div>
-            <!-- Invite button -->
-            <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
-              <i data-lucide="user-plus" class="w-4 h-4 text-white"></i>
-              <span class="text-sm font-semibold text-white">Einladen</span>
-            </button>
-          </div>
-
+              {{form.non_field_errors}}
+              <c-field-errors class='mb-0! ' :field=form.email />
+            </div>
+          </form>
+          {% else %}
+          Du hast keine Befugnis Personen einzuladen
+          {% endif %}
           <!-- User table -->
           <div class="bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200">
             <table class="w-full text-sm text-left border-collapse">
@@ -74,6 +54,16 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
+              {% for user in users.manager %}
+              {% include "core/partials/user_row.html" with user=user role='manager' active=user.active delete_url=delete_urls|get_item:user %}
+              {% endfor %}
+              {% for user in users.editor %}
+                {% include "core/partials/user_row.html" with user=user role='editor' active=user.active delete_url=delete_urls|get_item:user %}
+              {% endfor %}
+              {% for user in users.observer %}
+                {% include "core/partials/user_row.html" with user=user role='observer' active=user.active delete_url=delete_urls|get_item:user %}
+              {% endfor %}
+                    {% comment %}
 
                 <!-- Anna Schmidt – Eigentümer -->
                 <tr class="hover:bg-slate-50 transition-colors duration-100">
@@ -138,7 +128,7 @@
                   </td>
                 </tr>
 
-                <!-- Thomas Koch – Betrachter -->
+                <!-- Thomas Koch – Betrachten -->
                 <tr class="hover:bg-slate-50 transition-colors duration-100">
                   <td class="px-6 py-4">
                     <div class="select-none flex items-center gap-3">
@@ -184,6 +174,7 @@
                   </td>
                 </tr>
 
+                    {% endcomment %}
               </tbody>
             </table>
           </div>
@@ -192,17 +183,4 @@
 
       </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
-      <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-4 object-contain" />
-      <nav class="flex gap-6 items-center">
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
-      </nav>
-    </footer>
-
-    <script>lucide.createIcons();</script>
-  </body>
-</html>
+{% endblock mainContent %}

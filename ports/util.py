@@ -1,6 +1,7 @@
 import json
 import tempfile
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -10,7 +11,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.gdal import DataSource
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db.models import Q
-from django.db.models import QuerySet
 from django.db.transaction import atomic
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
@@ -207,7 +207,7 @@ def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix="
     return new_scenario
 
 
-def prefetch_projects_users(projects: QuerySet[Project]) -> None:
+def prefetch_projects_users(projects: Iterable[Project]) -> None:
     """Annotate projects with dictionary of user with some level of permission through a group
     Projects can access the users through project.users[permission_code]
     """

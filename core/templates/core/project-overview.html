@@ -24,9 +24,9 @@
               <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
               <span class="text-sm text-slate-500">Geändert: {{project.updated_at|date:"j.n.Y "}}</span>
             </div>
-            <a href="{% url 'core:user_rechte' %}" class="flex gap-2 items-center">
+            <a href="{% url 'core:user_rechte' project_internal_id=project.internal_id %}" class="flex gap-2 items-center">
               <c-icon.user_rights />
-              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
+              <span class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
             </a>
           </div>
         </div>
