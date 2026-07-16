@@ -58,10 +58,17 @@
             <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
             <c-field-required :field="form.template" />
           </div>
+          {% comment %}
+          select2 does not dispatch dom events but jquery events. therefore we need to create a
+          listener scoped to jquery land
+          {% endcomment %}
           <div
             x-data
-            @change="selectedTemplate=event.target.value"
-            x-init="$('select', $el).select2({width: '100%' });"
+            x-init="$('select', $el).select2({width: '100%' });
+            $('select', $el).on('change', (e)=>{
+            selectedTemplate=e.target.value
+            })
+            "
           >
             {{form.template}}
           </div>
