@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--username",
-            default="data",
+            default=settings.DATA_USER,
             help="Username to assign as manager of imported scenarios (default: data).",
         )
         parser.add_argument(

@@ -42,7 +42,7 @@ class Scenario(models.Model):
     )
 
     # Area of the scenario / Port region
-    geom = models.PolygonField(null=True, blank=True)
+    geom = models.PolygonField(default=None, null=True, blank=True)
 
     class Meta:
         permissions = (

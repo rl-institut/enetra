@@ -137,16 +137,24 @@ uvx ruff check filepath [--fix]
     7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
+    DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME
+    DJANGO_LOCAL_DEVELOPMENT=True
+    DJANGO_DEBUG=True
+    DJANGO_ADMIN_PASSWORD=SecretAdminPassword
+
+
+    DATA_USER=data
     # optional: password for the auto-created 'data' superuser (see step 7.3)
     DATA_USER_PASSWORD=SomePassword
      ````
 
     7. Set up django (inside the virtual environment)
-        1. Set up the database: `uv run manage.py migrate`
-        2. Create admin account: `uv run manage.py createsuperuser`
-        3. The migration automatically creates a `data` superuser used as the manager for imported scenario data.
-           Set `DATA_USER_PASSWORD` in `.env` to give it a real password; otherwise the account has an unusable
+        1. Create admin account: `uv run manage.py createsuperuser`
+        2. Setup a username and password for a user which scenarios are public using the .env variables.
+        `DATA_USER` for username (defaults to 'data') and `DATA_USER_PASSWORD` to give it a real password; otherwise the account has an unusable
            password and can only be managed via another superuser in the admin panel.
+         The user will be automatically created during the migration.
+        3. Set up the database: `uv run manage.py migrate`
 
     8. Import scenario seed data (optional)
 

@@ -56,14 +56,14 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
         if not feature.get("geometry"):
             continue
         rings = rings_from_feature(feature)
-        # Spit ring and holes
+        # Split ring and holes
         geom = Polygon(rings[0], *rings[1:], srid=4326)
         port_name = feature.get("properties", {}).get("inland_port")
         if port_name is None:
             continue
-        if port_name in scenario_lut:
+        try:
             found_scenario = scenario_lut[port_name]
-        else:
+        except KeyError:
             found_scenario = Scenario(name=port_name, manager=user)
             scenario_lut[port_name] = found_scenario
             missing_scenarios.append(found_scenario)
@@ -75,6 +75,12 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
                 scenario=found_scenario,
                 geom=geom,
             )
+        )
+    if missing_scenarios:
+        logger.warn(
+            "Some buildings had inland_port values not found in the regions file. "
+            "%s missing scenarios were created.",
+            len(missing_scenarios),
         )
     Scenario.objects.bulk_create(scenario_lut.values())
     Area.objects.bulk_create(areas)

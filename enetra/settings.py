@@ -38,6 +38,8 @@ env.read_env(str(BASE_DIR / ".env"))
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+DATA_USER = env.str("DATA_USER", default="data")
 # Password for the auto-created 'data' superuser (see ports migration 0018).
 # None → the account gets an unusable password.
 DATA_USER_PASSWORD = env("DATA_USER_PASSWORD", default=None)
