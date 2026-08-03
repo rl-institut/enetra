@@ -1,6 +1,5 @@
 import logging
 from collections import defaultdict
-from uuid import uuid4
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -113,8 +112,10 @@ def duplicate_project(project: Project):
     return new_project
 
 
-def transferGroupPermissions(scenario, new_scenario):
-    """Add all area permissions of the scenario to the new_scenario"""
+def transfer_group_permission(scenario, new_scenario):
+    """Add all area permissions of the scenario to the new_scenario.
+    The group stays the same, since its expected to be a scenario copy inside the same project.
+    """
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
     assert len(old_areas) == len(new_areas)
@@ -145,7 +146,6 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     """
     # Scenario internal_id must be unique. by changing the in memory internal_id
     # the deepcopy does not create a collision
-    scenario.internal_id = uuid4()
     new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
     new_scenario.name += suffix
     new_scenario.manager = user
@@ -156,7 +156,7 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
 def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     new_scenario = duplicate_scenario(scenario, user, suffix)
     # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
-    transferGroupPermissions(scenario, new_scenario)
+    transfer_group_permission(scenario, new_scenario)
 
     return new_scenario
 

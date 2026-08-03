@@ -27,6 +27,7 @@ from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
+from guardian.utils import get_group_obj_perms_model
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,9 @@ class Project(models.Model):
 
     @property
     def users(self) -> "dict[str, models.QuerySet[User]]":
+        """Get all users with some permission for the project as dictionary
+        with key of the permission.codename"""
         if not hasattr(self, "_users_cache"):
-            from django.contrib.contenttypes.models import ContentType
-            from guardian.utils import get_group_obj_perms_model
-
             GroupObjectPermission = get_group_obj_perms_model()
             perms = (
                 GroupObjectPermission.objects.filter(

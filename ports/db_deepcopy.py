@@ -27,6 +27,8 @@ def write_multi_dict(source: dict, keys: list, value):
     stem[keys[-1]] = value
 
 
+# Better type annotation for deepcopy which returns an instance of the
+# same type as the input instance
 ModelType = TypeVar("ModelType", bound=models.Model)
 
 
