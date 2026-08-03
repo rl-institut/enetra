@@ -27,6 +27,11 @@ def AreaItemFormFactory():
     )
 
 
+class ScenarioAreasForm(forms.Form):
+    geojson_ports_regions_file = forms.FileField(required=True)
+    geojson_ports_buildings_file = forms.FileField(required=True)
+
+
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements

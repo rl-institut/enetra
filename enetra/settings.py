@@ -16,6 +16,8 @@ from pathlib import Path
 import django_stubs_ext
 import environ
 from django.templatetags.static import static
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 
 django_stubs_ext.monkeypatch()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -36,6 +38,11 @@ env.read_env(str(BASE_DIR / ".env"))
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+DATA_USER = env.str("DATA_USER", default="data")
+# Password for the auto-created 'data' superuser (see ports migration 0018).
+# None → the account gets an unusable password.
+DATA_USER_PASSWORD = env("DATA_USER_PASSWORD", default=None)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 DJANGO_HOST_URL = env("DJANGO_HOST_URL", default="")
@@ -162,8 +169,28 @@ TEMPLATES = [
 UNFOLD = {
     "STYLES": [
         lambda request: static("unfold.css"),
+        lambda request: static("css/output.css"),
     ],
     "SCRIPTS": [],
+    "SIDEBAR": {
+        "show_search": False,
+        "command_search": False,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": _("Tools"),
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": _("Szenarien aus Geojson erstellen"),
+                        "icon": "build",
+                        "link": reverse_lazy("admin:scenario_from_geojson"),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 
@@ -258,7 +285,7 @@ LOGGING = {
             "level": env.str("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
-        "django-ports": {
+        "ports": {
             "handlers": ["console", "file"],
             "level": env.str("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,

@@ -50,7 +50,7 @@ from .models import LoadTemplate
 from .models import Scenario
 from .models import ScenarioItem
 
-logger = logging.getLogger("django-ports")
+logger = logging.getLogger(__name__)
 
 
 def get_related_model_values(

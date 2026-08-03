@@ -137,11 +137,47 @@ uvx ruff check filepath [--fix]
     7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
+    DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME
+    DJANGO_LOCAL_DEVELOPMENT=True
+    DJANGO_DEBUG=True
+    DJANGO_ADMIN_PASSWORD=SecretAdminPassword
+
+
+    DATA_USER=data
+    # optional: password for the auto-created 'data' superuser (see step 7.3)
+    DATA_USER_PASSWORD=SomePassword
      ````
 
     7. Set up django (inside the virtual environment)
-        1. Set up the database: `uv run manage.py migrate`
-        2. Create admin account: `uv run manage.py createsuperuser`
+        1. Create admin account: `uv run manage.py createsuperuser`
+        2. Setup a username and password for a user which scenarios are public using the .env variables.
+        `DATA_USER` for username (defaults to 'data') and `DATA_USER_PASSWORD` to give it a real password; otherwise the account has an unusable
+           password and can only be managed via another superuser in the admin panel.
+         The user will be automatically created during the migration.
+        3. Set up the database: `uv run manage.py migrate`
+
+    8. Import scenario seed data (optional)
+
+       Place GeoJSON data in subdirectories of `data/` whose names start with `scenario_area_data_`.
+       Each directory must contain exactly one file with `regions` in its name and one with `buildings`:
+       ```
+       data/
+         scenario_area_data_hamburg/
+           hamburg_regions.geojson
+           hamburg_buildings.geojson
+       ```
+       Then run:
+       ```bash
+       uv run manage.py import_scenario_data
+       ```
+       Options:
+       ```
+       --username USERNAME   Manager user for imported scenarios (default: data)
+       --dir DIR             Directory to scan (default: BASE_DIR/data)
+       ```
+
+       > **Warning: this command is not idempotent.** Running it more than once against the same data
+       > directory will create duplicate Scenarios and Areas. Check the database before re-running.
 
 
 ## Permissions

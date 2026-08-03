@@ -20,7 +20,7 @@ from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-logger = logging.getLogger("django_ports")
+logger = logging.getLogger(__name__)
 
 
 # Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
@@ -40,6 +40,9 @@ class Scenario(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    # Area of the scenario / Port region
+    geom = models.PolygonField(default=None, null=True, blank=True)
 
     class Meta:
         permissions = (

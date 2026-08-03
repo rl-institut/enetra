@@ -20,7 +20,6 @@ dependencies = [
     # oemof dependencies
     "oemof-network==0.5.0a1",
     "oemof-tabular",
-
     "celery>=5.1.2",
     # home/ubuntu/PycharmProjects/django-enetra/.venv/lib/python3.10/site-packages/celery/bin/celery.py:11:
     # UserWarning: pkg_resources is deprecated as an API. See
