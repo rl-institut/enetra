@@ -1,0 +1,18 @@
+{% comment %}
+Minimal ECharts line plot for a timeseries fetched from an API.
+Expected JSON: {"timestep_minutes": <int>, "values": [<float>, ...]}
+(also accepted nested under a "timeseries" key, as returned by api_load_template).
+Reads the reactive Alpine variable `data_url` from the surrounding scope and
+refetches whenever it changes (null clears the plot). Usage:
+<div x-data="{data_url: null}">
+    {% include "ports/partials/timeseries_plot.html" with title=template.name %}
+</div>
+`title` is optional.
+{% endcomment %}
+
+<div class="w-full" x-data="timeseriesPlot()" x-effect="loadPlot(data_url)">
+    {% if title %}
+        <h4 class="mb-1 text-sm font-medium text-gray-700">{{ title }}</h4>
+    {% endif %}
+    <div x-ref="plot" class="h-64 w-full"></div>
+</div>

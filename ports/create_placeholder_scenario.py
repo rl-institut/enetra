@@ -3,8 +3,6 @@ Can be used to help when implementing the frontend.
 Can be used for testing.
 """
 
-from datetime import datetime
-
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import Polygon
@@ -133,8 +131,16 @@ def create_scenario() -> Scenario:
 
     template1 = LoadTemplate.objects.create(
         scenario=s,
-        name="Constant load 1",
-        timeseries={"time": [datetime.today().isoformat()], "value": [1]},
+        name="Constant load 1 (by fo)",
+        manager=user1,
+        timeseries={"timestep_minutes": 15, "values": [1, 4, 99, 99]},
+        spec_load=1,
+    )
+    template1 = LoadTemplate.objects.create(
+        scenario=s,
+        name="Constant load 1 (by ba)",
+        manager=user2,
+        timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
     )
     load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template1)

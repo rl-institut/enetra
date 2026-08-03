@@ -551,6 +551,7 @@ class Load(ScenarioItem):
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
     ) -> type[ModelForm]:
+        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
         return FormClass
 
     @classmethod

@@ -46,7 +46,7 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
             continue
 
         rings = rings_from_feature(feature)
-        # Spit ring and holes
+        # Split ring and holes
         geom = Polygon(rings[0], *rings[1:], srid=4326)
         port_name = feature.get("properties", {}).get("port_name")
         if port_name is None:

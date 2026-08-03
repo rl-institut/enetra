@@ -21,6 +21,11 @@ urlpatterns = [
         name="test",
     ),
     path(
+        "template_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
+        views.template_upload_from_load,
+        name="template_upload_from_load",
+    ),
+    path(
         "details_create/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=True),
         name="details_create",
@@ -64,6 +69,11 @@ urlpatterns = [
         "api/<str:model>/<uuid:internal_id>/duplicate/",
         views.ApiView.as_view(action="duplicate"),
         name="api_duplicate",
+    ),
+    path(
+        "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        views.api_load_template,
+        name="api_load_template",
     ),
     path(
         "debug/switch-user/<str:username>/",
