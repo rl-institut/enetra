@@ -1,5 +1,6 @@
 import logging
 from copy import copy
+from typing import TypeVar
 
 import django.db
 from django.db import models
@@ -26,13 +27,16 @@ def write_multi_dict(source: dict, keys: list, value):
     stem[keys[-1]] = value
 
 
+ModelType = TypeVar("ModelType", bound=models.Model)
+
+
 @atomic
 def deepcopy(  # noqa
-    instance: models.Model,
+    instance: ModelType,
     exclude_models: None | set[type[models.Model]] = None,
     exclude_fields: None | set[type[models.Field]] = None,
     max_depth=None,
-):
+) -> tuple[ModelType, dict]:
     """Deepcopy an object and related objects by ForeignKey and ManyToMany Relationship. Requires
     models with 'id' as a primary key with an ascending integer type.
     Does not support multi-tabled inheritance-

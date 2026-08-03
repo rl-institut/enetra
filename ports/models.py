@@ -28,7 +28,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
 
-logger = logging.getLogger("django_ports")
+logger = logging.getLogger(__name__)
 
 
 # Each set of scenario is bundled via its project
@@ -115,7 +115,7 @@ class Scenario(models.Model):
     )
 
     # Area of the scenario / Port region
-    geom = models.PolygonField(null=True, blank=True)
+    geom = models.PolygonField(default=None, null=True, blank=True)
 
     # Class variable which keeps track of scenarios which should be deleted
     # This disables DeletedItem creation which is slow for large queries

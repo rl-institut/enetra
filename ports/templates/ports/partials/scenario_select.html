@@ -50,7 +50,7 @@
         inputName='selectedScenario'
       >
         {% for s in scenarios %}
-        <a href='{% url "ports:home" %}?internal_id={{s.internal_id}}'
+        <a href='{% url "ports:home" %}{{s.internal_id}}'
         >
        <c-select.button
           :selectValue=s.internal_id

@@ -37,13 +37,17 @@ def create_scenario() -> Scenario:
     _uid = "00000000-0000-4000-0000-000000000000"
     s = Scenario.objects.filter(internal_id=_uid).first()
     if s:
-        s: Scenario
         s.safe_delete()
 
     new_project = Project.objects.create(name="TestProjekt", manager=user1)
     s = Scenario.objects.create(
         name="TestScenario", internal_id=_uid, manager=user1, project=new_project
     )
+    # Group might exist already, since developer might switch back and force between migrations states
+    old_group = Group.objects.filter(name=new_project.group_name()).first()
+    if old_group:
+        # Delete the group so no permissions leak from another project
+        old_group.delete()
     group = Group.objects.create(name=new_project.group_name())
     user1.groups.add(group)
     user2.groups.add(group)

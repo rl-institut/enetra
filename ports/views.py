@@ -11,6 +11,7 @@ import numpy as np
 from django.apps.registry import apps
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -55,11 +56,10 @@ from .models import Scenario
 from .models import ScenarioItem
 from .models import has_area_authorization_from_uuids
 from .models import has_authorization
-from .util import atomic
 from .util import duplicate_project
 from .util import duplicate_scenario
 
-logger = logging.getLogger("django-ports")
+logger = logging.getLogger(__name__)
 
 
 def debug_switch_user(request, username: str):
