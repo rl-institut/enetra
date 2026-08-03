@@ -20,6 +20,7 @@ from django.views.generic import TemplateView
 
 from ports.forms import CreateProjectForm
 from ports.models import Project
+from ports.models import Scenario
 from ports.models import has_authorization
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
@@ -41,6 +42,15 @@ def projects_view(request):
     prefetch_projects_users(projects)
     context["create_project_form"] = CreateProjectForm(template_queryset=template_scenarios)
     return render(request, template_name="core/projects.html", context=context)
+
+
+def scenario_results(request, scenario_internal_id):
+    context = {}
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    context["scenario"] = scenario
+
+    context["project"] = scenario.project
+    return render(request, template_name="core/ergebnisse.html", context=context)
 
 
 def project_overview_view(request, project_internal_id):
