@@ -148,7 +148,7 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
         return super().prepare_value(value)
 
 
-ALLOWED_UPLOAD_SUFFIXES = [".csv", ".xlsx"]
+ALLOWED_UPLOAD_SUFFIXES = [".csv"]
 
 
 class LoadTemplateUploadForm(forms.Form):
