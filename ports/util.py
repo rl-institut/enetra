@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -202,8 +203,7 @@ def get_user_projects(user: User):
 
 
 def get_template_scenarios(user: User):
-    # TODO: template user, e.g. add data as user TEMPLATE or smth?
-    template_user = User.objects.filter(is_superuser=True).get(username="data")
+    template_user = User.objects.filter(is_superuser=True).get(username=settings.DATA_USER)
     if user.is_superuser:
         return Scenario.objects.all()
     return Scenario.objects.filter(manager__in=[user, template_user])

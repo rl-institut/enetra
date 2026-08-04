@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import numpy as np
 from django.apps.registry import apps
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
@@ -927,7 +928,9 @@ def create_project(request):
                 assign_perm("details", group, new_project)
                 request.user.groups.add(group)
                 # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
-                areas = Area.objects.filter(scenario=new_scenario, manager__username="data")
+                areas = Area.objects.filter(
+                    scenario=new_scenario, manager__username=settings.DATA_USER
+                )
                 areas.update(manager=request.user)
                 assign_perm("details", request.user, areas)
 
