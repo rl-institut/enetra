@@ -59,41 +59,8 @@
             <!-- Card View -->
             <!-- Grundszenario -->
             <div class="grid grid-cols-3 gap-4">
-              <div class="p-6 bg-cyan-50 rounded-lg shadow-[0px_1px_4px_0px_rgba(21,94,117,0.10)] outline outline-1 outline-offset-[-1px] outline-cyan-200 flex flex-col gap-6">
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center justify-between">
-                    <a href="#" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Grundszenario</a>
-                    <div x-cloak class="relative" x-data="{ open: false }">
-                      <button @click="open = !open" class="select-none cursor-pointer text-cyan-800 hover:text-cyan-600 transition-colors duration-150">
-                        <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                      </button>
-                      <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-                        <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-                          <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-                        </button>
-                        <hr class="border-slate-200" />
-                        {% url 'ports:api' 'project' project.internal_id as delete_url %}
-                        <c-api-button
-                          :hx-delete=delete_url
-                          hx-confirm="Willst du {{project.name}} wirklich löschen?"
-                          hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
-                          class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
-                          x-cloak
-                        >
-                          <div  x-show="status=='default'"> <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Projekt Löschen <span class='htmx-indicator-inherited loader align-middle'></span></div>
-                          <div  x-show="status=='success'">Gelöscht</div>
-                          <div  x-show="status=='error'">Fehlgeschlagen</div>
-                        </c-api-button>
-                      </div>
-                    </div>
-                  </div>
-                  <p class="select-none text-sm text-cyan-800 leading-normal">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
-                </div>
-                <a href="{% url 'core:ergebnisse' project.scenario_set.first.internal_id %}" class="select-none flex-1 px-6 py-2 bg-cyan-100 hover:bg-cyan-200 transition-colors duration-150 rounded-full flex justify-center items-center gap-3 cursor-pointer">
-                  <i data-lucide="chart-line" class="w-4 h-4 text-cyan-800"></i>
-                  <span class="text-sm font-semibold text-cyan-800">Ergebnisse</span>
-                </a>
-              </div>
+
+              {% include 'core/partials/technology_scenario_card.html' with scenario=project.scenario_set.first title=project.scenario_set.first.name status="In Bearbeitung" last_update=project.scenario_set.first.updated_at basisScenario=True %}
             </div>
 
             <!-- Technologie-Szenarien label -->
@@ -103,7 +70,9 @@
             <div id="filterable_cards" class="grid grid-cols-3 gap-4">
               <!-- Wasserstoff-Integration -->
               {% for scenario in project.scenario_set.all %}
+              {% if not forloop.first %}
               {% include 'core/partials/technology_scenario_card.html' with scenario=scenario title=scenario.name status="In Bearbeitung" last_update=scenario.updated_at %}
+              {% endif %}
               {% endfor %}
             </div>
 
@@ -124,71 +93,19 @@
               <tbody class="divide-y divide-cyan-200">
 
                 <!-- Grundszenario row -->
-                <tr class="bg-cyan-50 hover:bg-cyan-100 transition-colors duration-100">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <a href="#" class="select-none font-semibold text-cyan-700 hover:underline">Grundszenario</a>
-                      <span class="select-none px-2 py-0.5 bg-cyan-200 text-cyan-800 text-xs font-semibold rounded-full">Basis</span>
-                    </div>
-                    <p class="select-none text-xs text-cyan-700 mt-0.5">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
-                  </td>
-                  <td class="px-6 py-4">
-                    <span class="select-none px-3 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Berechnet</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="select-none flex items-center gap-2 text-cyan-700">
-                      <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
-                      <span>27.06.2026</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-end gap-3">
-                      <a href="{% url 'core:ergebnisse' project.scenario_set.first.internal_id %}" class="select-none flex items-center gap-2 px-4 py-1.5 bg-cyan-100 hover:bg-cyan-200 text-cyan-800 rounded-full transition-colors duration-150 cursor-pointer whitespace-nowrap">
-                        <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
-                        <span class="text-xs font-semibold">Ergebnisse</span>
-                      </a>
-                      <div x-cloak class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="select-none cursor-pointer text-cyan-800 hover:text-cyan-600 transition-colors duration-150">
-                          <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-                          <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-                            <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-                          </button>
-                          <hr class="border-slate-200" />
-                          {% url 'ports:api' 'project' project.internal_id as delete_url %}
-                          <c-api-button
-                            :hx-delete=delete_url
-                            hx-confirm="Willst du {{project.name}} wirklich löschen?"
-                            hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
-                            class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
-                            x-cloak
-                          >
-                            <div  x-show="status=='default'"> <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Projekt Löschen <span class='htmx-indicator-inherited loader align-middle'></span></div>
-                            <div  x-show="status=='success'">Gelöscht</div>
-                            <div  x-show="status=='error'">Fehlgeschlagen</div>
-                          </c-api-button>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-
+                {% include 'core/partials/technology_scenario_row.html'  with title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" basisScenario=True %}
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
               {% for scenario in project.scenario_set.all %}
+               {% if not forloop.first %}
                 {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update_sortable=scenario.updated_at status="Berechnet" %}
-
+               {% endif %}
                 {% endfor  %}
               </tbody>
             </table>
           </c-slot>
-
-
         </c-toolbar.index>
-
-
         </div>
     </main>
 {% endblock mainContent %}

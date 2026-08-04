@@ -1,13 +1,18 @@
-
 <div
   data-name="{{title}}"
   data-status="{% firstof status_sortable status %}"
   data-last_update="{% firstof last_update_sortable last_update %}"
-  class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col justify-between">
+  {% if not basisScenario %}
+  class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col justify-between"
+  {% else %}
+  class="p-6 bg-cyan-50 rounded-lg shadow-[0px_1px_4px_0px_rgba(21,94,117,0.10)] outline outline-1 outline-offset-[-1px] outline-cyan-200 flex flex-col gap-6"
+  {% endif %}
+>
   <div class="pb-4 border-b border-slate-200 flex items-center justify-between">
     <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">{{title|default:"Kein Titel"}}</a>
-      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='card' %}
+    {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='card' %}
   </div>
+  {% if not basisScenario %}
   <div class="flex-1 pt-6 flex flex-col justify-between gap-6">
     <div class="select-none flex items-center justify-between">
       {% if status == "success" %}
@@ -24,4 +29,14 @@
       <span class="text-sm font-semibold">Ergebnisse</span>
     </a>
   </div>
+  {% else %}
+  <div class="flex-1 flex flex-col justify-between gap-6">
+    <p class="select-none text-sm text-cyan-800 leading-normal">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
+    <a href="{% url 'core:ergebnisse' project.scenario_set.first.internal_id %}" class="select-none flex-1 px-6 py-2 bg-cyan-100 hover:bg-cyan-200 transition-colors duration-150 rounded-full flex justify-center items-center gap-3 cursor-pointer">
+      <i data-lucide="chart-line" class="w-4 h-4 text-cyan-800"></i>
+      <span class="text-sm font-semibold text-cyan-800">Ergebnisse</span>
+    </a>
+
+  </div>
+  {% endif %}
 </div>

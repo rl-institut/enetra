@@ -953,7 +953,6 @@ def create_scenario(request, scenario_internal_id: UUID):
             new_scenario = form.save()
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
-            print(redirect_url)
             success = True
         context["form"] = form
         context["success"] = success
