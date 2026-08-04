@@ -93,7 +93,7 @@
               <tbody class="divide-y divide-cyan-200">
 
                 <!-- Grundszenario row -->
-                {% include 'core/partials/technology_scenario_row.html'  with title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" basisScenario=True %}
+                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" basisScenario=True %}
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
