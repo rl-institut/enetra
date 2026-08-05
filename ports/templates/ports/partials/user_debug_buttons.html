@@ -1,16 +1,10 @@
   {# DEBUG: user-switch buttons — remove before production #}
 {% load static %}
-<script>
-// condititonally import htmx. Only needed for the helper view when trying to access a scenario/project without authorization
-  if (typeof htmx === "undefined") {
-    var htmxScript = document.createElement("script");
-    htmxScript.src = '{% static "htmx.min.js" %}';
-    htmxScript.onload = function () {
-      htmx.process(document.body);
-    };
-    document.head.appendChild(htmxScript);
-  }
-</script>
+{% comment %}
+<!-- import htmx. Only needed for the helper view when trying to access a scenario/project without authorization -->
+<!-- NOTE: If htmx plugins are used this breaks the plugins -->
+{% endcomment %}
+<script src='{% static "htmx.min.js" %}'>'</script>
   <div class="user-debug-buttons bg-white p-2 border fixed bottom-4 right-4 z-[99999] flex flex-col gap-2"
     hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
     hx-swap="outerHTML"
