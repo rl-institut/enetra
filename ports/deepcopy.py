@@ -35,14 +35,13 @@ class Deepcopy:
     def __init__(
         self,
         model_hierarchy: list[type[models.Model]],
-        query: dict | None = None,
         ignore_models: set[type[models.Model]] | None = None,
     ):
         # list of models in the order they are deepcopied
         self.model_hierarchy = model_hierarchy
         # Suppress warnings for missing related objects of a Model type
         self.ignore_models: set[type[models.Model]] = ignore_models or set()
-        self.query: dict = query or dict()
+        self.query: dict = dict()
         self.old_new = dict()
         # Fields which can not be set before bulk creation, e.g. for Models referencing themselves
         self.backlog: dict[type[models.Model], dict] = dict()
@@ -93,9 +92,9 @@ class Deepcopy:
             found_fields = []
             for field in val["fields"]:
                 if field.related_model in self.old_new:
+                    # the attribute name which is transferred (id of referenced instance)
+                    lookup = field.name + "_id"
                     for instance in instances:
-                        # the attribute name which is transferred (id of referenced instance)
-                        lookup = field.name + "_id"
                         old_related_id = getattr(instance, lookup)
                         # Null Values don't need copying
                         if old_related_id is None:
@@ -105,7 +104,9 @@ class Deepcopy:
                         found_fields.append(field.name)
                 else:
                     logger.warning(
-                        f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied."
+                        f"{type(instance)} has a field {field} with a related object of type "
+                        f"{field.related_model} which was not found in the copied instances. "
+                        "This might be desired if some references should not be copied."
                     )
             if found_fields:
                 model.objects.bulk_update(instances, fields=found_fields)
@@ -140,7 +141,8 @@ class Deepcopy:
                     new_instances = through.objects.bulk_create(instances)
                     new_ids = [x.id for x in new_instances]
                     self.old_new[through] = dict(zip(old_ids, new_ids, strict=True))
-
+                else:
+                    self.old_new[through] = {}
             else:
                 logger.warning(
                     f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied."
@@ -164,6 +166,9 @@ class Deepcopy:
             instances = list(model.objects.filter(**self.query))
             if not new_org_instances:
                 new_org_instances = instances
+            if not instances:
+                self.old_new[model] = {}
+                continue
             old_ids = [x.id for x in instances]
             # Make the objects db writeable by enforcing db requirements
             self.pre_copy_mutate(instances)
