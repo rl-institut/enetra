@@ -1,8 +1,16 @@
 """Deepcopy an object based on a given table hierarchy
 The instances are copied in the order of the hierarchy.
 It is assumed creation in the order is possible.
-Each Model can perform a pre_copy mutation, e.g. change its internal_id to fulfill
+Each Instance/Model can perform a pre_copy mutation, e.g. change its internal_id to fulfill
 uniqueness.
+Before creation foreign fields are retarget to copied instances.
+If these instances are missing this value adjustment is pushed to a backlog
+After object creation m2m fields are searched on the object and the m2m table is created.
+When all objects from the model hierarchy are copied/created the backlog will be checked,
+and the values will be adjusted to the now (hopefully) existing new objects.
+If the objects are still missing a warning will be given.
+If some models should not be copied/adjusted (e.g. User) these should not be part of the model
+hierarchy. To turn of warnings that these instances are not found, add the Model to ignore_models.
 Copies will reference generated copies instead of the original instances
 `
     b = Bar()
@@ -28,12 +36,16 @@ class Deepcopy:
         self,
         model_hierarchy: list[type[models.Model]],
         query: dict | None = None,
+        ignore_models: set[type[models.Model]] | None = None,
     ):
         # list of models in the order they are deepcopied
-        self._model_hierarchy = model_hierarchy
-        self.model_hierarchy = iter(model_hierarchy)
+        self.model_hierarchy = model_hierarchy
+        # Suppress warnings for missing related objects of a Model type
+        self.ignore_models: set[type[models.Model]] = ignore_models or set()
         self.query: dict = query or dict()
         self.old_new = dict()
+        # Fields which can not be set before bulk creation, e.g. for Models referencing themselves
+        self.backlog: dict[type[models.Model], dict] = dict()
 
     def pre_copy_mutate(self, instances: list[models.Model]):
         """Adjust the instances in place so they can be copied"""
@@ -52,6 +64,8 @@ class Deepcopy:
         for field in instance._meta.fields:
             if not field.is_relation:
                 continue
+            if field.related_model in self.ignore_models:
+                continue
             if field.related_model in self.old_new:
                 # the model has a field with a related model which was already copied
                 # retarget the instance to the copied instance instead
@@ -65,15 +79,44 @@ class Deepcopy:
                     new_id = self.old_new[field.related_model][old_related_id]
                     setattr(instance, lookup, new_id)
             else:
-                logger.warning(
-                    f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied"
-                )
+                # these fields might have to be updated after creation
+                self.backlog.setdefault(instance._meta.model, {})
+                self.backlog[instance._meta.model].setdefault("fields", [])
+                self.backlog[instance._meta.model]["instances"] = instances
+                self.backlog[instance._meta.model]["fields"].append(field)
+
+    def update_backlog_fields(self):
+        """Repeat the retarget with fields which were not found"""
+        for model, val in self.backlog.items():
+            instances = val["instances"]
+            instance = instances[0]
+            found_fields = []
+            for field in val["fields"]:
+                if field.related_model in self.old_new:
+                    for instance in instances:
+                        # the attribute name which is transferred (id of referenced instance)
+                        lookup = field.name + "_id"
+                        old_related_id = getattr(instance, lookup)
+                        # Null Values don't need copying
+                        if old_related_id is None:
+                            continue
+                        new_id = self.old_new[field.related_model][old_related_id]
+                        setattr(instance, lookup, new_id)
+                        found_fields.append(field.name)
+                else:
+                    logger.warning(
+                        f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied."
+                    )
+            if found_fields:
+                model.objects.bulk_update(instances, fields=found_fields)
 
     def post_copy_m2m(self, instances: list[models.Model]):
         """Create m2m relationship after the new instances were generated"""
         instance = instances[0]
         model = instance._meta.model
         for field in instance._meta.many_to_many:
+            if field.related_model in self.ignore_models:
+                continue
             if field.related_model in self.old_new:
                 # the model has m2m relationship with already copied instances
                 # through is the model/table with the m2m relationship
@@ -89,23 +132,38 @@ class Deepcopy:
                 query_dict = {f"{instance_fk.name}__in": model.objects.filter(**self.query)}
                 m2m_instances = through.objects.filter(**query_dict)
                 if m2m_instances.exists():
+                    instances = list(m2m_instances)
+                    old_ids = [x.id for x in instances]
                     # to create them we adjust them and retarget them to the new instances
-                    self.pre_copy_mutate(m2m_instances)
-                    self.pre_copy_retarget(m2m_instances)
+                    self.pre_copy_mutate(instances)
+                    self.pre_copy_retarget(instances)
+                    new_instances = through.objects.bulk_create(instances)
+                    new_ids = [x.id for x in new_instances]
+                    self.old_new[through] = dict(zip(old_ids, new_ids, strict=True))
+
             else:
                 logger.warning(
-                    f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied"
+                    f"{type(instance)} has a field {field} with a related object of type {field.related_model} which was not found in the copied instances. This might be desired if some references should not be copied."
                 )
 
     def deepcopy(self, instance: models.Model):
-        # decouple instance from copy
-        instance = instance._meta.model.objects.get(id=instance.pk)
-        # cast instance to list, since the class methods are intended for lists
-        original_instances = [instance]
+        model_index = None
+        for i, model in enumerate(self.model_hierarchy):
+            if instance._meta.model == model:
+                model_index = i
+                break
+        else:
+            raise Exception(
+                f"Instance of type {instance._meta.model} to deepcopy is not part of the model_hierarchy"
+            )
         # Copies the given instance and sets the query to find related objects
-        new_org_instances = self.first_copy(original_instances)
-        for model in self.model_hierarchy:
+        self.query = {"id": instance.id}
+        # Return the copies of the first instance
+        new_org_instances = None
+        for model in self.model_hierarchy[model_index:]:
             instances = list(model.objects.filter(**self.query))
+            if not new_org_instances:
+                new_org_instances = instances
             old_ids = [x.id for x in instances]
             # Make the objects db writeable by enforcing db requirements
             self.pre_copy_mutate(instances)
@@ -115,42 +173,18 @@ class Deepcopy:
             # The instances can be created now
             new_instances = model.objects.bulk_create(instances)
             new_ids = [x.id for x in new_instances]
-            self.old_new[model] = dict(zip(old_ids, new_ids, strict=False))
+            self.old_new[model] = dict(zip(old_ids, new_ids, strict=True))
             # if the model has many to many relationships they can now be created
             self.post_copy_m2m(instances)
 
             # prepare the query for 'lower' models
             if model == Project:
                 # project is part of the first copy
-                raise Exception("Project should not be copied here")
+                self.query = {"project_id__in": old_ids}
             elif model == Scenario:
                 self.query = {"scenario_id__in": Scenario.objects.filter(**self.query)}
             else:
                 # all other objects should be found via scenario_id
                 pass
+        self.update_backlog_fields()
         return new_org_instances[0]
-
-    def first_copy(self, instances: list[models.Model]):
-        copy_model = instances[0]._meta.model
-        for model in self.model_hierarchy:
-            if copy_model == model:
-                break
-        else:
-            raise Exception(
-                f"Instance of type {copy_model} to deepcopy is not part of the model_hierarchy"
-            )
-        old_ids = [x.id for x in instances]
-        self.pre_copy_mutate(instances)
-        new_instances = copy_model.objects.bulk_create(instances)
-        new_ids = [x.id for x in new_instances]
-        self.old_new[copy_model] = dict(zip(old_ids, new_ids, strict=False))
-        match instances:
-            # pattern match a list with first element of type Project
-            case [Project(), *_]:
-                # Query to find related objects
-                self.query = {"project_id__in": old_ids}
-            case [Scenario(), *_]:
-                self.query = {"scenario_id__in": old_ids}
-            case _:
-                raise NotImplementedError(f"Deepcopying {copy_model} is not implemented")
-        return new_instances
