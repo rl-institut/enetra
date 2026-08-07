@@ -14,10 +14,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import ForeignKey
-from django.db.models import ManyToManyField
 from django.db.models import Q
-from django.db.models import QuerySet
 from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
@@ -54,6 +51,8 @@ from ports.forms import ScenarioItemFormFactory
 from ports.util import duplicate_scenario_with_permissions
 from ports.util import get_template_scenarios
 
+from .authorization import has_area_authorization_from_uuids
+from .authorization import has_authorization
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
@@ -63,48 +62,10 @@ from .models import LoadTemplate
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
-from .models import has_area_authorization_from_uuids
-from .models import has_authorization
 from .util import duplicate_project
 from .util import duplicate_scenario
 
 logger = logging.getLogger(__name__)
-
-
-def get_related_model_values(
-    instances: QuerySet[ScenarioItem], model: type[ScenarioItem], field_name: str
-):
-    """Find the values of field_name on all related instances of type model for the given queryset
-
-    Used to find all area_internal_ids for a given QuerySet of ScenarioItems, so the permission
-    can be checked on those areas
-    """
-    all_fields = instances.model._meta.get_fields()
-    fk_fields = [
-        f for f in all_fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
-    ]
-    m2m_fields = [
-        f
-        for f in all_fields
-        if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
-    ]
-    if not fk_fields and not m2m_fields:
-        return None
-
-    if fk_fields:
-        instances = instances.select_related(*[f.name for f in fk_fields])
-    if m2m_fields:
-        instances = instances.prefetch_related(*[f.name for f in m2m_fields])
-
-    values = []
-    for instance in instances:
-        for field in fk_fields:
-            related_instance = getattr(instance, field.name)
-            if related_instance is not None:
-                values.append(getattr(related_instance, field_name))
-        for field in m2m_fields:
-            values.extend(getattr(instance, field.name).values_list(field_name, flat=True))
-    return values
 
 
 def debug_switch_user(request, username: str):
@@ -396,7 +357,7 @@ def home(request):
     Only meant for development
     TODO: Remove for prod
     """
-    if request.GET.get("new") or Scenario.objects.count() == 0:
+    if settings.DEBUG and (request.GET.get("new") or Scenario.objects.count() == 0):
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
         s = create_placeholder_scenario()
@@ -411,8 +372,11 @@ def home(request):
     if request.GET.get("internal_id"):
         s_internal_id = request.GET.get("internal_id")
     else:
-        # fallback for development
-        s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
+        if settings.DEBUG:
+            # fallback for development
+            s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
+        else:
+            return Http404()
     return redirect(
         reverse(
             "ports:enetra_tool",
@@ -424,17 +388,23 @@ def home(request):
 def enetra_tool(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
-    if not request.user.is_authenticated:
-        # During development allow easy access to scenario_users
-        return HttpResponse(
-            "<div>To See this scenario you need to be logged in as a user of the project_group</div>"
-            + debug_buttons
-        )
-    elif not has_authorization(scenario.project, request.user, "details"):
-        return HttpResponse(
-            f"Current user {request.user} has no details permission for the scenario"
-            + debug_buttons
-        )
+    if settings.DEBUG:
+        if not request.user.is_authenticated:
+            # During development allow easy access to scenario_users
+            return HttpResponse(
+                "<div>To See this scenario you need to be logged in as a user of the project_group</div>"
+                + debug_buttons
+            )
+        elif not has_authorization(scenario.project, request.user, "details"):
+            return HttpResponse(
+                f"Current user {request.user} has no details permission for the scenario"
+                + debug_buttons
+            )
+    else:
+        if not request.user.is_authenticated:
+            return redirect(reverse("core:login"))
+        elif not has_authorization(scenario.project, request.user, "details"):
+            return HttpResponseForbidden()
     context = get_home_context(user=request.user, scenario=scenario)
     return render(request, "ports/tool_base.html", context)
 

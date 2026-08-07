@@ -119,7 +119,8 @@ def transfer_group_permission(scenario, new_scenario):
     """
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
-    assert len(old_areas) == len(new_areas)
+    if not len(old_areas) == len(new_areas):
+        raise Exception("Transfering permissions failed due to uneven count of Areas")
     old_d = {x.id: x for x in old_areas}
     new_d = {x.internal_id: x for x in new_areas}
 
@@ -158,7 +159,6 @@ def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix="
     new_scenario = duplicate_scenario(scenario, user, suffix)
     # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
     transfer_group_permission(scenario, new_scenario)
-
     return new_scenario
 
 
@@ -174,18 +174,15 @@ def prefetch_projects_users(projects: QuerySet[Project]) -> None:
         .select_related("permission")
         .prefetch_related("group__user_set")
     )
+    for p in projects:
+        p._users_cache = {}
     for perm in group_perms:
         project = id_to_project[int(perm.object_pk)]
-        if not hasattr(project, "_users_cache"):
-            project._users_cache = {}
         project._users_cache[perm.permission.codename] = perm.group.user_set.all()
-    for p in id_to_project.values():
-        if not hasattr(p, "_users_cache"):
-            p._users_cache = {}
 
 
 def get_user_projects(user: User):
-    if user.is_superuser:
+    if user.is_staff:
         return Project.objects.all().prefetch_related("scenario_set")
     # All projects a group of the user has the "view" object permission on
     GroupObjectPermission = get_group_obj_perms_model()
@@ -203,7 +200,7 @@ def get_user_projects(user: User):
 
 
 def get_template_scenarios(user: User):
-    template_user = User.objects.filter(is_superuser=True).get(username=settings.DATA_USER)
     if user.is_superuser:
         return Scenario.objects.all()
+    template_user = User.objects.get(username=settings.DATA_USER)
     return Scenario.objects.filter(manager__in=[user, template_user])

@@ -10,6 +10,7 @@ from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
 
+from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
@@ -18,7 +19,6 @@ from ports.models import LoadTemplate
 from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
-from ports.models import has_authorization
 from ports.util import duplicate_scenario_with_permissions
 
 
@@ -291,7 +291,7 @@ class CreateScenarioForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def clean(self) -> dict[str, Any] | None:
+    def clean(self) -> dict[str, Any]:
         if not has_authorization(self.base_scenario.project, self.user, "details"):
             raise ValidationError(
                 self.error_messages["no_authorization"],

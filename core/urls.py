@@ -87,8 +87,8 @@ urlpatterns = [
         name="szenarienvergleich",
     ),
     path(
-        "ergebnisse/<uuid:scenario_internal_id>/",
-        views.scenario_results,
+        "ergebnisse/<uuid:project_internal_id>/",
+        views.project_overview_view,
         name="ergebnisse",
     ),
 ]

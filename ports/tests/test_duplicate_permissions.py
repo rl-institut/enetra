@@ -19,10 +19,10 @@ from django.test import TestCase
 from django.urls import reverse
 from guardian.shortcuts import assign_perm
 
+from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import Project
 from ports.models import Scenario
-from ports.models import has_authorization
 
 
 class DuplicatePermissionsTest(TestCase):
