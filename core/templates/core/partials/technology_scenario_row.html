@@ -5,7 +5,7 @@ all values to make the container sortable are gathered here. Since they can diff
   data-name="{{title}}"
   data-status="{% firstof status_sortable status %}"
   data-last_update="{% firstof last_update_sortable last_update %}"
-  {% if not basisScenario %}
+  {% if not baselineScenario %}
   class="bg-white hover:bg-slate-50 transition-colors duration-100"
   {% else %}
   class="bg-cyan-50 hover:bg-cyan-100 transition-colors duration-100"
@@ -13,14 +13,14 @@ all values to make the container sortable are gathered here. Since they can diff
 >
   <td
     class="px-6 py-4">
-    {% if not basisScenario %}
+    {% if not baselineScenario %}
     <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
     {% else %}
     <div class="flex items-center gap-3">
       <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
       <span class="select-none px-2 py-0.5 bg-cyan-200 text-cyan-800 text-xs font-semibold rounded-full">Basis</span>
     </div>
-    <p class="select-none text-xs text-cyan-700 mt-0.5">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
+    <p class="select-none text-xs text-cyan-700 mt-0.5">Basis-Szenario, welches als Grundlage für Vergleiche dient</p>
     {% endif %}
   </td>
   <td

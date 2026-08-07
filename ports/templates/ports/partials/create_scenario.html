@@ -1,8 +1,4 @@
 {% load i18n %}
-{% comment %}
-Changed implementation to using html native modal. This automatically disables the whole page
-and allows easy interaction. For now the Modal does not delete input when the modal is canceled
-{% endcomment %}
 <dialog id="{{id}}"
         closedby='any'
         class="
@@ -45,7 +41,7 @@ and allows easy interaction. For now the Modal does not delete input when the mo
         <!-- Name Field -->
         <div class="content-stretch flex flex-col gap-1 items-start relative shrink-0 w-full">
           <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] w-full">
-            {% translate 'Name' %}
+            {% translate 'Szenario-Name' %}
           </p>
           <c-input :field=form.name placeholder="Neues Szenario" class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center px-4 py-3 relative rounded-[3px] shrink-0 w-full text-[#1e293b] text-[14px] font-['Inter:Regular',sans-serif] outline-none" />
         </div>
@@ -55,7 +51,7 @@ and allows easy interaction. For now the Modal does not delete input when the mo
           <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px] w-full">
             {% translate 'Beschreibung' %}
           </p>
-          <c-input :field=form.description placeholder="Du kannst das Szenario beschreiben" class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center px-4 py-3 relative rounded-[3px] shrink-0 w-full text-[#1e293b] text-[14px] font-['Inter:Regular',sans-serif] outline-none" />
+          <c-input :field=form.description placeholder="Kurzbeschreibung des Szenarios..." class="bg-white border border-[#94a3b8] border-solid content-stretch flex items-center px-4 py-3 relative rounded-[3px] shrink-0 w-full text-[#1e293b] text-[14px] font-['Inter:Regular',sans-serif] outline-none" />
         </div>
       </div>
 
@@ -72,9 +68,9 @@ and allows easy interaction. For now the Modal does not delete input when the mo
           {% if success %}
           x-data='{result: "✓ Erstellt"}' x-init="setTimeout(()=>window.location='{{redirect_url}}', 50)"
           {% elif errors %}
-          x-data='{result: "Fehlgeschlagen"}' x-init="setTimeout(()=>result='Erstellen', 2000)"
+          x-data='{result: "❌️ Fehlgeschlagen"}' x-init="setTimeout(()=>result='Erstellen', 2000)"
           {% else %}
-          x-data='{result: "Erstellen"}'
+          x-data='{result: "💾️ Erstellen"}'
           {% endif %}
           @htmx:before-request="result='Erstellen'"
           >

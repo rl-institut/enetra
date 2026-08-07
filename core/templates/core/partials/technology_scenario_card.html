@@ -2,7 +2,7 @@
   data-name="{{title}}"
   data-status="{% firstof status_sortable status %}"
   data-last_update="{% firstof last_update_sortable last_update %}"
-  {% if not basisScenario %}
+  {% if not baselineScenario %}
   class="p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col justify-between"
   {% else %}
   class="p-6 bg-cyan-50 rounded-lg shadow-[0px_1px_4px_0px_rgba(21,94,117,0.10)] outline outline-1 outline-offset-[-1px] outline-cyan-200 flex flex-col gap-6"
@@ -12,7 +12,7 @@
     <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">{{title|default:"Kein Titel"}}</a>
     {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='card' %}
   </div>
-  {% if not basisScenario %}
+  {% if not baselineScenario %}
   <div class="flex-1 pt-6 flex flex-col justify-between gap-6">
     <div class="select-none flex items-center justify-between">
       {% if status == "success" %}
@@ -31,7 +31,7 @@
   </div>
   {% else %}
   <div class="flex-1 flex flex-col justify-between gap-6">
-    <p class="select-none text-sm text-cyan-800 leading-normal">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
+    <p class="select-none text-sm text-cyan-800 leading-normal">Basis-Szenario, welches als Grundlage für Vergleiche dient</p>
     <a href="{% url 'core:ergebnisse' project.scenario_set.first.internal_id %}" class="select-none flex-1 px-6 py-2 bg-cyan-100 hover:bg-cyan-200 transition-colors duration-150 rounded-full flex justify-center items-center gap-3 cursor-pointer">
       <i data-lucide="chart-line" class="w-4 h-4 text-cyan-800"></i>
       <span class="text-sm font-semibold text-cyan-800">Ergebnisse</span>
