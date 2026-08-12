@@ -294,18 +294,22 @@ class DeepcopyGridM2MTest(TestCase):
         assert set(self.grid.areas.values_list("id", flat=True)) == {self.area.id, self.area2.id}
 
     def test_self_referential_fk_is_changed(self):
-        """connected_to points at Grid itself. Make sure its"""
+        """Connected_to points at Grid itself.
+        Make sure its copied, and connected_to is properly updated
+        """
         model_hierarchy = [Project, Scenario, Area, Grid]
         dc = Deepcopy(model_hierarchy, ignore_models={User})
         with self.assertLogs(DEEPCOPY_LOGGER, level="WARNING") as _:
             new_project = dc.deepcopy(self.project)
         new_scenario = new_project.scenario_set.get()
         old_connected_grid = self.grid2
+        assert old_connected_grid.connected_to == self.grid
         new_grid = Grid.objects.get(
             scenario=new_scenario, internal_id=old_connected_grid.internal_id
         )
-
         assert new_grid.connected_to_id is not None
+        assert new_grid.connected_to is not self.grid
+        assert new_grid.connected_to.scenario == new_scenario
 
     def test_nullable_fk_to_already_copied_model_does_not_crash(self):
         """Expected (currently failing): Grid.timeseries is a nullable FK to
