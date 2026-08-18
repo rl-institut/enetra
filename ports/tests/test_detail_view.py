@@ -9,6 +9,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase
+from django.test import override_settings
 from django.urls import reverse
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import remove_perm
@@ -17,6 +18,7 @@ from ports.models import Area
 from ports.models import Generator
 from ports.models import Load
 from ports.models import LoadTemplate
+from ports.models import Project
 from ports.models import Scenario
 
 
@@ -31,8 +33,9 @@ class DetailsViewBase(TestCase):
         # a shared object's fields, or work on a local copy instead.
         cls.user = User.objects.create_user("testuser", password="pass", is_superuser=True)
 
-        cls.scenario = Scenario.objects.create(name="Test Scenario")
-        Group.objects.get_or_create(name=cls.scenario.group_name())
+        cls.project = Project.objects.create(name="Test Projekt")
+        cls.scenario = Scenario.objects.create(name="Test Scenario", project=cls.project)
+        Group.objects.get_or_create(name=cls.project.group_name())
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -467,7 +470,7 @@ class DetailsViewPermissionsTest(TestCase):
 
     Design:
     - user_a is the area/scenario manager → always has access
-    - user_b is a scenario group member → access depends on Guardian object perms
+    - user_b is a project group member → access depends on Guardian object perms
     - Sentinel strings in component names are searched in raw response content
       to detect data leakage without relying on response.context
 
@@ -480,11 +483,17 @@ class DetailsViewPermissionsTest(TestCase):
     def setUpTestData(cls):
         cls.user_a = User.objects.create_user("perm_user_a", password="pass")
         cls.user_b = User.objects.create_user("perm_user_b", password="pass")
-        cls.scenario = Scenario.objects.create(name="Perm Test Scenario", manager=cls.user_a)
-        cls.scenario_group, _ = Group.objects.get_or_create(name=cls.scenario.group_name())
-        cls.scenario_group.user_set.add(cls.user_b)
-        # Grant scenario-level view so the area check is the gating decision
-        assign_perm("view", cls.scenario_group, cls.scenario)
+        cls.project = Project.objects.create(name="Test Projekt")
+        cls.scenario = Scenario.objects.create(
+            name="Perm Test Scenario", manager=cls.user_a, project=cls.project
+        )
+        cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
+
+        # Detailviews are gated by project access. Therefore users need to be added to project group
+        cls.project_group.user_set.add(cls.user_a)
+        cls.project_group.user_set.add(cls.user_b)
+        # Grant project-level view so the area check is the gating decision
+        assign_perm("view", cls.project_group, cls.project)
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -569,7 +578,7 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
 
     def test_area_detail_no_longer_blocked_after_made_public(self):
-        assign_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
@@ -577,7 +586,7 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertNotIn(b"not allowed", response.content.lower())
 
     def test_public_area_components_visible_in_detail_response(self):
-        assign_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
@@ -586,8 +595,8 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertIn(b"SENTINEL_GEN_XYZ_9f3a", response.content)
 
     def test_revoking_public_blocks_detail_access_again(self):
-        assign_perm("details", self.scenario_group, self.area)
-        remove_perm("details", self.scenario_group, self.area)
+        assign_perm("details", self.project_group, self.area)
+        remove_perm("details", self.project_group, self.area)
         self.client.force_login(self.user_b)
         response = self.client.get(
             self.area_detail_url(), {"internal_ids": str(self.area.internal_id)}
@@ -667,3 +676,43 @@ class DetailsViewPermissionsTest(TestCase):
         self.assertIn(b"not allowed", response.content.lower())
         self.load.refresh_from_db()
         self.assertNotEqual(self.load.description, "TAMPERED_MULTI_BY_USER_B")
+
+
+@override_settings(DEBUG=False)
+class EnetraToolViewPermissionsTest(TestCase):
+    """
+    Tests that the basic scenario view (ports:enetra_tool, tool_base.html)
+    is only reachable by users associated with the scenario's project.
+
+    DEBUG is forced to False so the test exercises the production auth path
+    (HttpResponseForbidden), rather than the DEBUG-only diagnostic responses
+    in ports.views.enetra_tool.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.member_user = User.objects.create_user("tool_member", password="pass")
+        cls.outsider_user = User.objects.create_user("tool_outsider", password="pass")
+        cls.project = Project.objects.create(name="Tool Test Projekt")
+        cls.scenario = Scenario.objects.create(name="Tool Test Scenario", project=cls.project)
+        cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
+        cls.project_group.user_set.add(cls.member_user)
+        assign_perm("details", cls.project_group, cls.project)
+        # outsider_user is intentionally never added to project_group
+
+    def tool_url(self):
+        return reverse(
+            "ports:enetra_tool",
+            kwargs={"scenario_internal_id": self.scenario.internal_id},
+        )
+
+    def test_project_member_can_access_scenario_view(self):
+        self.client.force_login(self.member_user)
+        response = self.client.get(self.tool_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "ports/tool_base.html")
+
+    def test_user_outside_project_cannot_access_scenario_view(self):
+        self.client.force_login(self.outsider_user)
+        response = self.client.get(self.tool_url())
+        self.assertEqual(response.status_code, 403)

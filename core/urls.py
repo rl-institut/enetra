@@ -63,7 +63,7 @@ urlpatterns = [
     ),
     path(
         "projects/",
-        lambda x: render(x, template_name="core/projects.html"),
+        views.projects_view,
         name="projects",
     ),
     path(
@@ -77,8 +77,8 @@ urlpatterns = [
         name="einstellungen",
     ),
     path(
-        "project_overview/",
-        lambda x: render(x, template_name="core/project-overview.html"),
+        "project_overview/<uuid:project_internal_id>/",
+        views.project_overview_view,
         name="project_overview",
     ),
     path(
@@ -87,8 +87,8 @@ urlpatterns = [
         name="szenarienvergleich",
     ),
     path(
-        "ergebnisse/",
-        lambda x: render(x, template_name="core/ergebnisse.html"),
+        "ergebnisse/<uuid:project_internal_id>/",
+        views.project_overview_view,
         name="ergebnisse",
     ),
 ]

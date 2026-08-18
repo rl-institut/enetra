@@ -1,41 +1,19 @@
+{% extends "core/base_management.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Westhafen – Enetra</title>
-    {% include "core/imports.html" %}
-  </head>
-  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
-      <a href="{% url 'core:landing_page' %}">
-        <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
-      </a>
-      <nav class="flex gap-6 items-center">
-        <span class="text-sm text-slate-800">Projekte</span>
-        <div class="flex gap-2 items-center">
-          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
-          <span class="text-sm text-slate-800">Mein Konto</span>
-        </div>
-      </nav>
-    </header>
-
+{% block mainContent %}
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
 
         <!-- Breadcrumb -->
-        <a class="select-none flex items-center gap-2 w-fit text-slate-500 hover:text-slate-800 transition-colors duration-150" href="{% url 'core:project_overview' %}">
+        <a class="select-none flex items-center gap-2 w-fit text-slate-500 hover:text-slate-800 transition-colors duration-150" href="{% url 'core:projects' %}">
           <i data-lucide="arrow-left" class="w-4 h-4"></i>
           <span class="text-sm font-semibold">Zurück zu Projekte</span>
         </a>
 
         <!-- Project Info -->
         <div class="select-none flex flex-col gap-2">
-          <h1 class="text-3xl font-bold leading-normal text-slate-800">Westhafen</h1>
+          <h1 class="text-3xl font-bold leading-normal text-slate-800">{{project.name}}</h1>
           <div class="flex gap-6 items-center">
             <div class="flex gap-2 items-center">
               <i data-lucide="map-pin" class="w-5 h-5 text-slate-500"></i>
@@ -44,58 +22,45 @@
             </div>
             <div class="flex gap-2 items-center">
               <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
-              <span class="text-sm text-slate-500">Geändert: 27.06.2026</span>
+              <span class="text-sm text-slate-500">Geändert: {{project.updated_at|date:"j.n.Y "}}</span>
             </div>
             <a href="{% url 'core:user_rechte' %}" class="flex gap-2 items-center">
               <c-icon.user_rights />
-              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">5 Nutzer</span>
+              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
             </a>
           </div>
         </div>
 
         <!-- Szenarien -->
 
-
+        {% comment %}
+        removed these since scenario creation from a project without duplication does not
+        make a lot of sense
+        create_label="Technologie-Szenario erstellen"
+        create_icon="plus-circle"
+        {% endcomment %}
           <c-toolbar.index
             search_placeholder="Szenarien Durchsuchen..."
-            create_label="Technologie-Szenario erstellen"
-            create_icon="plus-circle"
           >
           <c-slot name="sort_buttons">
             <c-toolbar.sort_button sort_key='name' name="Name" />
             <c-toolbar.sort_button sort_key='last_update' name="Zuletzt Aktualisiert" />
             <c-toolbar.sort_button sort_key='status' name="Status" />
           </c-slot>
+
+            <c-slot name='button_slot'>
+            <button
+              class="select-none ml-auto px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 shrink-0 cursor-pointer">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-white"></i>
+              <span class="text-sm font-semibold text-white">Keine Funktion</span>
+            </button>
+            </c-slot>
           <c-slot name="card_view">
             <!-- Card View -->
             <!-- Grundszenario -->
             <div class="grid grid-cols-3 gap-4">
-              <div class="p-6 bg-cyan-50 rounded-lg shadow-[0px_1px_4px_0px_rgba(21,94,117,0.10)] outline outline-1 outline-offset-[-1px] outline-cyan-200 flex flex-col gap-6">
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center justify-between">
-                    <a href="#" class="select-none text-xl font-bold text-cyan-700 leading-normal hover:underline">Grundszenario</a>
-                    <div class="relative" x-data="{ open: false }">
-                      <button @click="open = !open" class="select-none cursor-pointer text-cyan-800 hover:text-cyan-600 transition-colors duration-150">
-                        <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                      </button>
-                      <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-                        <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-                          <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-                        </button>
-                        <hr class="border-slate-200" />
-                        <button class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
-                          <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Projekt löschen
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p class="select-none text-sm text-cyan-800 leading-normal">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
-                </div>
-                <a href="{% url 'core:ergebnisse' %}" class="select-none flex-1 px-6 py-2 bg-cyan-100 hover:bg-cyan-200 transition-colors duration-150 rounded-full flex justify-center items-center gap-3 cursor-pointer">
-                  <i data-lucide="chart-line" class="w-4 h-4 text-cyan-800"></i>
-                  <span class="text-sm font-semibold text-cyan-800">Ergebnisse</span>
-                </a>
-              </div>
+
+              {% include 'core/partials/technology_scenario_card.html' with scenario=project.scenario_set.first title=project.scenario_set.first.name status="In Bearbeitung" last_update=project.scenario_set.first.updated_at baselineScenario=True %}
             </div>
 
             <!-- Technologie-Szenarien label -->
@@ -104,10 +69,11 @@
             <!-- Technologie-Szenarien cards -->
             <div id="filterable_cards" class="grid grid-cols-3 gap-4">
               <!-- Wasserstoff-Integration -->
-              {% include 'core/partials/technology_scenario_card.html' with title="Wasserstoff-Integration" status="In Bearbeitung" last_update="2025.12.03" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="PV-Integration" status="success" last_update="2025.12.03" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="Ziel 2035"  status="success" last_update="2025.12.05" %}
-              {% include 'core/partials/technology_scenario_card.html' with title="Ziel 2030"  status="failure" last_update="2025.12.04" %}
+              {% for scenario in project.scenario_set.all %}
+              {% if not forloop.first %}
+              {% include 'core/partials/technology_scenario_card.html' with scenario=scenario title=scenario.name status="In Bearbeitung" last_update=scenario.updated_at %}
+              {% endif %}
+              {% endfor %}
             </div>
 
           </c-slot>
@@ -127,76 +93,19 @@
               <tbody class="divide-y divide-cyan-200">
 
                 <!-- Grundszenario row -->
-                <tr class="bg-cyan-50 hover:bg-cyan-100 transition-colors duration-100">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <a href="#" class="select-none font-semibold text-cyan-700 hover:underline">Grundszenario</a>
-                      <span class="select-none px-2 py-0.5 bg-cyan-200 text-cyan-800 text-xs font-semibold rounded-full">Basis</span>
-                    </div>
-                    <p class="select-none text-xs text-cyan-700 mt-0.5">Basis-Szenario aus dem künftige Szenarien entwickelt werden können.</p>
-                  </td>
-                  <td class="px-6 py-4">
-                    <span class="select-none px-3 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Berechnet</span>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="select-none flex items-center gap-2 text-cyan-700">
-                      <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
-                      <span>27.06.2026</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center justify-end gap-3">
-                      <a href="{% url 'core:ergebnisse' %}" class="select-none flex items-center gap-2 px-4 py-1.5 bg-cyan-100 hover:bg-cyan-200 text-cyan-800 rounded-full transition-colors duration-150 cursor-pointer whitespace-nowrap">
-                        <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
-                        <span class="text-xs font-semibold">Ergebnisse</span>
-                      </a>
-                      <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="select-none cursor-pointer text-cyan-800 hover:text-cyan-600 transition-colors duration-150">
-                          <i data-lucide="more-vertical" class="w-4 h-4"></i>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
-                          <button class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
-                            <i data-lucide="copy" class="w-4 h-4 shrink-0"></i> Projekt duplizieren
-                          </button>
-                          <hr class="border-slate-200" />
-                          <button class="select-none flex items-center p-3 gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded">
-                            <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i> Projekt löschen
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-
+                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" baselineScenario=True %}
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
-                {% include 'core/partials/technology_scenario_row.html' with title="Wasserstoff-Integration" last_update="2025.12.03" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="PV-Integration" status="success" last_update="2025.12.03" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="Ziel 2035"  status="success" last_update="2025.12.05" %}
-                {% include 'core/partials/technology_scenario_row.html' with title="Ziel 2030"  status="failure" last_update="2025.12.04" %}
-
+              {% for scenario in project.scenario_set.all %}
+               {% if not forloop.first %}
+                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update_sortable=scenario.updated_at status="Berechnet" %}
+               {% endif %}
+                {% endfor  %}
               </tbody>
             </table>
           </c-slot>
-
-
         </c-toolbar.index>
-
-
         </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
-      <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-4 object-contain" />
-      <nav class="flex gap-6 items-center">
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
-      </nav>
-    </footer>
-
-    <script>lucide.createIcons();</script>
-  </body>
-</html>
+{% endblock mainContent %}

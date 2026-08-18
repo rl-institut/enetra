@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meine Projekte – ENETRA</title>
+    {% include "core/imports.html" %}
+  </head>
+  <body hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}' class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    {% block headerContent %}
+    {% include "core/header_management.html" %}
+    {% endblock headerContent %}
+
+    <!-- Main Content -->
+    {% block mainContent %}
+    <main class="px-6 lg:px-12 py-12 flex-1">
+      missing mainContent
+    </main>
+    {% endblock mainContent %}
+
+    {% block footerContent %}
+    {% include "core/footer_management.html" %}
+    {% endblock footerContent %}
+
+
+    <script>lucide.createIcons();</script>
+  </body>
+</html>

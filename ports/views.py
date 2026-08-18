@@ -5,19 +5,17 @@ from collections.abc import Iterable
 from datetime import datetime
 from datetime import timedelta
 from itertools import chain
-from typing import Literal
 from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
 from django.apps.registry import apps
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import ForeignKey
-from django.db.models import ManyToManyField
 from django.db.models import Q
-from django.db.models import QuerySet
+from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpRequest
@@ -42,118 +40,32 @@ from guardian.shortcuts import get_perms
 from guardian.shortcuts import remove_perm
 
 from ports import models
-from ports.create_placeholder_scenario import create_scenario
+from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
+from ports.forms import ChangeProjectForm
+from ports.forms import ChangeScenarioForm
+from ports.forms import CreateProjectForm
+from ports.forms import CreateScenarioForm
 from ports.forms import LoadTemplateUploadForm
 from ports.forms import ScenarioItemFormFactory
+from ports.util import duplicate_scenario_with_permissions
+from ports.util import get_template_scenarios
 
+from .authorization import has_area_authorization_from_uuids
+from .authorization import has_authorization
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import Load
 from .models import LoadTemplate
+from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
+from .util import duplicate_project
+from .util import duplicate_scenario
 
 logger = logging.getLogger(__name__)
-
-
-def get_related_model_values(
-    instances: QuerySet[ScenarioItem], model: type[ScenarioItem], field_name: str
-):
-    """Find the values of field_name on all related instances of type model for the given queryset
-
-    Used to find all area_internal_ids for a given QuerySet of ScenarioItems, so the permission
-    can be checked on those areas
-    """
-    all_fields = instances.model._meta.get_fields()
-    fk_fields = [
-        f for f in all_fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
-    ]
-    m2m_fields = [
-        f
-        for f in all_fields
-        if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
-    ]
-    if not fk_fields and not m2m_fields:
-        return None
-
-    if fk_fields:
-        instances = instances.select_related(*[f.name for f in fk_fields])
-    if m2m_fields:
-        instances = instances.prefetch_related(*[f.name for f in m2m_fields])
-
-    values = []
-    for instance in instances:
-        for field in fk_fields:
-            related_instance = getattr(instance, field.name)
-            if related_instance is not None:
-                values.append(getattr(related_instance, field_name))
-        for field in m2m_fields:
-            values.extend(getattr(instance, field.name).values_list(field_name, flat=True))
-    return values
-
-
-def has_area_authorization_from_uuids(
-    uuids: list[UUID | str],
-    user: User,
-    crud: Literal["view", "create", "details", "change", "delete"],
-    scenario: Scenario,
-    model: type[ScenarioItem],
-):
-    if model is Area:
-        area_uuids = uuids
-    else:
-        instances = model.objects.filter(scenario=scenario, internal_id__in=uuids)
-        # Not all instances were found. Return save state of missing permission
-        if len(instances) != len(uuids):
-            return False
-        area_uuids = get_related_model_values(instances, Area, "internal_id")
-    areas = Area.objects.filter(scenario=scenario, internal_id__in=area_uuids).exclude(manager=user)
-    non_managed_areas_internal_ids = areas.values_list("internal_id", flat=True)
-    allowed_internal_ids = get_objects_for_user(user, crud, areas).values_list(
-        "internal_id", flat=True
-    )
-    missing_permissions = len(set(non_managed_areas_internal_ids).difference(allowed_internal_ids))
-    return missing_permissions == 0
-
-
-def has_authorization(
-    item: Scenario | ScenarioItem,
-    user: User,
-    crud: Literal["view", "create", "details", "change", "delete"],
-) -> bool:
-    """
-    View: See an item with limited set of attributes
-    details: See an item with all its attributes
-    Change: Change an item
-    Delete: Delete an item
-    Create: Create an item
-    """
-    if not user.is_authenticated:
-        return False
-    if user.is_superuser:
-        return True
-    if user == item.manager:
-        return True
-
-    # For now short the authorization for ScenarioItems, since their authorization is
-    # based only on areas for now
-    if isinstance(item, ScenarioItem):
-        return has_area_authorization_from_uuids(
-            [item.internal_id], user, crud, item.scenario, item.model()
-        )
-
-    has_perm = False
-    match crud:
-        case "delete" | "details":
-            has_perm = user.has_perm("details", item)
-        case "view":
-            has_perm = user.has_perm("view", item)
-        case _:
-            print("no matching crud found for " + crud)
-    return has_perm
 
 
 def debug_switch_user(request, username: str):
@@ -189,7 +101,7 @@ def changes_count(request, scenario_internal_id: UUID):
     Piggybacks the request to update the page with new content (from other users)
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not has_authorization(scenario, request.user, "details"):
+    if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
@@ -282,7 +194,7 @@ def changes(request, scenario_internal_id: UUID):
     Different filter options are supported for timespans and user
     """
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not has_authorization(scenario, request.user, "details"):
+    if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     days = int(request.GET.get("days", "90"))
     otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
@@ -383,8 +295,13 @@ def changes(request, scenario_internal_id: UUID):
 
 def get_home_context(user: User, scenario: Scenario):
     data = {}
+    scenario = scenario or Scenario.objects.select_related("project").last()
     data["scenario"] = scenario
-    data["scenarios"] = Scenario.objects.all()
+    data["project"] = scenario.project
+    data["create_scenario_form"] = CreateScenarioForm(base_scenario=scenario)
+    data["scenarios"] = Scenario.objects.filter(project=scenario.project).exclude(
+        project__isnull=True
+    )
     data["Area"] = Area
 
     base_qs = Area.objects.filter(scenario=scenario)
@@ -395,6 +312,7 @@ def get_home_context(user: User, scenario: Scenario):
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
     electric_components = dict()
+
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
             # create queries for all electriccomponenent models like
@@ -435,10 +353,14 @@ def get_home_context(user: User, scenario: Scenario):
 
 
 def home(request):
-    if request.GET.get("new") or Scenario.objects.count() == 0:
+    """Handle tool requests without scenario id
+    Only meant for development
+    TODO: Remove for prod
+    """
+    if settings.DEBUG and (request.GET.get("new") or Scenario.objects.count() == 0):
         # NOTE: during development call /?new=true
         # to create a new placeholder scenario
-        s = create_scenario()
+        s = create_placeholder_scenario()
         s.name = request.GET.get("new", "NewScenario")
         s.save(update_fields=["name"])
         return redirect(
@@ -447,7 +369,14 @@ def home(request):
                 kwargs={"scenario_internal_id": s.internal_id},
             )
         )
-    s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
+    if request.GET.get("internal_id"):
+        s_internal_id = request.GET.get("internal_id")
+    else:
+        if settings.DEBUG:
+            # fallback for development
+            s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
+        else:
+            return Http404()
     return redirect(
         reverse(
             "ports:enetra_tool",
@@ -459,17 +388,23 @@ def home(request):
 def enetra_tool(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
-    if not request.user.is_authenticated:
-        # During development allow easy access to scenario_users
-        return HttpResponse(
-            "<div>To See this scenario you need to be logged in as a user of the scenario_group</div>"
-            + debug_buttons
-        )
-    elif not has_authorization(scenario, request.user, "details"):
-        return HttpResponse(
-            f"Current user {request.user} has no details permission for the scenario"
-            + debug_buttons
-        )
+    if settings.DEBUG:
+        if not request.user.is_authenticated:
+            # During development allow easy access to scenario_users
+            return HttpResponse(
+                "<div>To See this scenario you need to be logged in as a user of the project_group</div>"
+                + debug_buttons
+            )
+        elif not has_authorization(scenario.project, request.user, "details"):
+            return HttpResponse(
+                f"Current user {request.user} has no details permission for the scenario"
+                + debug_buttons
+            )
+    else:
+        if not request.user.is_authenticated:
+            return redirect(reverse("core:login"))
+        elif not has_authorization(scenario.project, request.user, "details"):
+            return HttpResponseForbidden()
     context = get_home_context(user=request.user, scenario=scenario)
     return render(request, "ports/tool_base.html", context)
 
@@ -538,7 +473,9 @@ class DetailsView(View):
         return context
 
     def setup_view(self, request, *args, **kwargs) -> None:
-        self.scenario = Scenario.objects.get(internal_id=kwargs["scenario_internal_id"])
+        self.scenario = Scenario.objects.select_related("project").get(
+            internal_id=kwargs["scenario_internal_id"]
+        )
         self.Model = apps.get_model("ports", kwargs["model"])
         assert issubclass(self.Model, ScenarioItem)
         self.data = request.GET
@@ -615,8 +552,8 @@ class DetailsView(View):
         assert isinstance(request.user, User)
         # Instantiate the class with its fixed attributes
         self.setup_view(request, *args, **kwargs)
-        if not has_authorization(self.scenario, request.user, "view"):
-            response = HttpResponse("You are not allowed to VIEW this scenario")
+        if not has_authorization(self.scenario.project, request.user, "view"):
+            response = HttpResponse("You are not allowed to VIEW this Project")
             return response
 
         if not self.internal_ids and not self.internal_id and not self.created:
@@ -672,7 +609,7 @@ class DetailsView(View):
         if self.Model not in [Area, Load] and not issubclass(self.Model, ElectricComponent):
             raise Http404("This model does not exist or is not implemented yet")
         if self.Model == Area:
-            group = Group.objects.get(name=self.scenario.group_name())
+            group = Group.objects.get(name=self.scenario.project.group_name())
             # If Object permissions are queried multiple times consider using a
             # guardian.core.ObjectPermissionChecker
             initial = {"is_public": "details" in get_perms(group, self.instance)}
@@ -901,7 +838,7 @@ class DetailsView(View):
             if form.is_valid():
                 instance = form.save()
                 self.context["item"] = form.save()
-                group = Group.objects.get(name=self.scenario.group_name())
+                group = Group.objects.get(name=self.scenario.project.group_name())
                 if self.Model == Area:
                     if form.cleaned_data.get("is_public"):
                         assign_perm("details", group, form.instance)
@@ -925,6 +862,150 @@ class DetailsView(View):
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
         return response
+
+
+def create_project(request):
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    context = {}
+    context["id"] = "project-create-modal"
+    if request.method == "POST":
+        form = CreateProjectForm(
+            data=request.POST, template_queryset=get_template_scenarios(request.user)
+        )
+        success = False
+        if form.is_valid():
+            with atomic():
+                new_project = form.save(commit=False)
+                new_project.manager = request.user
+                new_project.save()
+
+                scenario = form.cleaned_data["template_scenario_internal_id"]
+
+                if scenario:
+                    new_scenario = duplicate_scenario(scenario, request.user)
+                else:
+                    new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+                new_scenario.project = new_project
+                new_scenario.save()
+
+                # FIXME: If a scenario is copied into a new project, all users should have access to the new project
+                # Must make sure not to overwrite area access to new scenario/project manager
+                # Setup Group Permissions and add user to group
+                group = Group.objects.create(name=new_project.group_name())
+                # Group is allowed to view generic and details of Project object
+                assign_perm("view", group, new_project)
+                assign_perm("details", group, new_project)
+                request.user.groups.add(group)
+                # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
+                areas = Area.objects.filter(
+                    scenario=new_scenario, manager__username=settings.DATA_USER
+                )
+                areas.update(manager=request.user)
+                assign_perm("details", request.user, areas)
+
+                success = True
+        context["form"] = form
+        context["success"] = success
+    return render(request, "core/partials/create_project.html", context)
+
+
+def create_scenario(request, scenario_internal_id: UUID):
+    """Create copy based on other scenario"""
+    if not request.user.is_authenticated:
+        return HttpResponse("Not allowed")
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponse("Not allowed")
+    context = {"id": "scenario-create-modal", "project": scenario.project}
+    if request.method == "POST":
+        form = CreateScenarioForm(data=request.POST, base_scenario=scenario, user=request.user)
+        success = False
+        if form.is_valid():
+            new_scenario = form.save()
+            redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
+            context["redirect_url"] = redirect_url
+            success = True
+        context["form"] = form
+        context["success"] = success
+
+    return render(request, "ports/partials/create_scenario.html", context)
+
+
+class ApiView(View):
+    """Handle delete and duplicate for Project and Scenario, returning JSON responses."""
+
+    action = None
+    ALLOWED_MODELS = (Project, Scenario)
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {"status": "failure", "message": "Authentication required"}, status=401
+            )
+        try:
+            self.Model = apps.get_model("ports", kwargs["model"])
+        except LookupError:
+            return JsonResponse(
+                {"status": "error", "message": f"Unknown model: {kwargs['model']}"}, status=400
+            )
+        if self.Model not in self.ALLOWED_MODELS:
+            return JsonResponse({"status": "error", "message": "Model not supported"}, status=400)
+        self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
+        is_authorized = self._check_permission(request)
+        if not is_authorized:
+            return JsonResponse(
+                {"status": "failure", "message": "Authorization required"}, status=403
+            )
+
+        if self.action == "duplicate":
+            return self.duplicate(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def _check_permission(self, request):
+        is_authorized = False
+        match self.instance:
+            case Project():
+                is_authorized = has_authorization(self.instance, request.user, "details")
+            case Scenario():
+                is_authorized = has_authorization(self.instance.project, request.user, "details")
+        return is_authorized
+
+    def post(self, request, *args, **kwargs):
+        match self.instance:
+            case Project():
+                form = ChangeProjectForm(data=request.POST, instance=self.instance)
+            case Scenario():
+                form = ChangeScenarioForm(data=request.POST, instance=self.instance)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({"status": "success", "message": "Changed"}, status=200)
+        return JsonResponse({"status": "failure", "message": form.errors.as_text()}, status=200)
+
+    def delete(self, request, *args, **kwargs):
+        self.instance.safe_delete()
+        return JsonResponse({"status": "success", "message": "Deleted"}, status=200)
+
+    def duplicate(self, request, *args, **kwargs):
+        try:
+            if self.Model == Project:
+                self.instance.internal_id = uuid4()
+                self.instance.name += " (Dupliziert)"
+                new_instance = duplicate_project(self.instance)
+            else:
+                new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": f"{new_instance.name} created",
+                    "internal_id": str(new_instance.internal_id),
+                },
+                status=201,
+            )
+        except:  # noqa
+            traceback.print_exc()
+            return JsonResponse({"status": "failure", "message": "Duplicating failed"}, status=400)
 
 
 def template_upload_from_load(request, scenario_internal_id: UUID, model: str):

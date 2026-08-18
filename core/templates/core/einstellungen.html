@@ -15,7 +15,7 @@
         <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
       </a>
       <nav class="flex gap-6 items-center">
-        <a href="projects.html" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
+        <a href="{% url "core:projects" %}" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
         <div class="flex gap-2 items-center">
           <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
           <span class="text-sm font-semibold text-slate-800">Mein Konto</span>

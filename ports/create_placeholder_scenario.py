@@ -14,6 +14,7 @@ from .models import Grid
 from .models import Heating
 from .models import Load
 from .models import LoadTemplate
+from .models import Project
 from .models import Scenario
 from .models import Solar
 
@@ -22,6 +23,8 @@ def create_scenario() -> Scenario:
     """Deletes previous scenario with 'special' uid and creates new one"""
     user1, _ = User.objects.get_or_create(username="fo@fo")
     user2, _ = User.objects.get_or_create(username="ba@ba")
+    # Test user without special access
+    user3, _ = User.objects.get_or_create(username="ca@ca")
     user1.set_password("123")
     user1.is_active = True
     user2.set_password("123")
@@ -32,16 +35,23 @@ def create_scenario() -> Scenario:
     _uid = "00000000-0000-4000-0000-000000000000"
     s = Scenario.objects.filter(internal_id=_uid).first()
     if s:
-        s: Scenario
         s.safe_delete()
 
-    s = Scenario.objects.create(name="TestScenario", internal_id=_uid, manager=user1)
-    group = Group.objects.create(name=s.group_name())
+    new_project = Project.objects.create(name="TestProjekt", manager=user1)
+    s = Scenario.objects.create(
+        name="TestScenario", internal_id=_uid, manager=user1, project=new_project
+    )
+    # Group might exist already, since developer might switch back and force between migrations states
+    old_group = Group.objects.filter(name=new_project.group_name()).first()
+    if old_group:
+        # Delete the group so no permissions leak from another project
+        old_group.delete()
+    group = Group.objects.create(name=new_project.group_name())
     user1.groups.add(group)
     user2.groups.add(group)
-    # Group is allowed to view generic and details of Scenario object
-    assign_perm("view", group, s)
-    assign_perm("details", group, s)
+    # Group is allowed to view generic and details of Project
+    assign_perm("view", group, new_project)
+    assign_perm("details", group, new_project)
 
     area1 = Area.objects.create(
         scenario=s,
