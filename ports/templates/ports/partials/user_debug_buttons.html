@@ -20,7 +20,7 @@
       function h(e){
         // Trigger Refresh if this button finished switching users
         if(e.detail.elt===htmx.find('.user-debug-buttons')){
-          window.location=window.location;
+          window.location.refresh();
         }
       }
       document.addEventListener('htmx:afterSettle',h);
@@ -34,7 +34,7 @@
       function h(e){
         // Trigger Refresh if this button finished switching users
         if(e.detail.elt===htmx.find('.user-debug-buttons')){
-          window.location=window.location;
+          window.location.refresh();
         }
       }
       document.addEventListener('htmx:afterSettle',h);
@@ -48,7 +48,7 @@
       function h(e){
         // Trigger Refresh if this button finished switching users
         if(e.detail.elt===htmx.find('.user-debug-buttons')){
-          window.location=window.location;
+          window.location.refresh();
         }
       }
       document.addEventListener('htmx:afterSettle',h);
@@ -63,7 +63,7 @@
       function h(e){
         // Trigger Refresh if this button finished switching users
         if(e.detail.elt===htmx.find('.user-debug-buttons')){
-          window.location=window.location;
+          window.location.refresh();
         }
       }
       document.addEventListener('htmx:afterSettle',h);
