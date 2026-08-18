@@ -93,13 +93,13 @@
               <tbody class="divide-y divide-cyan-200">
 
                 <!-- Grundszenario row -->
-                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" baselineScenario=True %}
+                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update=project.scenario_set.first.updated_at status="Berechnet" baselineScenario=True %}
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
               {% for scenario in project.scenario_set.all %}
                {% if not forloop.first %}
-                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update_sortable=scenario.updated_at status="Berechnet" %}
+                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update=scenario.updated_at status="Berechnet" %}
                {% endif %}
                 {% endfor  %}
               </tbody>
