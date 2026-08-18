@@ -4,12 +4,11 @@
   </button>
   <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
     <c-api-button
-      hx-post="{% url 'ports:api_duplicate' 'scenario' scenario.internal_id %}"
-      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      hx-post="{% url 'ports:api_duplicate' 'scenario' scenario.internal_id %}?rename=true"
       class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded"
       x-cloak
     >
-      <div  x-show="status=='default'"><i data-lucide="copy" class="w-4 h-4 shrink-0"></i>Szenario duplizieren<span class='htmx-indicator-inherited loader align-middle'></span></div>
+      <div  x-show="status=='default'"><i data-lucide="copy" class="w-4 h-4 shrink-0"></i>Szenario duplizieren<span class='htmx-indicator loader align-middle'></span></div>
       <div  x-show="status=='success'">Dupliziert</div>
       <div  x-show="status=='error'">Fehlgeschlagen</div>
     </c-api-button>
@@ -30,7 +29,7 @@
       class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
       x-cloak
     >
-      <div  x-show="status=='default'"> <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Szenario Löschen<span class='htmx-indicator-inherited loader align-middle'></span></div>
+      <div  x-show="status=='default'"> <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i> Szenario Löschen<span class='htmx-indicator loader align-middle'></span></div>
       <div  x-show="status=='success'">Gelöscht</div>
       <div  x-show="status=='error'">Fehlgeschlagen</div>
     </c-api-button>
