@@ -1,5 +1,5 @@
 // This takes care of handling events send by the map and passing it to the appropriate html elements
-// Its a seperate file from the map-interface-enetra, so it can be deferet until after the map is loaded
+// It is a seperate file from the map-interface-enetra, so it can be deferred until after the map is loaded
 // map-interface-enetra hydrates the map with data, and therefore needs to be loaded before the leaflet/draw map
 //
 

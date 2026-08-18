@@ -115,7 +115,7 @@ def duplicate_project(project: Project):
 
 def transfer_group_permission(scenario, new_scenario):
     """Add all area permissions of the scenario to the new_scenario.
-    The group stays the same, since its expected to be a scenario copy inside the same project.
+    The group stays the same, since it is expected to be a scenario copy inside the same project.
     """
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
