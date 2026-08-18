@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 
+from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -11,10 +12,11 @@ from django.db.models import QuerySet
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
 
-from .db_deepcopy import deepcopy
+from .deepcopy import Deepcopy
 from .models import Area
 from .models import Project
 from .models import Scenario
+from .models import ScenarioItem
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +102,15 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
 def duplicate_project(project: Project):
     # deepcopy may reassign the instance pk in memory, so resolve the old group first
     old_group = Group.objects.filter(name=project.group_name()).first()
-    new_project, _ = deepcopy(project, exclude_models={User}, max_depth=2)
+    model_hierarchy = [
+        Project,
+        Scenario,
+        Area,
+    ]
+    for m in apps.get_models():
+        if issubclass(m, ScenarioItem) and m is not Area:
+            model_hierarchy.append(m)
+    new_project = Deepcopy(model_hierarchy, {User}).deepcopy(project)
 
     # Authorization is not directly linked through foreign keys but through foreign_objects
     # Therefor the group is not deepcopied. Maybe make the group part of the object?
@@ -148,7 +158,15 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     """
     # Scenario internal_id must be unique. by changing the in memory internal_id
     # the deepcopy does not create a collision
-    new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
+
+    model_hierarchy = [
+        Scenario,
+        Area,
+    ]
+    for m in apps.get_models():
+        if issubclass(m, ScenarioItem) and m is not Area:
+            model_hierarchy.append(m)
+    new_scenario = Deepcopy(model_hierarchy, {User, Project}).deepcopy(scenario)
     new_scenario.name += suffix
     new_scenario.manager = user
     new_scenario.save()
