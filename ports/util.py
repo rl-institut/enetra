@@ -155,7 +155,7 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
 
 def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     new_scenario = duplicate_scenario(scenario, user, suffix)
-    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
+    # Managers have already been copied, now transfer Project group permissions.
     transfer_group_permission(scenario, new_scenario)
     return new_scenario
 
