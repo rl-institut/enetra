@@ -984,6 +984,13 @@ class ApiView(View):
         return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
     def delete(self, request, *args, **kwargs):
+        match self.instance:
+            case Scenario():
+                if self.instance.project.scenario_set.count() == 1:
+                    return JsonResponse(
+                        {"success": False, "message": "not allowed to delete the last scenario"},
+                        status=400,
+                    )
         try:
             with atomic():
                 self.instance.safe_delete()
