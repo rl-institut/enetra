@@ -146,8 +146,6 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     Group permissions should not be transferred in cases of scenario duplication for a new project
     The previous group should not be authorized to view a scenario or its items from a different project
     """
-    # Scenario internal_id must be unique. by changing the in memory internal_id
-    # the deepcopy does not create a collision
     new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
     new_scenario.name += suffix
     new_scenario.manager = user
