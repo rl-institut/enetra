@@ -84,9 +84,8 @@
     {% comment %}
     These elements represent the state of the map elements.
     Hidden by default, but can be inspected for debugging purposes
+    The geometries are lazy loaded for fast first draw of page. The map is redrawn afterwards
     {% endcomment %}
-
-
     <div id="geom_forms_container" class="hidden h-30 border-2 m-2 overflow-y-scroll overflow-clip"
       hx-get="{% url 'ports:geometries' scenario.internal_id %}"
       hx-trigger="load"
