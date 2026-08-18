@@ -11,7 +11,7 @@
           class="{{class}}"
           @htmx:after-request="
                 const r = JSON.parse($event.detail.xhr.responseText);
-                const ok = (r.status=='success');
+                const ok = (r.success);
                 console.log(r);
                 if (ok){
                     $dispatch('success')

@@ -944,22 +944,20 @@ class ApiView(View):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse(
-                {"status": "failure", "message": "Authentication required"}, status=401
+                {"success": False, "message": "Authentication required"}, status=401
             )
         try:
             self.Model = apps.get_model("ports", kwargs["model"])
         except LookupError:
             return JsonResponse(
-                {"status": "error", "message": f"Unknown model: {kwargs['model']}"}, status=400
+                {"success": False, "message": f"Unknown model: {kwargs['model']}"}, status=400
             )
         if self.Model not in self.ALLOWED_MODELS:
-            return JsonResponse({"status": "error", "message": "Model not supported"}, status=400)
+            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
         self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
         is_authorized = self._check_permission(request)
         if not is_authorized:
-            return JsonResponse(
-                {"status": "failure", "message": "Authorization required"}, status=403
-            )
+            return JsonResponse({"success": False, "message": "Authorization required"}, status=403)
 
         if self.action == "duplicate":
             return self.duplicate(request, *args, **kwargs)
@@ -982,12 +980,17 @@ class ApiView(View):
                 form = ChangeScenarioForm(data=request.POST, instance=self.instance)
         if form.is_valid():
             form.save()
-            return JsonResponse({"status": "success", "message": "Changed"}, status=200)
-        return JsonResponse({"status": "failure", "message": form.errors.as_text()}, status=200)
+            return JsonResponse({"success": True, "message": "Changed"}, status=200)
+        return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
     def delete(self, request, *args, **kwargs):
-        self.instance.safe_delete()
-        return JsonResponse({"status": "success", "message": "Deleted"}, status=200)
+        try:
+            with atomic():
+                self.instance.safe_delete()
+            success = True
+        except:  # noqa
+            success = False
+        return JsonResponse({"success": success, "message": "Deleted"}, status=200)
 
     def duplicate(self, request, *args, **kwargs):
         try:
@@ -999,7 +1002,7 @@ class ApiView(View):
                 new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
             return JsonResponse(
                 {
-                    "status": "success",
+                    "success": True,
                     "message": f"{new_instance.name} created",
                     "internal_id": str(new_instance.internal_id),
                 },
@@ -1007,7 +1010,7 @@ class ApiView(View):
             )
         except:  # noqa
             traceback.print_exc()
-            return JsonResponse({"status": "failure", "message": "Duplicating failed"}, status=400)
+            return JsonResponse({"success": False, "message": "Duplicating failed"}, status=400)
 
 
 def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
