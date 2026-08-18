@@ -40,8 +40,11 @@ class Deepcopy:
         self.model_hierarchy = model_hierarchy
         # Suppress warnings for missing related objects of a Model type
         self.ignore_models: set[type[models.Model]] = ignore_models or set()
-        self.query: dict = dict()
-        self.old_new = dict()
+
+        # nested lookup table for new IDs of already copied instances.
+        # First key is the Model, second key is the id of the instance before it was copied
+        # The value is the id of the instance after it was copied
+        self.old_new: dict[models.Model, dict[int, int]] = dict()
         # Fields which can not be set before bulk creation, e.g. for Models referencing themselves
         self.backlog: dict[type[models.Model], dict] = dict()
 
@@ -112,7 +115,7 @@ class Deepcopy:
             if found_fields:
                 model.objects.bulk_update(instances, fields=found_fields)
 
-    def post_copy_m2m(self, instances: list[models.Model]):
+    def post_copy_m2m(self, instances: list[models.Model], query: dict):
         """Create m2m relationship after the new instances were generated"""
         instance = instances[0]
         model = instance._meta.model
@@ -131,7 +134,7 @@ class Deepcopy:
                 )
                 # use a subquery to fetch all m2m rows which are related to our instances
                 # the subquery avoids sending huge IN statements to the db
-                query_dict = {f"{instance_fk.name}__in": model.objects.filter(**self.query)}
+                query_dict = {f"{instance_fk.name}__in": model.objects.filter(**query)}
                 m2m_instances = through.objects.filter(**query_dict)
                 if m2m_instances.exists():
                     instances = list(m2m_instances)
@@ -155,12 +158,13 @@ class Deepcopy:
         except ValueError as err:
             raise Exception(f"{instance._meta.model} not part of hierarchy") from err
 
-        # Copies the given instance and sets the query to find related objects
-        self.query = {"id": instance.id}
+        # Query to find related objects
+        query = {"id": instance.id}
+
         # Return the copies of the first instance
         new_org_instances = None
         for model in self.model_hierarchy[model_index:]:
-            instances = list(model.objects.filter(**self.query))
+            instances = list(model.objects.filter(**query))
             if not new_org_instances:
                 new_org_instances = instances
             if not instances:
@@ -177,14 +181,14 @@ class Deepcopy:
             new_ids = [x.id for x in new_instances]
             self.old_new[model] = dict(zip(old_ids, new_ids, strict=True))
             # if the model has many to many relationships they can now be created
-            self.post_copy_m2m(instances)
+            self.post_copy_m2m(instances, query)
 
             # prepare the query for 'lower' models
             if model == Project:
                 # project is part of the first copy
-                self.query = {"project_id__in": old_ids}
+                query = {"project_id__in": old_ids}
             elif model == Scenario:
-                self.query = {"scenario_id__in": Scenario.objects.filter(**self.query)}
+                query = {"scenario_id__in": Scenario.objects.filter(**query)}
             else:
                 # all other objects should be found via scenario_id
                 pass
