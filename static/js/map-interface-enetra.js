@@ -104,6 +104,8 @@ function getGeoJsons() {
     // const inputs = document.querySelectorAll('.map-draw-element.' + name + '> textarea, .map-draw-element.' + name + ' > input');
     if (inputs.length == 0) {
       console.log(`No inputs found for layer ${name}`)
+    } else {
+      console.log(`Inputs found for ${name}: ${inputs.length}`)
     }
 
     // Add a style to each geometry/Feature, the layer name, and a unique identifier

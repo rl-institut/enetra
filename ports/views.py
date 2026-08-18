@@ -189,15 +189,25 @@ def changes_count(request, scenario_internal_id: UUID):
 
 
 def geometries(request, scenario_internal_id: UUID):
-    # TODO: Harden authentification
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not get_authentification(scenario, request.user, "read"):
         return HttpResponseForbidden("No access")
     context = {}
     all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
+
+    base_qs = Area.objects.filter(scenario=scenario)
+    allowed_details_ids = set(
+        get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
+    )
+    managed_area_ids = set(base_qs.filter(manager=request.user).values_list("id", flat=True))
+    allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
+
     area_forms = []
     for a in all_areas:
-        area_forms.append(AreaItemFormFactory()(instance=a))
+        form = AreaItemFormFactory()(instance=a)
+        if a.id in allowed_details_ids_union:
+            a.has_authorization = True
+        area_forms.append(form)
     context["area_forms"] = area_forms
     context["scenario"] = scenario
     return render(request, "ports/partials/geometries.html", context)
