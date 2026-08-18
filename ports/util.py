@@ -103,7 +103,7 @@ def duplicate_project(project: Project):
     new_project, _ = deepcopy(project, exclude_models={User}, max_depth=2)
 
     # Authorization is not directly linked through foreign keys but through foreign_objects
-    # Therefor the group is not deepcopied. Maybe make the group part of the object?
+    # Therefore the group is not deepcopied. Maybe make the group part of the object?
     # This would break down if multiple groups per project exist
     group = Group.objects.create(name=new_project.group_name())
     assign_perm("view", group, new_project)
