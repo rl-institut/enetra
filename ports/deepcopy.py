@@ -1,14 +1,13 @@
 """Deepcopy an object based on a given table hierarchy
 The instances are copied in the order of the hierarchy.
 It is assumed creation in the order is possible.
-Each Instance/Model can perform a pre_copy mutation, e.g. change its internal_id to fulfill
-uniqueness.
-Before creation foreign fields are retarget to copied instances.
-If these instances are missing this value adjustment is pushed to a backlog
+Each Instance/Model may perform a pre_copy mutation, e.g. change its internal_id to preserve uniqueness.
+Before creation foreign fields are changed to copied instances.
+If these instances are missing, this value adjustment is pushed to a backlog
 After object creation m2m fields are searched on the object and the m2m table is created.
-When all objects from the model hierarchy are copied/created the backlog will be checked,
+When all objects from the model hierarchy are copied/created the backlog will be checked
 and the values will be adjusted to the now (hopefully) existing new objects.
-If the objects are still missing a warning will be given.
+If the objects are still missing, a warning will be given.
 If some models should not be copied/adjusted (e.g. User) these should not be part of the model
 hierarchy. To turn of warnings that these instances are not found, add the Model to ignore_models.
 Copies will reference generated copies instead of the original instances
@@ -48,14 +47,16 @@ class Deepcopy:
 
     def pre_copy_mutate(self, instances: list[models.Model]):
         """Adjust the instances in place so they can be copied"""
-        match instances[0]:
-            case Project() | Scenario():
-                for instance in instances:
-                    instance.id = None
-                    instance.internal_id = uuid4()
-            case _:
-                for instance in instances:
-                    instance.id = None
+        # Saving the instance will create a new one with a new id
+        for instance in instances:
+            instance.id = None
+
+        # Projects and Scenarios must have unique internal_ids since they are used for lookup.
+        # ScenarioItems dont have this requirement as long as they belong to different Scenarios
+        reset_uuid = type(instances[0]) in [Project, Scenario]
+        if reset_uuid:
+            for instance in instances:
+                instance.internal_id = uuid4()
 
     def pre_copy_retarget(self, instances: list[models.Model]):
         """Adjust the foreign fields according to already copied instances"""
@@ -149,15 +150,11 @@ class Deepcopy:
                 )
 
     def deepcopy(self, instance: models.Model):
-        model_index = None
-        for i, model in enumerate(self.model_hierarchy):
-            if instance._meta.model == model:
-                model_index = i
-                break
-        else:
-            raise Exception(
-                f"Instance of type {instance._meta.model} to deepcopy is not part of the model_hierarchy"
-            )
+        try:
+            model_index = self.model_hierarchy.index(instance._meta.model)
+        except ValueError as err:
+            raise Exception(f"{instance._meta.model} not part of hierarchy") from err
+
         # Copies the given instance and sets the query to find related objects
         self.query = {"id": instance.id}
         # Return the copies of the first instance
