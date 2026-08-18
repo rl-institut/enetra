@@ -8,9 +8,9 @@ After object creation m2m fields are searched on the object and the m2m table is
 When all objects from the model hierarchy are copied/created the backlog will be checked
 and the values will be adjusted to the now (hopefully) existing new objects.
 If the objects are still missing, a warning will be given.
-If some models should not be copied/adjusted (e.g. User) these should not be part of the model
-hierarchy. To turn of warnings that these instances are not found, add the Model to ignore_models.
-Copies will reference generated copies instead of the original instances
+If some models should not be copied/adjusted (e.g. User), these must not be part of the model hierarchy.
+To turn of warnings that these instances are not found, add the Model to ignore_models.
+Copies will reference generated copies instead of the original instances.
 `
     b = Bar()
     foo = Foo(bar=b)
