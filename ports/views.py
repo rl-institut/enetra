@@ -875,36 +875,39 @@ def create_project(request):
         )
         success = False
         if form.is_valid():
-            with atomic():
-                new_project = form.save(commit=False)
-                new_project.manager = request.user
-                new_project.save()
+            success = True
+            try:
+                with atomic():
+                    new_project = form.save(commit=False)
+                    new_project.manager = request.user
+                    new_project.save()
 
-                scenario = form.cleaned_data["template_scenario_internal_id"]
+                    scenario = form.cleaned_data["template_scenario_internal_id"]
 
-                if scenario:
-                    new_scenario = duplicate_scenario(scenario, request.user)
-                else:
-                    new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
-                new_scenario.project = new_project
-                new_scenario.save()
+                    if scenario:
+                        new_scenario = duplicate_scenario(scenario, request.user)
+                    else:
+                        new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+                    new_scenario.project = new_project
+                    new_scenario.save()
 
-                # FIXME: If a scenario is copied into a new project, all users should have access to the new project
-                # Must make sure not to overwrite area access to new scenario/project manager
-                # Setup Group Permissions and add user to group
-                group = Group.objects.create(name=new_project.group_name())
-                # Group is allowed to view generic and details of Project object
-                assign_perm("view", group, new_project)
-                assign_perm("details", group, new_project)
-                request.user.groups.add(group)
-                # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
-                areas = Area.objects.filter(
-                    scenario=new_scenario, manager__username=settings.DATA_USER
-                )
-                areas.update(manager=request.user)
-                assign_perm("details", request.user, areas)
-
-                success = True
+                    # FIXME: If a scenario is copied into a new project, all users should have access to the new project
+                    # Must make sure not to overwrite area access to new scenario/project manager
+                    # Setup Group Permissions and add user to group
+                    group = Group.objects.create(name=new_project.group_name())
+                    # Group is allowed to view generic and details of Project object
+                    assign_perm("view", group, new_project)
+                    assign_perm("details", group, new_project)
+                    request.user.groups.add(group)
+                    # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
+                    areas = Area.objects.filter(
+                        scenario=new_scenario, manager__username=settings.DATA_USER
+                    )
+                    areas.update(manager=request.user)
+                    assign_perm("details", request.user, areas)
+            except:  # noqa
+                # something inside the transaction failed
+                success = False
         context["form"] = form
         context["success"] = success
     return render(request, "core/partials/create_project.html", context)
@@ -921,12 +924,11 @@ def create_scenario(request, scenario_internal_id: UUID):
     context = {"id": "scenario-create-modal", "project": scenario.project}
     if request.method == "POST":
         form = CreateScenarioForm(data=request.POST, base_scenario=scenario, user=request.user)
-        success = False
-        if form.is_valid():
+        success = form.is_valid()
+        if success:
             new_scenario = form.save()
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
-            success = True
         context["form"] = form
         context["success"] = success
 
