@@ -68,14 +68,14 @@ jobs:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Set Up Gdal
-        run: |
-          sudo apt-get update
-          sudo apt-get install gdal-bin
-          echo ogrinfo --version
+      # - name: Set Up Gdal
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install gdal-bin
+      #     echo ogrinfo --version
 
-      - name: setup-chromedriver
-        uses: nanasess/setup-chromedriver@v2.2.0
+      # - name: setup-chromedriver
+      #   uses: nanasess/setup-chromedriver@v2.2.0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
