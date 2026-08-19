@@ -1,4 +1,7 @@
+from typing import Any
+
 import django.forms as forms
+from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import ForeignKey
@@ -7,11 +10,21 @@ from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
 
+from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
 from ports.models import Load
+from ports.models import LoadTemplate
+from ports.models import Project
+from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.util import duplicate_scenario_with_permissions
+
+
+class ScenarioChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.name
 
 
 def AreaItemFormFactory():
@@ -25,6 +38,11 @@ def AreaItemFormFactory():
             "geom": GeoJSONWidget(),
         },
     )
+
+
+class ScenarioAreasForm(forms.Form):
+    geojson_ports_regions_file = forms.FileField(required=True)
+    geojson_ports_buildings_file = forms.FileField(required=True)
 
 
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
@@ -51,10 +69,10 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         BaseForm.base_fields["is_public"] = forms.BooleanField(
             required=False,
             widget=forms.CheckboxInput(),
-            label="Für andere Projektmitarbeiter sichtbar machen",
+            label="Für andere im Projekt sichtbar machen",
         )
 
-    elif ItemModel == Load or ElectricComponent in ItemModel.mro():
+    elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
@@ -134,8 +152,75 @@ class GeoJSONWidget(forms.Textarea):
 
 class InternalIDModelChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, **kwargs):
-        kwargs.setdefault("to_field_name", "internal_id")
+        # ForeignKey.formfield() always passes to_field_name="id".
+        # Needs hard overwrite
+        kwargs["to_field_name"] = "internal_id"
         super().__init__(queryset, **kwargs)
+
+    def prepare_value(self, value):
+        # ModelForm initial data holds the related object's pk,
+        # while the choices are keyed by internal_id
+        if isinstance(value, int):
+            value = self.queryset.filter(pk=value).values_list("internal_id", flat=True).first()
+        return super().prepare_value(value)
+
+
+ALLOWED_UPLOAD_SUFFIXES = [".csv"]
+
+
+class LoadTemplateUploadForm(forms.Form):
+    allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
+    # Set both required to false, so the fields to not mess with the outer load form
+    # otherwise we would need form injection for the inputs
+
+    template_file = forms.FileField(
+        label="Vorlagedatei",
+        widget=forms.FileInput(
+            attrs={
+                "accept": ",".join(ALLOWED_UPLOAD_SUFFIXES),
+                "title": "Datei auswählen",
+            }
+        ),
+        required=False,
+    )
+    timestep_minutes = forms.FloatField(
+        label="Zeitschritt (Minuten)",
+        initial=15,
+        min_value=1,
+        required=False,
+    )
+
+    def clean_template_file(self):
+        file = self.cleaned_data.get("template_file")
+        if not file:
+            raise ValidationError("Keine Datei ausgewählt")
+
+        suffix = "." + file.name.split(".")[-1].lower()
+        if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+            raise ValidationError(
+                "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
+            )
+        values = LoadTemplate.values_from_csv(file=file)
+        if not values:
+            raise ValidationError("Keine numerischen Werte gefunden")
+        self._parsed_values = values
+        return file
+
+    def save(self, scenario, load, user):
+        values = self._parsed_values
+        timestep_minutes = self.cleaned_data["timestep_minutes"]
+        file = self.cleaned_data["template_file"]
+        template_load = LoadTemplate.objects.create(
+            timeseries={"values": values, "timestep_minutes": timestep_minutes},
+            spec_load=sum(values) / len(values),
+            scenario=scenario,
+            name=file.name,
+            manager=user,
+        )
+
+        load.template = template_load
+        load.save()
+        return template_load
 
 
 class UUIDMultipleChoiceField(CharField):
@@ -166,3 +251,76 @@ class UUIDMultipleChoiceField(CharField):
         if not isinstance(value, QuerySet):
             raise ValidationError(self.error_messages["required"], code="required")
         return value
+
+
+class ChangeProjectForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ChangeScenarioForm(forms.ModelForm):
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class CreateScenarioForm(forms.ModelForm):
+    base_scenario: Scenario | None = None
+    user: User | None = None
+
+    def __init__(self, *args, base_scenario: Scenario = None, user: User | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert base_scenario is not None
+        self.base_scenario = base_scenario
+        self.user = user
+
+    class Meta:
+        model = Scenario
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean(self) -> dict[str, Any]:
+        if not has_authorization(self.base_scenario.project, self.user, "details"):
+            raise ValidationError(
+                self.error_messages["no_authorization"],
+                code="no_authorization",
+            )
+        return super().clean()
+
+    def save(self, commit: bool = True):
+        new_scenario = duplicate_scenario_with_permissions(self.base_scenario, self.user)
+        new_scenario.name = self.cleaned_data["name"]
+        new_scenario.description = self.cleaned_data["description"]
+        new_scenario.save()
+        return new_scenario
+
+
+class CreateProjectForm(forms.ModelForm):
+    template_scenario_internal_id = ScenarioChoiceField(
+        Scenario.objects, to_field_name="internal_id", required=False
+    )
+
+    def __init__(self, *args, template_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if template_queryset is not None:
+            self.fields["template_scenario_internal_id"].queryset = template_queryset
+
+    class Meta:
+        model = Project
+        fields = ("name", "description")
+        widgets = {
+            "name": forms.TextInput(),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }

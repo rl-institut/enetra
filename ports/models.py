@@ -1,6 +1,9 @@
 import logging
 import uuid
+from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
+from typing import ClassVar
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -19,17 +22,84 @@ from django.dispatch import receiver
 from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from guardian.utils import get_group_obj_perms_model
 
-logger = logging.getLogger("django_ports")
+logger = logging.getLogger(__name__)
 
 
-# Each set of scenario items is bundled via its scenario. The scenario has a simple BigInteger Id
-class Scenario(models.Model):
+# Each set of scenario is bundled via its project
+class Project(models.Model):
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
     name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
+    # Set to now() on the database side
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Related name + tells django not to create a reverse relation for user, e.g. user.scenario_set
+    # To find all projects a user has access to use util.get_user_projects, which takes group permissions into account
+    manager = models.ForeignKey(
+        User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
+    )
+
+    class Meta:
+        permissions = (
+            ("view", "view project"),
+            ("details", "details project"),
+            ("delete", "delete project"),
+            ("change", "change project"),
+        )
+
+    def group_name(self) -> str:
+        return f"group_project_{self.id}"
+
+    @property
+    def users(self) -> "dict[str, models.QuerySet[User]]":
+        """Get all users with some permission for the project as dictionary
+        with key of the permission.codename"""
+        if not hasattr(self, "_users_cache"):
+            GroupObjectPermission = get_group_obj_perms_model()
+            perms = (
+                GroupObjectPermission.objects.filter(
+                    content_type=ContentType.objects.get_for_model(self.__class__),
+                    object_pk=self.pk,
+                )
+                .select_related("permission")
+                .prefetch_related("group__user_set")
+            )
+            self._users_cache = {
+                perm.permission.codename: perm.group.user_set.all() for perm in perms
+            }
+        return self._users_cache
+
+    @atomic()
+    def safe_delete(self):
+        """Safely delete the project by safely deleting all scenarios referencing it.
+        This is needed because of DeletedItems which are created during deletion.
+        """
+        scenarios = Scenario.objects.filter(project=self)
+        for s in scenarios:
+            s.safe_delete()
+        self.delete()
+
+
+class Scenario(models.Model):
+    # Instance which bundles ScenarioItems
+    # Bundled with other scenarios in a common _Project_.
+
+    # FK project is set to NULL when project is deleted,
+    # since DeletedItems don't allow cascading delete.
+    # Use project.safe_delete instead.
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
+    id = models.BigAutoField(primary_key=True, blank=True)
+    internal_id = models.UUIDField(
+        db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
+    )
+    name = models.TextField(blank=False, null=True)
+    description = models.TextField(blank=True, null=True)
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -40,6 +110,13 @@ class Scenario(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    # Area of the scenario / Port region
+    geom = models.PolygonField(default=None, null=True, blank=True)
+
+    # Class variable which keeps track of scenarios which should be deleted
+    # This disables DeletedItem creation which is slow for large queries
+    _being_deleted: ClassVar[set[int]] = set()
 
     class Meta:
         permissions = (
@@ -52,21 +129,28 @@ class Scenario(models.Model):
     def group_name(self):
         return f"Scenario_{self.id}_group"
 
+    @staticmethod
+    @contextmanager
+    def true_delete(scenario_ids: Iterable[int]):
+        """Context manager so no DeletedItems for these scenarios are created"""
+        ids = set(scenario_ids)
+        Scenario._being_deleted.update(ids)
+        try:
+            yield
+        finally:
+            Scenario._being_deleted.difference_update(ids)
+
     @atomic()
     def safe_delete(self):
-        """Delete Scenario by first deleting all references. When deleting the
-        scenario in the usual way, django iterates over other models to delete
-        them. this triggers post_delete which creates deletedItems. these
-        deletedItems are not cleaned up by django. this is handled with this
-        function. Maybe a better approach would be use a 'deleted' boolean flag
-        per item or use custom delete functions on the models."""
-        # iterate over all related objects
-        for rel in self._meta.get_fields():
-            if rel.one_to_many:  # reverse FK
-                related_manager = getattr(self, rel.get_accessor_name())
-                related_manager.all().delete()
-        DeletedItem.objects.filter(scenario=self).delete()
-        self.delete()
+        """Disable DeletedItem creation during deletion"""
+        with self.true_delete([self.id]):
+            self.delete()
+
+    def prepare_deepcopy(self):
+        """Adjust the instance so it can be deepcopied
+        Since the internal_id of each scenario has to be unique, its overwritten with a new one.
+        """
+        self.internal_id = uuid.uuid4()
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
@@ -86,12 +170,6 @@ class ItemTemplate(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
-
-    # the item was authorized. It can be shown in the frontend
-    has_authorization = False
-    # the items authorization was checked. It should be checked that only items with
-    # checked_authorization and has_authorization are shown.
-    checked_authorization = False
 
     updated_user = models.ForeignKey(
         User,
@@ -120,6 +198,9 @@ class ScenarioItem(ItemTemplate):
 
     scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
+
+    # the item was authorized. It can be shown in the frontend
+    has_authorization = False
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table
@@ -232,6 +313,9 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
     # using pre_delete leads to errors if deletion fails
     if sender in [DeletedItem, ChangedItem]:
         return
+    # No DeletedItem creation in cases where the scenario is marked for deletion
+    if instance.scenario_id in Scenario._being_deleted:
+        return
     deleted_item = DeletedItem.from_scenario_item(instance)
     deleted_item.save()
 
@@ -239,6 +323,7 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created"""
+    # TODO: add project?
     scenario = instance.scenario
     scenario.items_updated_at = instance.updated_at
     scenario.save()
@@ -465,6 +550,7 @@ class Load(ScenarioItem):
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
     ) -> type[ModelForm]:
+        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
         return FormClass
 
     @classmethod

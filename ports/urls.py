@@ -51,14 +51,39 @@ urlpatterns = [
         name="changes",
     ),
     path(
+        "geometries/<uuid:scenario_internal_id>/",
+        views.geometries,
+        name="geometries",
+    ),
+    path(
         "details/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=False),
         name="details",
     ),
     path(
-        "<uuid:scenario_uuid>/<str:first_load_str>/<str:last_update_str>/get_updates/",
-        views.get_updates,
-        name="get_updates",
+        "create_project/",
+        views.create_project,
+        name="create_project",
+    ),
+    path(
+        "create_scenario/<uuid:scenario_internal_id>/",
+        views.create_scenario,
+        name="create_scenario",
+    ),
+    path(
+        "api/<str:model>/<uuid:internal_id>/",
+        views.ApiView.as_view(),
+        name="api",
+    ),
+    path(
+        "api/<str:model>/<uuid:internal_id>/duplicate/",
+        views.ApiView.as_view(action="duplicate"),
+        name="api_duplicate",
+    ),
+    path(
+        "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        views.api_load_template,
+        name="api_load_template",
     ),
     path(
         "debug/switch-user/<str:username>/",

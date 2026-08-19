@@ -17,3 +17,4 @@ info.log
 node_modules/
 
 staticfiles
+data/

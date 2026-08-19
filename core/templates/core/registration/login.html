@@ -35,7 +35,11 @@
         <!-- Form -->
         <form class="flex flex-col gap-4" method="post" action="{% url 'core:login' %}">
           {% csrf_token %}
-          {{form.errors}}
+
+          {% comment %}
+          django automatically redirects to the {{next}} url after successfull login
+          {% endcomment %}
+          <input type="hidden" name="next" value="{{ next }}">
 
           {{ form.non_field_errors }}
           <!-- Email -->

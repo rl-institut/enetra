@@ -21,21 +21,8 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
       {% include "ports/partials/scenario_select.html" %}
-      {% comment %}
-
-      <div
-      hx-ext="sse"
-      sse-connect="{% url 'ports:scenario_updates' scenario.internal_id %}"
-      sse-swap="message"
-      hx-swap='beforeend'>
-      CONTENT
-      </div>
-      {% endcomment %}
     </div>
-    <div class="flex-1 overflow-auto p-[16px]
-      "
-      hx-on::scenario_changed="console.log( 'bar')"
-    >
+    <div class="flex-1 overflow-auto p-[16px]">
       <c-tabs.index variant='lined'>
 
       <c-tabs.tab>
@@ -51,7 +38,6 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
         {% include 'ports/partials/allg_randbed.html' %}
       </c-tabs.tab>
       </c-tabs.index>
-
     </div>
   </div>
 {% endblock sideBar %}
@@ -77,9 +63,9 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
   {% comment %}
     Allow htmx injection via content. Useful for debugging /desinging htmx_components
   {% endcomment %}
-  {% with sidebar_open=content|yesno:"True,False" %}
+  {% with sidebar_open=sidebar_content|yesno:"True,False" %}
   <c-detail-sidebar.index :open=sidebar_open id='detailSidebar' class='z-[9998]' class='bg-white'>
-    {{content}}
+    {{sidebar_content}}
   </c-detail-sidebar>
   {% endwith %}
 
@@ -99,4 +85,6 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
     <c-icon.template class="w-5 h-5 text-blue-500 bg-yellow-400" />
     <c-icon.info class="w-5 h-5 text-red-400" />
   </div>
+
+<script>lucide.createIcons();</script>
 {% endblock mainContent %}

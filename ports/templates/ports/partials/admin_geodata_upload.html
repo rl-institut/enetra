@@ -1,0 +1,21 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block content %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <fieldset class="fieldset group border border-base-200 mb-6 rounded-default shadow-xs p-3 dark:border-base-600">
+            {% include "unfold/helpers/field.html" with field=form.geojson_ports_regions_file %}
+        </fieldset>
+
+        <fieldset class="fieldset group border border-base-200 mb-6 rounded-default shadow-xs p-3 dark:border-base-600">
+            {% include "unfold/helpers/field.html" with field=form.geojson_ports_buildings_file %}
+        </fieldset>
+        <div class="flex justify-end">
+            <button type="submit" class="bg-primary-600 border border-transparent font-medium px-3 py-2 rounded-default text-sm text-white">
+                {% translate "Datei-Upload und Szenarien erstellen" %}
+            </button>
+        </div>
+    </form>
+{% endblock content %}

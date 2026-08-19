@@ -6,10 +6,10 @@
 <div class='border-[#e2e8f0] border-b border-r border-solid content-stretch flex flex-col gap-[16px] items-start px-[16px] py-[24px] relative shrink-0 w-full {{bg_color}}'>
       <div class="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="Port Selection">
         <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <div class="content-stretch flex gap-[8px] items-center relative shrink-0">
-            <p class="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative shrink-0 text-[#0e7490] text-[16px]">
-            {{project_name|default:"Westhafen"}}
-            </p>
+          <div class="content-stretch flex gap-[8px] items-center relative min-w-0 flex-1">
+          <a href='{% url "core:project_overview" project.internal_id %}'class="block font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative min-w-0 text-[#0e7490] text-[16px] truncate" title="{{project.name}}" >
+            {% translate 'Projekt:' %} {{ project.name|default:"Kein Projektname" }}
+          </a>
             <div class="overflow-clip relative shrink-0 size-[16px]" data-name="Info Icon">
               <div class="absolute contents inset-0" data-name="Group">
               {% if scenarioGroupImage %}
@@ -42,7 +42,7 @@
             </p>
           </button>
 
-      {% include 'ports/partials/create_scenario_modal.html' with id="scenario-create-modal" %}
+      {% include 'ports/partials/create_scenario.html' with id="scenario-create-modal" form=create_scenario_form scenario=scenario %}
         </div>
 
         <c-select.index
@@ -50,18 +50,22 @@
         inputName='selectedScenario'
       >
         {% for s in scenarios %}
-       <c-select.button
-          selectValue={{s.internal_id}}
-        >
-          {{s.name}}
+        {% if s == scenario %}
+        <c-select.button
+          :selectValue=s.internal_id
+        >{{s.name}}
         </c-select.button>
-        {% endfor %}
+        {% else %}
+        <a href='{% url "ports:home" %}{{s.internal_id}}'
+        >
+          <c-select.button
+            :selectValue=s.internal_id
+          >{{s.name}}
+          </c-select.button>
+        </a>
+        {% endif %}
 
-       <c-select.button
-          selectValue=1234
-        >
-          Some other (not really)
-        </c-select.button>
+        {% endfor %}
       </c-select.index>
       </div>
     <div class='{{borderLeftColor}} absolute h-[134px] left-0 top-0 w-[4px]'>

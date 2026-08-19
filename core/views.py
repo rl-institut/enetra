@@ -9,6 +9,8 @@ from django.core import mail
 from django.core import signing
 from django.http import Http404
 from django.http import HttpResponse
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
@@ -16,8 +18,49 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.generic import TemplateView
 
+from ports.authorization import has_authorization
+from ports.forms import CreateProjectForm
+from ports.models import Project
+from ports.models import Scenario
+from ports.util import get_template_scenarios
+from ports.util import get_user_projects
+from ports.util import prefetch_projects_users
+
 from .forms import AuthForm
 from .forms import SignUpForm
+
+
+@login_required()
+def projects_view(request):
+    context = {}
+    template_scenarios = get_template_scenarios(request.user)
+    projects = get_user_projects(request.user)
+    context["projects"] = projects
+    prefetch_projects_users(projects)
+    context["create_project_form"] = CreateProjectForm(template_queryset=template_scenarios)
+    return render(request, template_name="core/projects.html", context=context)
+
+
+def scenario_results(request, scenario_internal_id):
+    # TODO: guard results page against unwarranted access
+    context = {}
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    context["scenario"] = scenario
+
+    context["project"] = scenario.project
+    return render(request, template_name="core/ergebnisse.html", context=context)
+
+
+@login_required()
+def project_overview_view(request, project_internal_id):
+    project = get_object_or_404(Project, internal_id=project_internal_id)
+
+    if not has_authorization(project, request.user, "view"):
+        return HttpResponseForbidden("Not allowed")
+    context = {}
+    context["project"] = project
+    response = render(request, template_name="core/project-overview.html", context=context)
+    return response
 
 
 # ******** User management ******** #
@@ -87,7 +130,7 @@ def signup(request):
     raise Http404()
 
 
-@login_required(login_url="/login/")
+@login_required()
 def changePassword(request):
     if request.method == "POST":
         form = PasswordChangeForm(request.user, request.POST)
@@ -104,7 +147,7 @@ def changePassword(request):
     return render(request, "core/registration/password_change.html", {"form": form})
 
 
-@login_required(login_url="/login/")
+@login_required()
 def test_email(request):
     if request.user.is_staff:
         mail.send_mail(

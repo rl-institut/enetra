@@ -35,9 +35,12 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     }
 })
 
-// More minimal approach to restoring inputs without preserving everything
-// this allows preserving values of swapped htmx elements while still allowing
-// changing other attributes like disabled
+// oob-swaps which include inputs might want to preserve their frontend state.
+// E.g. a checked input with label foo is replaced oob with a checkbox with an adjusted label foobar
+// If the checkbox state was not part of the request, the server can not serve the input in the ckecked / unchecked state it was in. An standard htmx function hx-preserve exists but does not allow changing anything about the element, e.g. styling or disabled status. This is needed though to
+// properly change the input based on permission state (disable input when user is not authorized)
+// A more minimal approach than hx-preserve is to restore inputs value/checked status only.
+// changing other attributes like disabled is still possible
 document.addEventListener("htmx:oobBeforeSwap", (event) => {
     const fragment = event.detail.fragment;
     fragment.querySelectorAll("[preserve-val]").forEach(newEl => {
