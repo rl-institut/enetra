@@ -90,7 +90,7 @@
       hx-get="{% url 'ports:geometries' scenario.internal_id %}"
       hx-trigger="load"
       hx-swap='innerHTML'
-      hx-on::after-settle=" htmx.trigger('body' ,'map-redraw-sync');
+      hx-on::after-settle="if (event.target!=this) return; htmx.trigger('body' ,'map-redraw-sync');
       myMap.fitToElements();
       "
     >

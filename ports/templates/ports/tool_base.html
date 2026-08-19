@@ -9,6 +9,11 @@
 {% endcomment %}
 {% block header %}
   {% include "ports/imports_app.html" %}
+  <script>
+
+rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_id %}")
+
+  </script>
 {% endblock header %}
 {% block sideBar %}
   <div>

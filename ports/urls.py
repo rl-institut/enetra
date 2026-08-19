@@ -11,6 +11,11 @@ urlpatterns = [
         name="home",
     ),
     path(
+        "scenario_updates/<uuid:scenario_internal_id>/",
+        views.scenario_updates,
+        name="scenario_updates",
+    ),
+    path(
         "<uuid:scenario_internal_id>/",
         views.enetra_tool,
         name="enetra_tool",

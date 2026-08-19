@@ -3,9 +3,7 @@
 
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-{% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
-{% else %}
+{% if not created %}
   {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <form hx-indicator="this"
   id="form_{{internal_id}}"
@@ -216,10 +214,6 @@ In case of an update the list element is swapped
 
 {% endcomment %}
 
-{% if update %}
-  {% include 'ports/partials/flaechen_tab_panel.html' %}
-  {% include 'ports/partials/komponenten_tab_panel.html' %}
-{% endif %}
 
 
 {% comment %}
