@@ -31,6 +31,7 @@ from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlsplit
 from django.views.generic import View
 from django_oemof import models as oemof_models
 from django_oemof import simulation
@@ -875,36 +876,39 @@ def create_project(request):
         )
         success = False
         if form.is_valid():
-            with atomic():
-                new_project = form.save(commit=False)
-                new_project.manager = request.user
-                new_project.save()
+            success = True
+            try:
+                with atomic():
+                    new_project = form.save(commit=False)
+                    new_project.manager = request.user
+                    new_project.save()
 
-                scenario = form.cleaned_data["template_scenario_internal_id"]
+                    scenario = form.cleaned_data["template_scenario_internal_id"]
 
-                if scenario:
-                    new_scenario = duplicate_scenario(scenario, request.user)
-                else:
-                    new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
-                new_scenario.project = new_project
-                new_scenario.save()
+                    if scenario:
+                        new_scenario = duplicate_scenario(scenario, request.user)
+                    else:
+                        new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+                    new_scenario.project = new_project
+                    new_scenario.save()
 
-                # FIXME: If a scenario is copied into a new project, all users should have access to the new project
-                # Must make sure not to overwrite area access to new scenario/project manager
-                # Setup Group Permissions and add user to group
-                group = Group.objects.create(name=new_project.group_name())
-                # Group is allowed to view generic and details of Project object
-                assign_perm("view", group, new_project)
-                assign_perm("details", group, new_project)
-                request.user.groups.add(group)
-                # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
-                areas = Area.objects.filter(
-                    scenario=new_scenario, manager__username=settings.DATA_USER
-                )
-                areas.update(manager=request.user)
-                assign_perm("details", request.user, areas)
-
-                success = True
+                    # FIXME: If a scenario is copied into a new project, all users should have access to the new project
+                    # Must make sure not to overwrite area access to new scenario/project manager
+                    # Setup Group Permissions and add user to group
+                    group = Group.objects.create(name=new_project.group_name())
+                    # Group is allowed to view generic and details of Project object
+                    assign_perm("view", group, new_project)
+                    assign_perm("details", group, new_project)
+                    request.user.groups.add(group)
+                    # User has permissions for areas, but only for generic "data" areas, other areas keep their manager
+                    areas = Area.objects.filter(
+                        scenario=new_scenario, manager__username=settings.DATA_USER
+                    )
+                    areas.update(manager=request.user)
+                    assign_perm("details", request.user, areas)
+            except:  # noqa
+                # something inside the transaction failed
+                success = False
         context["form"] = form
         context["success"] = success
     return render(request, "core/partials/create_project.html", context)
@@ -921,12 +925,11 @@ def create_scenario(request, scenario_internal_id: UUID):
     context = {"id": "scenario-create-modal", "project": scenario.project}
     if request.method == "POST":
         form = CreateScenarioForm(data=request.POST, base_scenario=scenario, user=request.user)
-        success = False
-        if form.is_valid():
+        success = form.is_valid()
+        if success:
             new_scenario = form.save()
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
-            success = True
         context["form"] = form
         context["success"] = success
 
@@ -942,22 +945,20 @@ class ApiView(View):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse(
-                {"status": "failure", "message": "Authentication required"}, status=401
+                {"success": False, "message": "Authentication required"}, status=401
             )
         try:
             self.Model = apps.get_model("ports", kwargs["model"])
         except LookupError:
             return JsonResponse(
-                {"status": "error", "message": f"Unknown model: {kwargs['model']}"}, status=400
+                {"success": False, "message": f"Unknown model: {kwargs['model']}"}, status=400
             )
         if self.Model not in self.ALLOWED_MODELS:
-            return JsonResponse({"status": "error", "message": "Model not supported"}, status=400)
+            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
         self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
         is_authorized = self._check_permission(request)
         if not is_authorized:
-            return JsonResponse(
-                {"status": "failure", "message": "Authorization required"}, status=403
-            )
+            return JsonResponse({"success": False, "message": "Authorization required"}, status=403)
 
         if self.action == "duplicate":
             return self.duplicate(request, *args, **kwargs)
@@ -980,12 +981,24 @@ class ApiView(View):
                 form = ChangeScenarioForm(data=request.POST, instance=self.instance)
         if form.is_valid():
             form.save()
-            return JsonResponse({"status": "success", "message": "Changed"}, status=200)
-        return JsonResponse({"status": "failure", "message": form.errors.as_text()}, status=200)
+            return JsonResponse({"success": True, "message": "Changed"}, status=200)
+        return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
     def delete(self, request, *args, **kwargs):
-        self.instance.safe_delete()
-        return JsonResponse({"status": "success", "message": "Deleted"}, status=200)
+        match self.instance:
+            case Scenario():
+                if self.instance.project.scenario_set.count() == 1:
+                    return JsonResponse(
+                        {"success": False, "message": "not allowed to delete the last scenario"},
+                        status=400,
+                    )
+        try:
+            with atomic():
+                self.instance.safe_delete()
+            success = True
+        except:  # noqa
+            success = False
+        return JsonResponse({"success": success, "message": "Deleted"}, status=200)
 
     def duplicate(self, request, *args, **kwargs):
         try:
@@ -995,9 +1008,21 @@ class ApiView(View):
                 new_instance = duplicate_project(self.instance)
             else:
                 new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
+                if request.GET.get("rename"):
+                    # if the extra param rename is used, return a view with opened rename
+                    # instead of the json response
+                    params = request.GET.copy()
+                    params["rename"] = new_instance.internal_id
+                    response = HttpResponse()
+                    current_url = urlsplit(request.headers["HX-Current-URL"]).path
+                    response["HX-Location"] = f"{current_url}?{params.urlencode()}"
+                    response["HX-Reswap"] = "outerHTML"
+                    response["HX-Retarget"] = "body"
+                    return response
+
             return JsonResponse(
                 {
-                    "status": "success",
+                    "success": True,
                     "message": f"{new_instance.name} created",
                     "internal_id": str(new_instance.internal_id),
                 },
@@ -1005,7 +1030,7 @@ class ApiView(View):
             )
         except:  # noqa
             traceback.print_exc()
-            return JsonResponse({"status": "failure", "message": "Duplicating failed"}, status=400)
+            return JsonResponse({"success": False, "message": "Duplicating failed"}, status=400)
 
 
 def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
