@@ -11,7 +11,7 @@ urlpatterns = [
         name="home",
     ),
     path(
-        "scenario_changes/<uuid:scenario_internal_id>/",
+        "scenario_updates/<uuid:scenario_internal_id>/",
         views.scenario_updates,
         name="scenario_updates",
     ),

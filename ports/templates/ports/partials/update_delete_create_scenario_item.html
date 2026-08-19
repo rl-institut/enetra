@@ -37,7 +37,7 @@ For focused elements which are not rendered all the time, a event can be sent
       >
           <div id="geom_form_container_{{instance.internal_id}}"
           >
-          {% include 'ports/partials/map_element.html' with form=geom_form %}
+          {% include 'ports/partials/map_element.html' with form=geom_form hxSwapOob=True %}
           </div>
       </div>
   {% endif %}
@@ -46,7 +46,7 @@ For focused elements which are not rendered all the time, a event can be sent
   {% if geom_form %}
           <div id="geom_form_container_{{instance.internal_id}}"
           >
-          {% include 'ports/partials/map_element.html' with form=geom_form %}
+          {% include 'ports/partials/map_element.html' with form=geom_form hxSwapOob=True %}
           </div>
   {% endif %}
 

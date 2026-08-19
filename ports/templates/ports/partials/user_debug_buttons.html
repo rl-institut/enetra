@@ -5,6 +5,7 @@
 <!-- NOTE: If htmx plugins are used this breaks the plugins -->
 {% endcomment %}
 <script src='{% static "htmx.min.js" %}'>'</script>
+<script src='{% static "htmx_sse.js" %}'>'</script>
   <div class="user-debug-buttons bg-white p-2 border fixed bottom-4 right-4 z-[99999] flex flex-col gap-2"
     hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
     hx-swap="outerHTML"

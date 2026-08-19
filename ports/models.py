@@ -569,7 +569,10 @@ class Load(ScenarioItem):
 
         if not template:
             template = LoadTemplate.objects.create(
-                scenario=scenario, name="Empty template", timeseries=[], spec_load=0
+                scenario=scenario,
+                name="Empty template",
+                timeseries={"values": [1], "timestep_minutes": 15},
+                spec_load=0,
             )
         loads = []
         for area in areas:
