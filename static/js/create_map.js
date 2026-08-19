@@ -228,9 +228,12 @@ class MyMap {
 
   drawElements() {
     console.log('drawing elements');
+    const _drawStart = performance.now();
     this._vertexHistory = [];
     this._lastLayerState = new Map();
     const geometries = this.settings.getGeoJsons?.() ?? getGeoJsons();
+
+    console.log(`got geo jsons() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
     const popups = this.settings.getPopUps();
     const markers = this.settings.getMarkers();
 
@@ -245,6 +248,8 @@ class MyMap {
     for (const featureGroup of Object.values(this.featureGroups)) {
       featureGroup.clearLayers();
     }
+
+    console.log(`cleared layers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
     var layers = {}
     this.isEditing = false
     geometries.forEach(({ geojson, layer: layer_name, id, style, key }) => {
@@ -285,6 +290,8 @@ class MyMap {
       }
 
     });
+
+    console.log(`added to layer() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
 
 
     // turn on markers and hovers, but only if no layer is in editable mode
@@ -344,11 +351,14 @@ class MyMap {
         }
       });
 
+    console.log(`toggled on hovers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
       if (this.map.pm.controlsVisible()) this.map.pm.toggleControls();
     } else {
       // # enable draw controls
       if (!this.map.pm.controlsVisible()) this.map.pm.toggleControls();
     }
+
+    console.log(`drawElements() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
   }
 
 
