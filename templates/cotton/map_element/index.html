@@ -7,8 +7,8 @@ Native html element which is used as state for the leaflet map
 <div
     x-data='{selected: false, highlighted: false}'
 
-    @item-unselected.window="if (event.detail.value=='{{key}}'){$dispatch('map-item-stop-highlight', {value:'{{key}}'})}"
-    @item-selected.window="if (event.detail.value=='{{key}}'){ $dispatch('map-item-highlight', {value:'{{key}}'})}"
+    @item-selected-{{key}}.window="$dispatch('map-item-highlight', {value:'{{key}}'})"
+    @item-unselected-{{key}}.window="$dispatch('map-item-stop-highlight', {value:'{{key}}'})"
     @input="$dispatch('geom-changed');"
     x-effect ="
     selected = $store.map.editingElements.has('{{key}}');

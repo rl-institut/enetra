@@ -39,7 +39,10 @@ jobs:
       matrix:
         python-version: [ "3.10" ]
     # You must use a Linux environment when using service containers or container jobs
+    # instead of ubunut we use ubuntu + gdal to reduce build/install time
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/osgeo/gdal:ubuntu-full-latest
     timeout-minutes: 10
     # Service containers to run with `runner-job`
     services:
@@ -62,20 +65,26 @@ jobs:
           - 5432:5432
 
     steps:
-      - name: Create postgis extensions
+      - name: Install CI dependencies
         run: |
-          PGPASSWORD=postgres psql -h localhost -d DbName -U postgres -c 'create extension postgis_raster;'
+          apt-get update
+          apt-get install -y --no-install-recommends \
+          git \
+          postgresql-client \
+          build-essential \
+          libpq-dev
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Set Up Gdal
+      - name: Check GDAL
+        run: gdalinfo --version
+      # when using a container for django, database is not on localhost but available through service
+      # -h localhost -> -h postgres
+      - name: Create postgis extensions (needs PostgreSQL client)
         run: |
-          sudo apt-get update
-          sudo apt-get install gdal-bin
-          echo ogrinfo --version
-
-      - name: setup-chromedriver
-        uses: nanasess/setup-chromedriver@v2.2.0
+          PGPASSWORD=postgres psql -h postgres -d DbName -U postgres -c 'create extension postgis_raster;'
+      # - name: setup-chromedriver
+      #   uses: nanasess/setup-chromedriver@v2.2.0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -95,8 +104,8 @@ jobs:
           DJANGO_SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DJANGO_ADMIN_PASSWORD: ${{ secrets.SECRET_KEY }}
           DJANGO_DEBUG: True
-          # Replace with your own database info
-          DATABASE_URL: postgis://postgres:postgres@localhost/DbName
+          # Replace with your own database info @localhost -> @postgres
+          DATABASE_URL: postgis://postgres:postgres@postgres/DbName
           CELERY_TASK_ALWAYS_EAGER: True
           CELERY_BROKER_URL: pyamqp://guest@localhost//
           TILING_SERVICE_TOKEN: ${{ secrets.TILING_SERVICE_TOKEN }}
