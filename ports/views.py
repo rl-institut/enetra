@@ -173,6 +173,8 @@ def changes_count(request, scenario_internal_id: UUID):
                         item.has_authorization = True
 
             areas = [x.area for x in changed_items if vars(x).get("area_id")]
+            areas.extend([x for x in changed_items if isinstance(x, Area)])
+            areas = list(set(areas))
             # Add authorization
             for area in areas:
                 if area.id in allowed_details_ids_union:
@@ -200,7 +202,9 @@ def changes_count(request, scenario_internal_id: UUID):
 
     context["all_changes_count"] = count
     context["scenario"] = scenario
-    return render(request, "ports/partials/changes_count.html", context)
+    response = render(request, "ports/partials/changes_count.html", context)
+    response["HX-Trigger"] = "map-redraw"
+    return response
 
 
 def geometries(request, scenario_internal_id: UUID):
