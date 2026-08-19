@@ -27,6 +27,7 @@
             });
           },
         }"
+  {{attrs}}
 >
   <!-- Toolbar row -->
   <div class="flex gap-4 items-center">
@@ -79,7 +80,7 @@
   </div>
 
   <!-- Table view slot -->
-  <div x-show="view !== 'card'"   x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+  <div x-show="view !== 'card'"  x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
     {{table_view }}
   </div>
 

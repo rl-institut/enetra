@@ -37,7 +37,7 @@ all values to make the container sortable are gathered here. Since they can diff
     class="px-6 py-4">
     <div class="select-none flex items-center gap-2 text-slate-500">
       <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
-      <span>{{last_update|default:"Kein Update"}}</span>
+      <span class="font-mono">{{last_update|default:"Kein Update"}}</span>
     </div>
   </td>
   <td class="px-6 py-4">
@@ -46,7 +46,7 @@ all values to make the container sortable are gathered here. Since they can diff
         <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Ergebnisse</span>
       </button>
-      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='row' %}
+      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='table' %}
     </div>
   </td>
 </tr>

@@ -103,7 +103,7 @@ def duplicate_project(project: Project):
     new_project, _ = deepcopy(project, exclude_models={User}, max_depth=2)
 
     # Authorization is not directly linked through foreign keys but through foreign_objects
-    # Therefor the group is not deepcopied. Maybe make the group part of the object?
+    # Therefore the group is not deepcopied. Maybe make the group part of the object?
     # This would break down if multiple groups per project exist
     group = Group.objects.create(name=new_project.group_name())
     assign_perm("view", group, new_project)
@@ -115,7 +115,7 @@ def duplicate_project(project: Project):
 
 def transfer_group_permission(scenario, new_scenario):
     """Add all area permissions of the scenario to the new_scenario.
-    The group stays the same, since its expected to be a scenario copy inside the same project.
+    The group stays the same, since it is expected to be a scenario copy inside the same project.
     """
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
@@ -146,8 +146,6 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     Group permissions should not be transferred in cases of scenario duplication for a new project
     The previous group should not be authorized to view a scenario or its items from a different project
     """
-    # Scenario internal_id must be unique. by changing the in memory internal_id
-    # the deepcopy does not create a collision
     new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
     new_scenario.name += suffix
     new_scenario.manager = user
@@ -157,7 +155,7 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
 
 def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     new_scenario = duplicate_scenario(scenario, user, suffix)
-    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
+    # Managers have already been copied, now transfer Project group permissions.
     transfer_group_permission(scenario, new_scenario)
     return new_scenario
 

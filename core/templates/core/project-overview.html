@@ -39,8 +39,23 @@
         create_label="Technologie-Szenario erstellen"
         create_icon="plus-circle"
         {% endcomment %}
+        <script>
+        // if a rename query parameter is given, trigger the modal and remove the query param
+        function showRenameModal(view){
+          const rename_id = new URLSearchParams(window.location.search).get('rename');
+          if (rename_id){
+          var modal = document.getElementById('rename_'+view+'_' + rename_id);
+          if (modal) modal.showModal();
+          }
+          // remove the rename query, so further refreshes dont show the rename modal
+          history.replaceState(null, '', window.location.pathname);
+        };
+
+
+        </script>
           <c-toolbar.index
             search_placeholder="Szenarien Durchsuchen..."
+          x-init="showRenameModal(view)"
           >
           <c-slot name="sort_buttons">
             <c-toolbar.sort_button sort_key='name' name="Name" />
@@ -93,13 +108,13 @@
               <tbody class="divide-y divide-cyan-200">
 
                 <!-- Grundszenario row -->
-                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update_sortable=project.scenario_set.first.updated_at status="Berechnet" baselineScenario=True %}
+                {% include 'core/partials/technology_scenario_row.html'  with scenario=project.scenario_set.first title=project.scenario_set.first.name last_update=project.scenario_set.first.updated_at status="Berechnet" baselineScenario=True %}
               </tbody>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
 
               {% for scenario in project.scenario_set.all %}
                {% if not forloop.first %}
-                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update_sortable=scenario.updated_at status="Berechnet" %}
+                {% include 'core/partials/technology_scenario_row.html'  with title=scenario.name last_update=scenario.updated_at status="Berechnet" %}
                {% endif %}
                 {% endfor  %}
               </tbody>
