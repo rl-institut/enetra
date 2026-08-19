@@ -1197,7 +1197,6 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
-        self.context |= get_home_context(request.user, self.scenario)
         self.context["created"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -1341,8 +1340,6 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
-
-        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
 
         response = self.details_render(self.request, self.template, self.context)
@@ -1404,7 +1401,6 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
