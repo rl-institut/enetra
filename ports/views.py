@@ -1077,17 +1077,18 @@ class ApiView(View):
                 new_instance = duplicate_project(self.instance)
             else:
                 new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
-                if request.GET.get("rename"):
-                    # if the extra param rename is used, return a view with opened rename
-                    # instead of the json response
-                    params = request.GET.copy()
-                    params["rename"] = new_instance.internal_id
-                    response = HttpResponse()
-                    current_url = urlsplit(request.headers["HX-Current-URL"]).path
-                    response["HX-Location"] = f"{current_url}?{params.urlencode()}"
-                    response["HX-Reswap"] = "outerHTML"
-                    response["HX-Retarget"] = "body"
-                    return response
+            if request.GET.get("rename"):
+                # if the extra param rename is used, return a view with opened rename
+                # instead of the json response
+                params = request.GET.copy()
+                params["rename"] = new_instance.internal_id
+                response = HttpResponse()
+                current_url = urlsplit(request.headers["HX-Current-URL"]).path
+                response["HX-Location"] = f"{current_url}?{params.urlencode()}"
+                response["HX-Reswap"] = "outerHTML"
+                response["HX-Retarget"] = ".toolbar-content-container "
+                response["HX-Reselect"] = ".toolbar-content-container "
+                return response
 
             return JsonResponse(
                 {

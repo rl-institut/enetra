@@ -33,7 +33,7 @@ function findSiblingNodes(nodes, parent) {
 function searchName(search, parent) {
   var nodes = (getNodes(parent, '[data-name]'));
   const filterFunc = (n) => {
-    return n.dataset['name'].toLowerCase().search(search.toLowerCase()) >= 0;
+    return n.dataset['name'].toLowerCase().includes(search.toLowerCase());
   };
   const all_siblings = parent.children;
   const filtered = filteredNodes(nodes, filterFunc);
@@ -41,13 +41,17 @@ function searchName(search, parent) {
   const filtered_siblings = findSiblingNodes(filtered, parent);
   [...all_siblings].forEach((n) => { n.style.display = 'none' });
   filtered_siblings.forEach((n) => { n.style.display = '' });
+  console.log( 'searched')
 };
 
 
 function sortContainer(parent, key) {
   const all_siblings = parent.children;
   var nodes = (getNodes(parent, `[data-${key}]`));
-  console.assert(all_siblings.length == nodes.length, `Not all nodes have data-${key} set`)
+  if (all_siblings.length != nodes.length){
+    console.warn(`Not all nodes have data-${key} set. Skipping sort`);
+    return;
+  }
   const sorted = sortNodes([...all_siblings], key,)
   // const sorted_siblings = findSiblingNodes(sorted, parent);
   // const sorted_siblings = findSiblingNodes(sorted, parent);
@@ -56,4 +60,14 @@ function sortContainer(parent, key) {
     return
   }
   parent.replaceChildren(...sorted)
+  console.log( 'sorted')
 };
+
+// Swaped html content might need lucide hydration
+document.addEventListener("htmx:oobAfterSwap", (event) => {
+    lucide.createIcons();
+});
+
+document.addEventListener("htmx:afterSwap", (event) => {
+    lucide.createIcons();
+});
