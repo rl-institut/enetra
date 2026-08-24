@@ -92,8 +92,8 @@ urlpatterns = [
         name="szenarienvergleich",
     ),
     path(
-        "ergebnisse/",
-        lambda x: render(x, template_name="core/ergebnisse.html"),
+        "ergebnisse/<uuid:scenario_internal_id>/",
+        views.scenario_results,
         name="ergebnisse",
     ),
 ]

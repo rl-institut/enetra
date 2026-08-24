@@ -67,7 +67,7 @@ function getPopUps() {
   var popups = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
-    const templateContent = el.querySelector('template.map-content-only').content || el;
+    const templateContent = el.querySelector('template.map-content-only')?.content || el;
     const popup = templateContent.querySelector('.map-popup-content');
     if (!popup) return
     const input = el.querySelector('textarea[name=geom],input[name=geom]');
@@ -83,7 +83,7 @@ function getMarkers() {
   var markers = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
-    const templateContent = el.querySelector('template.map-content-only').content || el;
+    const templateContent = el.querySelector('template.map-content-only')?.content || el;
     const found_markers = templateContent.querySelectorAll('.map-marker');
     if (found_markers.length < 1) return
     const input = el.querySelector('textarea[name=geom],input[name=geom]');
@@ -104,6 +104,8 @@ function getGeoJsons() {
     // const inputs = document.querySelectorAll('.map-draw-element.' + name + '> textarea, .map-draw-element.' + name + ' > input');
     if (inputs.length == 0) {
       console.log(`No inputs found for layer ${name}`)
+    } else {
+      console.log(`Inputs found for ${name}: ${inputs.length}`)
     }
 
     // Add a style to each geometry/Feature, the layer name, and a unique identifier

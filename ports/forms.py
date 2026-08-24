@@ -10,14 +10,15 @@ from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
 
+from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
 from ports.models import Load
+from ports.models import LoadTemplate
 from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
-from ports.models import has_authorization
 from ports.util import duplicate_scenario_with_permissions
 
 
@@ -151,8 +152,75 @@ class GeoJSONWidget(forms.Textarea):
 
 class InternalIDModelChoiceField(forms.ModelChoiceField):
     def __init__(self, queryset, **kwargs):
-        kwargs.setdefault("to_field_name", "internal_id")
+        # ForeignKey.formfield() always passes to_field_name="id".
+        # Needs hard overwrite
+        kwargs["to_field_name"] = "internal_id"
         super().__init__(queryset, **kwargs)
+
+    def prepare_value(self, value):
+        # ModelForm initial data holds the related object's pk,
+        # while the choices are keyed by internal_id
+        if isinstance(value, int):
+            value = self.queryset.filter(pk=value).values_list("internal_id", flat=True).first()
+        return super().prepare_value(value)
+
+
+ALLOWED_UPLOAD_SUFFIXES = [".csv"]
+
+
+class LoadTemplateUploadForm(forms.Form):
+    allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
+    # Set both required to false, so the fields to not mess with the outer load form
+    # otherwise we would need form injection for the inputs
+
+    template_file = forms.FileField(
+        label="Vorlagedatei",
+        widget=forms.FileInput(
+            attrs={
+                "accept": ",".join(ALLOWED_UPLOAD_SUFFIXES),
+                "title": "Datei auswählen",
+            }
+        ),
+        required=False,
+    )
+    timestep_minutes = forms.FloatField(
+        label="Zeitschritt (Minuten)",
+        initial=15,
+        min_value=1,
+        required=False,
+    )
+
+    def clean_template_file(self):
+        file = self.cleaned_data.get("template_file")
+        if not file:
+            raise ValidationError("Keine Datei ausgewählt")
+
+        suffix = "." + file.name.split(".")[-1].lower()
+        if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+            raise ValidationError(
+                "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
+            )
+        values = LoadTemplate.values_from_csv(file=file)
+        if not values:
+            raise ValidationError("Keine numerischen Werte gefunden")
+        self._parsed_values = values
+        return file
+
+    def save(self, scenario, load, user):
+        values = self._parsed_values
+        timestep_minutes = self.cleaned_data["timestep_minutes"]
+        file = self.cleaned_data["template_file"]
+        template_load = LoadTemplate.objects.create(
+            timeseries={"values": values, "timestep_minutes": timestep_minutes},
+            spec_load=sum(values) / len(values),
+            scenario=scenario,
+            name=file.name,
+            manager=user,
+        )
+
+        load.template = template_load
+        load.save()
+        return template_load
 
 
 class UUIDMultipleChoiceField(CharField):
@@ -223,7 +291,7 @@ class CreateScenarioForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def clean(self) -> dict[str, Any] | None:
+    def clean(self) -> dict[str, Any]:
         if not has_authorization(self.base_scenario.project, self.user, "details"):
             raise ValidationError(
                 self.error_messages["no_authorization"],

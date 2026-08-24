@@ -71,7 +71,7 @@
 
         <!-- Desktop nav -->
         <nav aria-label="Hauptnavigation" class="hidden lg:flex items-center gap-8">
-          <span href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Angemeldet als {{request.user}}</span>
+          <span href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Angemeldet als {{request.user.username}}</span>
           <a href="#so-funktionierts" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">So funktioniert's</a>
           <a href="#ueber-das-projekt" class="text-sm font-medium text-slate-500 uppercase tracking-[0.28px] hover:text-slate-800 transition-colors duration-150">Über das Projekt</a>
           {% if not request.user.is_authenticated %}

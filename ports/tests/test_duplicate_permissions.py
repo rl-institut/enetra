@@ -12,16 +12,17 @@ Duplication runs through the real API endpoints (ports:api_duplicate),
 logged in as the project manager.
 """
 
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from guardian.shortcuts import assign_perm
 
+from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import Project
 from ports.models import Scenario
-from ports.models import has_authorization
 
 
 class DuplicatePermissionsTest(TestCase):
@@ -172,7 +173,7 @@ class CreateProjectFromTemplatePermissionsTest(TestCase):
         # its scenarios are the templates offered to every user
         cls.data_user, _ = User.objects.get_or_create(
             defaults={"password": "pass", "is_superuser": True},
-            username="data",
+            username=settings.DATA_USER,
         )
         cls.user_a = User.objects.create_user("tmpl_user_a", password="pass")
         cls.user_b = User.objects.create_user("tmpl_user_b", password="pass")

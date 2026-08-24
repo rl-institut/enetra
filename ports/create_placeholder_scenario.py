@@ -3,8 +3,6 @@ Can be used to help when implementing the frontend.
 Can be used for testing.
 """
 
-from datetime import datetime
-
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import Polygon
@@ -37,13 +35,17 @@ def create_scenario() -> Scenario:
     _uid = "00000000-0000-4000-0000-000000000000"
     s = Scenario.objects.filter(internal_id=_uid).first()
     if s:
-        s: Scenario
         s.safe_delete()
 
     new_project = Project.objects.create(name="TestProjekt", manager=user1)
     s = Scenario.objects.create(
         name="TestScenario", internal_id=_uid, manager=user1, project=new_project
     )
+    # Group might exist already, since developer might switch back and force between migrations states
+    old_group = Group.objects.filter(name=new_project.group_name()).first()
+    if old_group:
+        # Delete the group so no permissions leak from another project
+        old_group.delete()
     group = Group.objects.create(name=new_project.group_name())
     user1.groups.add(group)
     user2.groups.add(group)
@@ -129,8 +131,16 @@ def create_scenario() -> Scenario:
 
     template1 = LoadTemplate.objects.create(
         scenario=s,
-        name="Constant load 1",
-        timeseries={"time": [datetime.today().isoformat()], "value": [1]},
+        name="Constant load 1 (by fo)",
+        manager=user1,
+        timeseries={"timestep_minutes": 15, "values": [1, 4, 99, 99]},
+        spec_load=1,
+    )
+    template1 = LoadTemplate.objects.create(
+        scenario=s,
+        name="Constant load 1 (by ba)",
+        manager=user2,
+        timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
     )
     load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template1)

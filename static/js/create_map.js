@@ -34,6 +34,7 @@ class MyMap {
     const debounced_draw = debounce(this.drawElements.bind(this), 10);
     document.addEventListener('alpine:initialized', () => this.drawElements());
     document.addEventListener('map-redraw', () => debounced_draw());
+    document.addEventListener('map-redraw-sync', () => this.drawElements());
     document.addEventListener('geom-changed', () => debounced_draw());
   }
 
@@ -324,6 +325,18 @@ class MyMap {
 
 
 
+  fitToElements() {
+    const bounds = L.latLngBounds();
+    for (const featureGroup of Object.values(this.featureGroups)) {
+      if (featureGroup.getLayers().length > 0) {
+        bounds.extend(featureGroup.getBounds());
+      }
+    }
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds);
+    }
+  }
+
   toggleEditable() {
     this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
       if (layer.pm.enabled()) {
@@ -458,7 +471,12 @@ class MyMap {
             if (e.originalEvent.shiftKey) {
               event = new CustomEvent('map-layer-shift-clicked', { detail: { value: layer.key }, bubbles: true });
             } else {
-              event = new CustomEvent('map-layer-clicked', { detail: { value: layer.key }, bubbles: true });
+              // fire the select-instance-id event. the list item can listen for it and toggle its state accordingly
+              event = new CustomEvent('select-instance-' + layer.key, { detail: { value: layer.key }, bubbles: true });
+              // maybe fire different event later on or introduce middlestep
+              // event = new CustomEvent('map-layer-clicked', { detail: { value: layer.key }, bubbles: true });
+
+
             }
             document.dispatchEvent(event);
           }

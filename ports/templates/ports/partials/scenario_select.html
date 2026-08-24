@@ -6,10 +6,10 @@
 <div class='border-[#e2e8f0] border-b border-r border-solid content-stretch flex flex-col gap-[16px] items-start px-[16px] py-[24px] relative shrink-0 w-full {{bg_color}}'>
       <div class="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="Port Selection">
         <div class="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <div class="content-stretch flex gap-[8px] items-center relative shrink-0">
-            <p class="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative shrink-0 text-[#0e7490] text-[16px]">
-            Projekt: {{project.name|default:"Kein Projektname"}}
-            </p>
+          <div class="content-stretch flex gap-[8px] items-center relative min-w-0 flex-1">
+          <a href='{% url "core:project_overview" project.internal_id %}'class="block font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[normal] not-italic relative min-w-0 text-[#0e7490] text-[16px] truncate" title="{{project.name}}" >
+            {% translate 'Projekt:' %} {{ project.name|default:"Kein Projektname" }}
+          </a>
             <div class="overflow-clip relative shrink-0 size-[16px]" data-name="Info Icon">
               <div class="absolute contents inset-0" data-name="Group">
               {% if scenarioGroupImage %}
@@ -50,13 +50,21 @@
         inputName='selectedScenario'
       >
         {% for s in scenarios %}
-        <a href='{% url "ports:home" %}?internal_id={{s.internal_id}}'
-        >
-       <c-select.button
+        {% if s == scenario %}
+        <c-select.button
           :selectValue=s.internal_id
         >{{s.name}}
         </c-select.button>
+        {% else %}
+        <a href='{% url "ports:home" %}{{s.internal_id}}'
+        >
+          <c-select.button
+            :selectValue=s.internal_id
+          >{{s.name}}
+          </c-select.button>
         </a>
+        {% endif %}
+
         {% endfor %}
       </c-select.index>
       </div>

@@ -1,0 +1,6 @@
+{% for geom_form in area_forms %}
+<div id="geom_form_container_{{geom_form.instance.internal_id}}"
+>
+    {% include 'ports/partials/map_element.html' with form=geom_form %}
+</div>
+{% endfor %}

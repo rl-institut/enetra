@@ -1,146 +1,100 @@
-import json
-import tempfile
+import logging
 from collections import defaultdict
 from collections.abc import Iterable
-from contextlib import contextmanager
-from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.gis.gdal import DataSource
-from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.contrib.gis.geos import Polygon
 from django.db.models import Q
-from django.db.transaction import atomic
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
-from shapely import STRtree
-from shapely import wkt
 
 from .db_deepcopy import deepcopy
 from .models import Area
 from .models import Project
 from .models import Scenario
 
-
-@contextmanager
-def _str_as_datasource(data: str):
-    """Write a GeoJSON dict to a temp file and yield a GDAL DataSource.
-    Keeps the file alive for the lifetime of the DataSource.
-    """
-    with tempfile.NamedTemporaryFile(suffix=".geojson", mode="w") as tmp:
-        tmp.write(data)
-        tmp.flush()
-        yield DataSource(tmp.name)
+logger = logging.getLogger(__name__)
 
 
-def process_datasources_to_scenarios(ds_regions: DataSource, ds_buildings: DataSource, user: User):
-    """Create Scenarios and Areas from GDAL DataSource objects.
+def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User):
+    """Import Geojson to scenarios
+    Buidlings are matched into regions via port_name on a region and inland_port on the building.
+    Assumed EPSG:4326
 
-    If buildings are not found within a Scenario region but have an "inland_port"
-    attribute, an inland port Scenario with that name will be generated.
     """
 
-    def featureValue(feature, field):
-        """Depending on datasource a feature field can be a
-        django.contrib.gis.gdal.field.OFTReal object
-        or the plain value.
-        For the first we have to explicitly ask for the value
+    def rings_from_feature(feature):
+        """Extract the polygon rings from the feature
+        For a multipolygon only the first polygon is used
         """
-        if field not in feature.fields:
-            return None
-        try:
-            return feature.get(field).value
-        except AttributeError:
-            return feature.get(field)
-
-    scenarios = []
-    for feature in ds_regions[0]:
-        if feature.geom.geom_name == "MULTIPOLYGON":
-            geom = feature.geom[0].geos
-        elif feature.geom.geom_name == "POLYGON":
-            geom = feature.geom.geos
+        geometry_type = feature["geometry"].get("type", "").lower()
+        if geometry_type == "multipolygon":
+            # rings of first polygon
+            rings = feature["geometry"]["coordinates"][0]
+        elif geometry_type == "polygon":
+            rings = feature["geometry"]["coordinates"]
         else:
-            raise NotImplementedError("Unknown geometry type: " + feature.geom.geom_name)
-        scenarios.append(Scenario(name=featureValue(feature, "port_name"), geom=geom, manager=user))
-        print(featureValue(feature, "port_name"))
+            raise NotImplementedError("Unknown geometry type: " + geometry_type)
+        return rings
 
-    with atomic():
-        scenarios = Scenario.objects.bulk_create(scenarios)
-        geoms = [wkt.loads(s.geom.wkt) for s in scenarios]
-        tree = STRtree(geoms)
-        areas = []
-        new_scenarios = {}
-        counts = defaultdict(int)
-        count_not_found = 0
-        print("Allocating Buildings into found regions. This may take a while.")
-        for feature in ds_buildings[0]:
-            if feature.geom.geom_name == "MULTIPOLYGON":
-                geom = feature.geom[0].geos
-            elif feature.geom.geom_name == "POLYGON":
-                geom = feature.geom.geos
-            else:
-                raise NotImplementedError("Unknown geometry type: " + feature.geom.geom_name)
-            centroid = wkt.loads(feature.geom.centroid.wkt)
-            found_scenario = None
-            for candidate in tree.query(centroid, predicate="intersects"):
-                if geoms[candidate].contains(centroid):
-                    found_scenario = scenarios[candidate]
-                    break
-            if found_scenario is None:
-                name = featureValue(feature, "inland_port")
-                if not name:
-                    count_not_found += 1
-                    continue
-                if name not in new_scenarios:
-                    new_scenarios[name] = Scenario.objects.create(name=name, manager=user)
-                found_scenario = new_scenarios[name]
-            counts[found_scenario] += 1
-            areas.append(
-                Area(
-                    name=f"Automatische Gebäudefläche {counts[found_scenario]}",
-                    area_type=Area.AreaTypeChoices.BUILDING,
-                    manager=user,
-                    scenario=found_scenario,
-                    geom=geom,
-                )
+    scenario_lut = {}
+    for feature in regions["features"]:
+        if not feature.get("geometry"):
+            continue
+
+        rings = rings_from_feature(feature)
+        # Split ring and holes
+        geom = Polygon(rings[0], *rings[1:], srid=4326)
+        port_name = feature.get("properties", {}).get("port_name")
+        if port_name is None:
+            continue
+        if port_name in scenario_lut:
+            logger.warning("%s was processed already and is skipped.", port_name)
+            continue
+        logger.info(port_name)
+        scenario = Scenario(name=port_name, geom=geom, manager=user)
+        scenario_lut[port_name] = scenario
+
+    counts = defaultdict(int)
+    areas = []
+    missing_scenarios = []
+    for feature in buildings["features"]:
+        if not feature.get("geometry"):
+            continue
+        rings = rings_from_feature(feature)
+        # Split ring and holes
+        geom = Polygon(rings[0], *rings[1:], srid=4326)
+        port_name = feature.get("properties", {}).get("inland_port")
+        if port_name is None:
+            continue
+        try:
+            found_scenario = scenario_lut[port_name]
+        except KeyError:
+            found_scenario = Scenario(name=port_name, manager=user)
+            scenario_lut[port_name] = found_scenario
+            missing_scenarios.append(found_scenario)
+        areas.append(
+            Area(
+                name=f"Automatische Gebäudefläche {counts[port_name]}",
+                area_type=Area.AreaTypeChoices.BUILDING,
+                manager=user,
+                scenario=found_scenario,
+                geom=geom,
             )
-        areas = Area.objects.bulk_create(areas)
-
-    if count_not_found:
-        print(
-            f"{count_not_found} Buidings could not be added to a port region "
-            "and did not have a inland_port feature themselves"
         )
-    return scenarios + list(new_scenarios.values()), areas
-
-
-def scenarios_and_areas_from_geojson(regions_geojson: dict, buildings_geojson: dict, user):
-    """Create Scenarios and Areas from GeoJSON dicts."""
-    with (
-        _str_as_datasource(json.dumps(regions_geojson)) as ds_regions,
-        _str_as_datasource(json.dumps(buildings_geojson)) as ds_buildings,
-    ):
-        return process_datasources_to_scenarios(ds_regions, ds_buildings, user)
-
-
-def scenarios_and_areas_from_file(region_file, buildings_file, user):
-    """Create Scenarios and Areas from file-like objects containing GeoJSON."""
-    if isinstance(region_file, TemporaryUploadedFile):
-        region_data = region_file.read().decode()
-    else:
-        with open(region_file) as f:
-            region_data = f.read()
-    if isinstance(buildings_file, TemporaryUploadedFile):
-        buildings_data = buildings_file.read().decode()
-    else:
-        with open(buildings_file) as f:
-            buildings_data = f.read()
-    with (
-        _str_as_datasource(region_data) as ds_regions,
-        _str_as_datasource(buildings_data) as ds_buildings,
-    ):
-        return process_datasources_to_scenarios(ds_regions, ds_buildings, user)
+        counts[port_name] += 1
+    if missing_scenarios:
+        logger.warn(
+            "Some buildings had inland_port values not found in the regions file. "
+            "%s missing scenarios were created.",
+            len(missing_scenarios),
+        )
+    Scenario.objects.bulk_create(scenario_lut.values())
+    Area.objects.bulk_create(areas)
+    return list(scenario_lut.values()), areas
 
 
 def duplicate_project(project: Project):
@@ -149,7 +103,7 @@ def duplicate_project(project: Project):
     new_project, _ = deepcopy(project, exclude_models={User}, max_depth=2)
 
     # Authorization is not directly linked through foreign keys but through foreign_objects
-    # Therefor the group is not deepcopied. Maybe make the group part of the object?
+    # Therefore the group is not deepcopied. Maybe make the group part of the object?
     # This would break down if multiple groups per project exist
     group = Group.objects.create(name=new_project.group_name())
     assign_perm("view", group, new_project)
@@ -159,11 +113,14 @@ def duplicate_project(project: Project):
     return new_project
 
 
-def transferGroupPermissions(scenario, new_scenario):
-    """Add all area permissions of the scenario to the new_scenario"""
+def transfer_group_permission(scenario, new_scenario):
+    """Add all area permissions of the scenario to the new_scenario.
+    The group stays the same, since it is expected to be a scenario copy inside the same project.
+    """
     old_areas = Area.objects.filter(scenario=scenario)
     new_areas = Area.objects.filter(scenario=new_scenario)
-    assert len(old_areas) == len(new_areas)
+    if not len(old_areas) == len(new_areas):
+        raise Exception("Transfering permissions failed due to uneven count of Areas")
     old_d = {x.id: x for x in old_areas}
     new_d = {x.internal_id: x for x in new_areas}
 
@@ -189,9 +146,6 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     Group permissions should not be transferred in cases of scenario duplication for a new project
     The previous group should not be authorized to view a scenario or its items from a different project
     """
-    # Scenario internal_id must be unique. by changing the in memory internal_id
-    # the deepcopy does not create a collision
-    scenario.internal_id = uuid4()
     new_scenario, _ = deepcopy(scenario, exclude_models={User, Project}, max_depth=1)
     new_scenario.name += suffix
     new_scenario.manager = user
@@ -201,9 +155,8 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
 
 def duplicate_scenario_with_permissions(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     new_scenario = duplicate_scenario(scenario, user, suffix)
-    # Managers are properly copied but permissions are not since they are not referenced through foreign field. For now only Project Group Permissions are allowed
-    transferGroupPermissions(scenario, new_scenario)
-
+    # Managers have already been copied, now transfer Project group permissions.
+    transfer_group_permission(scenario, new_scenario)
     return new_scenario
 
 
@@ -219,18 +172,15 @@ def prefetch_projects_users(projects: Iterable[Project]) -> None:
         .select_related("permission")
         .prefetch_related("group__user_set")
     )
+    for p in projects:
+        p._users_cache = {}
     for perm in group_perms:
         project = id_to_project[int(perm.object_pk)]
-        if not hasattr(project, "_users_cache"):
-            project._users_cache = {}
         project._users_cache[perm.permission.codename] = perm.group.user_set.all()
-    for p in id_to_project.values():
-        if not hasattr(p, "_users_cache"):
-            p._users_cache = {}
 
 
 def get_user_projects(user: User):
-    if user.is_superuser:
+    if user.is_staff:
         return Project.objects.all().prefetch_related("scenario_set")
     # All projects a group of the user has the "view" object permission on
     GroupObjectPermission = get_group_obj_perms_model()
@@ -248,8 +198,7 @@ def get_user_projects(user: User):
 
 
 def get_template_scenarios(user: User):
-    # TODO: template user, e.g. add data as user TEMPLATE or smth?
-    template_user = User.objects.filter(is_superuser=True).get(username="data")
     if user.is_superuser:
         return Scenario.objects.all()
+    template_user = User.objects.get(username=settings.DATA_USER)
     return Scenario.objects.filter(manager__in=[user, template_user])

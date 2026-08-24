@@ -9,6 +9,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase
+from django.test import override_settings
 from django.urls import reverse
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import remove_perm
@@ -54,6 +55,7 @@ class DetailsViewBase(TestCase):
         cls.load_template = LoadTemplate.objects.create(
             scenario=cls.scenario,
             name="Template",
+            manager=cls.user,
             timeseries={},
             spec_load=0.0,
         )
@@ -195,7 +197,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_id": str(self.load.internal_id),
             "name": "Updated Load",
             "factor": "2.0",
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -274,7 +276,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": str(self.load.internal_id),
             "internal_id": str(self.load.internal_id),
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
             "factor": "not-a-float",
         }
         response = self.client.post(url, data)
@@ -295,7 +297,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_ids": internal_ids,
             "description": "Bulk updated",
             "factor": "3.5",
-            "template": self.load_template.pk,
+            "template": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -504,6 +506,14 @@ class DetailsViewPermissionsTest(TestCase):
         cls.load_template = LoadTemplate.objects.create(
             scenario=cls.scenario,
             name="Template",
+            manager=cls.user_a,
+            timeseries={},
+            spec_load=0.0,
+        )
+        cls.load_template_b = LoadTemplate.objects.create(
+            scenario=cls.scenario,
+            manager=cls.user_b,
+            name="Template",
             timeseries={},
             spec_load=0.0,
         )
@@ -615,7 +625,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_id": str(self.load.internal_id),
                 "name": "TAMPERED_BY_USER_B",
                 "factor": "9.9",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())
@@ -638,7 +648,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "name": self.load.name,
                 "description": "Owner set description",
                 "factor": "1.0",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertNotIn(b"not allowed", response.content.lower())
@@ -660,9 +670,49 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_ids": str(self.load.internal_id),
                 "description": "TAMPERED_MULTI_BY_USER_B",
                 "factor": "9.9",
-                "template": self.load_template.pk,
+                "template": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())
         self.load.refresh_from_db()
         self.assertNotEqual(self.load.description, "TAMPERED_MULTI_BY_USER_B")
+
+
+@override_settings(DEBUG=False)
+class EnetraToolViewPermissionsTest(TestCase):
+    """
+    Tests that the basic scenario view (ports:enetra_tool, tool_base.html)
+    is only reachable by users associated with the scenario's project.
+
+    DEBUG is forced to False so the test exercises the production auth path
+    (HttpResponseForbidden), rather than the DEBUG-only diagnostic responses
+    in ports.views.enetra_tool.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.member_user = User.objects.create_user("tool_member", password="pass")
+        cls.outsider_user = User.objects.create_user("tool_outsider", password="pass")
+        cls.project = Project.objects.create(name="Tool Test Projekt")
+        cls.scenario = Scenario.objects.create(name="Tool Test Scenario", project=cls.project)
+        cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
+        cls.project_group.user_set.add(cls.member_user)
+        assign_perm("details", cls.project_group, cls.project)
+        # outsider_user is intentionally never added to project_group
+
+    def tool_url(self):
+        return reverse(
+            "ports:enetra_tool",
+            kwargs={"scenario_internal_id": self.scenario.internal_id},
+        )
+
+    def test_project_member_can_access_scenario_view(self):
+        self.client.force_login(self.member_user)
+        response = self.client.get(self.tool_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "ports/tool_base.html")
+
+    def test_user_outside_project_cannot_access_scenario_view(self):
+        self.client.force_login(self.outsider_user)
+        response = self.client.get(self.tool_url())
+        self.assertEqual(response.status_code, 403)

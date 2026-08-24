@@ -1,9 +1,12 @@
+import json
+import logging
 from typing import Any
 
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 from django.views.generic import TemplateView
+from guardian.admin import GuardedModelAdmin
 from unfold.admin import ModelAdmin
 from unfold.views import UnfoldModelAdminViewMixin
 
@@ -11,14 +14,22 @@ from .forms import ScenarioAreasForm
 from .models import ElectricComponent
 from .models import Scenario
 from .models import ScenarioItem
-from .util import scenarios_and_areas_from_file
+from .util import process_geojson_dict_to_scenarios
 
-# Register your models here.
-# class ScenarioAdmin(ModelAdmin, GuardedModelAdmin):
-#     pass
-#
-#
-# admin.site.register(Scenario, ScenarioAdmin)
+logger = logging.getLogger(__name__)
+
+
+@admin.register(Scenario)
+class ScenarioAdmin(ModelAdmin, GuardedModelAdmin):
+    def get_urls(self):
+        # IMPORTANT: model_admin is required
+        port_regions_view = self.admin_site.admin_view(
+            PortRegionsUploadView.as_view(model_admin=self)
+        )
+
+        return super().get_urls() + [
+            path("scenario_from_geojson", port_regions_view, name="scenario_from_geojson"),
+        ]
 
 
 # TODO: Implement more advances permissions using django-guardian
@@ -68,23 +79,19 @@ class PortRegionsUploadView(UnfoldModelAdminViewMixin, TemplateView):
         if form.is_valid():
             region_file = form.cleaned_data["geojson_ports_regions_file"]
             buildings_file = form.cleaned_data["geojson_ports_buildings_file"]
-            new_scenarios, areas = scenarios_and_areas_from_file(
-                region_file, buildings_file, request.user
+            regions = json.loads(region_file.read())
+            buildings = json.loads(buildings_file.read())
+
+            logging.info("Importing Scenarios based on %s and %s", region_file, buildings_file)
+            new_scenarios, areas = process_geojson_dict_to_scenarios(
+                regions, buildings, request.user
+            )
+            logging.info(
+                "Importing Finished. %s scenarios and %s areas created",
+                len(new_scenarios),
+                len(areas),
             )
             return HttpResponse(
                 f"Success: created {len(areas)} Areas and {len(new_scenarios)} Scenarios"
             )
         return self.get(request=request)
-
-
-@admin.register(Scenario)
-class CustomAdmin(ModelAdmin):
-    def get_urls(self):
-        # IMPORTANT: model_admin is required
-        port_regions_view = self.admin_site.admin_view(
-            PortRegionsUploadView.as_view(model_admin=self)
-        )
-
-        return super().get_urls() + [
-            path("scenario_from_geojson", port_regions_view, name="scenario_from_geojson"),
-        ]

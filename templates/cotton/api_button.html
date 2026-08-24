@@ -10,8 +10,14 @@
           hx-disabled-elt="this"
           class="{{class}}"
           @htmx:after-request="
+                const xhr = $event.detail.xhr;
+                const contentType = xhr.getResponseHeader('Content-Type') || '';
+                if (!contentType.includes('application/json')) {
+                    console.log('Api returned non json response')
+                    return;
+                }
                 const r = JSON.parse($event.detail.xhr.responseText);
-                const ok = (r.status=='success');
+                const ok = (r.success);
                 console.log(r);
                 if (ok){
                     $dispatch('success')

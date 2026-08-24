@@ -1,31 +1,43 @@
 {% comment %}
- all values to make the container sortable are gathered here. Since they can differ from the shown values possible duplication  makes sense
+all values to make the container sortable are gathered here. Since they can differ from the shown values possible duplication  makes sense
 {% endcomment %}
 <tr
-    data-name="{{title}}"
-    data-status="{% firstof status_sortable status %}"
-    data-last_update="{% firstof last_update_sortable last_update %}"
-  class="bg-white hover:bg-slate-50 transition-colors duration-100">
+  data-name="{{title}}"
+  data-status="{% firstof status_sortable status %}"
+  data-last_update="{% firstof last_update_sortable last_update %}"
+  {% if not baselineScenario %}
+  class="bg-white hover:bg-slate-50 transition-colors duration-100"
+  {% else %}
+  class="bg-cyan-50 hover:bg-cyan-100 transition-colors duration-100"
+  {% endif %}
+>
   <td
-
     class="px-6 py-4">
+    {% if not baselineScenario %}
     <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
+    {% else %}
+    <div class="flex items-center gap-3">
+      <a href="{% url "ports:home" %}?internal_id={{scenario.internal_id}}" class="select-none font-semibold text-cyan-700 hover:underline">{{title|default:"Kein Titel"}}</a>
+      <span class="select-none px-2 py-0.5 bg-cyan-200 text-cyan-800 text-xs font-semibold rounded-full">Basis</span>
+    </div>
+    <p class="select-none text-xs text-cyan-700 mt-0.5">Basis-Szenario, welches als Grundlage für Vergleiche dient</p>
+    {% endif %}
   </td>
   <td
-      class="px-6 py-4">
-      {% if status == "success" %}
-      <span class="select-none px-3 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Berechnet</span>
-      {% elif status == "failure" %}
-      <span class="select-none px-3 py-0.5 bg-red-100 text-red-800 text-xs font-semibold rounded-full">Fehlgeschlagen</span>
-      {% else %}
-      <span class="select-none px-3 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">In Bearbeitung</span>
-      {% endif %}
+    class="px-6 py-4">
+    {% if status == "success" %}
+    <span class="select-none px-3 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Berechnet</span>
+    {% elif status == "failure" %}
+    <span class="select-none px-3 py-0.5 bg-red-100 text-red-800 text-xs font-semibold rounded-full">Fehlgeschlagen</span>
+    {% else %}
+    <span class="select-none px-3 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">In Bearbeitung</span>
+    {% endif %}
   </td>
   <td
     class="px-6 py-4">
     <div class="select-none flex items-center gap-2 text-slate-500">
       <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
-      <span>{{last_update|default:"Kein Update"}}</span>
+      <span class="font-mono">{{last_update|default:"Kein Update"}}</span>
     </div>
   </td>
   <td class="px-6 py-4">
@@ -34,7 +46,7 @@
         <i data-lucide="chart-line" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Ergebnisse</span>
       </button>
-      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='row' %}
+      {% include 'core/partials/scenario_ellipsis_dropdown.html' with key='table' %}
     </div>
   </td>
 </tr>
