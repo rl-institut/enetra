@@ -86,22 +86,25 @@ def handle_invite(request: HttpRequest):
     email = invite.payload["email"]
     user = User.objects.filter(email=email).first()
     if user:
-        try:
-            Invite.add_user_to_group_from_token(token, user)
-        except InviteError as error:
-            return HttpResponse(str(error), status=400)
+        if request.user == user:
+            try:
+                Invite.add_user_to_group_from_token(token, user)
+            except InviteError as error:
+                return HttpResponse(str(error), status=400)
 
-        # The user exists already. Since the token was only sent via email to the user
-        # we can be sure the user should have access to the account
-        login(request, user, "django.contrib.auth.backends.ModelBackend")
-        project_internal_id = invite.payload.get("project_internal_id")
-        if project_internal_id:
-            return redirect(
-                reverse(
-                    "core:project_overview", kwargs={"project_internal_id": project_internal_id}
+            # The user exists already. Since the token was only sent via email to the user
+            # we can be sure the user should have access to the account
+            login(request, user, "django.contrib.auth.backends.ModelBackend")
+            project_internal_id = invite.payload.get("project_internal_id")
+            if project_internal_id:
+                return redirect(
+                    reverse(
+                        "core:project_overview", kwargs={"project_internal_id": project_internal_id}
+                    )
                 )
-            )
-        return redirect(reverse("core:projects"))
+            return redirect(reverse("core:projects"))
+        else:
+            return HttpResponse("You are not the user the invite is for")
 
     return redirect(reverse("core:signup", query={"project_token": token}))
 
@@ -177,7 +180,7 @@ def user_rights_view(request: HttpRequest, project_internal_id, project):
             return render(request, template_name="core/user-rechte.html", context=context)
         email = form.cleaned_data["email"]
         role = form.cleaned_data["role"]
-        # TODO: Different Roles per project?
+        # TODO: Different Roles per project? Currently Role is not used
         token = secrets.token_urlsafe(32)
         invite = Invite.objects.create(
             token=token,
