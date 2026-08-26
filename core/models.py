@@ -93,17 +93,23 @@ class InviteError(Exception):
 
 
 class InviteEmailMismatchError(InviteError):
-    def __init__(self):
+    """Raised when the redeeming user's email does not match the invite payload."""
+
+    def __init__(self) -> None:
         super().__init__("Email from invite is not identical with this user")
 
 
 class InviteExpiredError(InviteError):
-    def __init__(self):
+    """Raised when an invite is redeemed after its `expires_at` timestamp."""
+
+    def __init__(self) -> None:
         super().__init__("Token expired")
 
 
 class InviteUsedUpError(InviteError):
-    def __init__(self):
+    """Raised when an invite is redeemed more than `max_uses` times."""
+
+    def __init__(self) -> None:
         super().__init__("Token is used up")
 
 
@@ -123,8 +129,9 @@ class Invite(models.Model):
 
     @classmethod
     @transaction.atomic
-    def add_user_to_group_from_token(cls, token, user) -> None:
-        """Add the user or raise an InviteError"""
+    def add_user_to_group_from_token(cls, token: str, user: User) -> None:
+        """Add the user to the invite's group, raising an InviteError if the token
+        is mismatched, expired, or already used up."""
         # Lock the row during the transaction so uses is properly checked and incremented
         invite = Invite.objects.select_for_update().get(token=token)
         if user.email != invite.payload["email"]:

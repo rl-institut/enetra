@@ -966,7 +966,11 @@ def create_scenario(request, scenario_internal_id: UUID):
 
 
 @ensure_project_rights
-def remove_project_user(request, project_internal_id: UUID, email, project: Project):
+def remove_project_user(
+    request: HttpRequest, project_internal_id: UUID, email: str, project: Project
+) -> HttpResponse:
+    """Remove a user from a project's group, delete their content within the
+    project, and clean up any now-orphaned object permissions."""
     # only superusers and project managers can remove users for now
     if not request.user.is_superuser and project.manager != request.user:
         return HttpResponseForbidden("Not Allowed")
@@ -980,7 +984,8 @@ def remove_project_user(request, project_internal_id: UUID, email, project: Proj
     return JsonResponse({"status": "success", "message": "User removed"}, status=200)
 
 
-def remove_user_content(project: Project, user: User):
+def remove_user_content(project: Project, user: User) -> None:
+    """Delete all ScenarioItem-derived content the user manages within the project."""
     port_models = apps.get_app_config("ports").get_models()
     # NOTE: LoadTemplate deletion cascades Load Deletion
     # TODO: If ChangedItem or DeletedItem should ever store sensitive information they need to be deleted too
@@ -990,7 +995,8 @@ def remove_user_content(project: Project, user: User):
         Model.objects.filter(scenario__project=project, manager=user).delete()
 
 
-def remove_project_invite(request, signed_invite_id: str):
+def remove_project_invite(request: HttpRequest, signed_invite_id: str) -> HttpResponse:
+    """Delete a pending (not-yet-accepted) invite, identified by its signed id."""
     invite_id = int(signing.loads(signed_invite_id, salt="invite_id"))
     # assert permission
     invite = Invite.objects.get(id=invite_id)

@@ -19,6 +19,7 @@ from django.utils import timezone
 from guardian.shortcuts import assign_perm
 
 from core.models import Invite
+from ports.models import Area
 from ports.models import Project
 from ports.models import Scenario
 
@@ -99,6 +100,45 @@ class InviteTests(TestCase):
             )
         )
         self.assertEqual(response.status_code, 200, response.content)
+        self.assertNotIn(invitee, self.group.user_set.all())
+
+    def test_removal_by_project_manager_deletes_users_content_in_project(self):
+        invite = self.create_invite(email="invitee@example.com")
+        invitee = User.objects.create_user("invitee", email="invitee@example.com", password="pass")
+        self.client.force_login(invitee)
+        self.client.get(self.invite_url(invite.token))
+        self.assertIn(invitee, self.group.user_set.all())
+
+        scenario = Scenario.objects.create(
+            name="Shared Scenario", project=self.project, manager=self.manager
+        )
+        own_area = Area.objects.create(
+            scenario=scenario,
+            name="Invitee Area",
+            area_type=Area.AreaTypeChoices.BUILDING,
+            manager=invitee,
+        )
+        # Content managed by someone else must survive the removal.
+        managers_area = Area.objects.create(
+            scenario=scenario,
+            name="Manager Area",
+            area_type=Area.AreaTypeChoices.BUILDING,
+            manager=self.manager,
+        )
+
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            reverse(
+                "ports:api_remove_project_user",
+                kwargs={
+                    "project_internal_id": self.project.internal_id,
+                    "email": invitee.email,
+                },
+            )
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(Area.objects.filter(pk=own_area.pk).exists())
+        self.assertTrue(Area.objects.filter(pk=managers_area.pk).exists())
         self.assertNotIn(invitee, self.group.user_set.all())
 
     def test_failed_reuse_of_token(self):

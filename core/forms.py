@@ -53,6 +53,8 @@ class SignUpForm(UserCreationForm):
 
 
 class InviteForm(forms.Form):
+    """Collects the email and role of a user to invite to a project."""
+
     email = forms.EmailField(
         label="E-Mail",
         max_length=254,
@@ -90,11 +92,14 @@ class AuthForm(AuthenticationForm):
 
 
 class ChangeAccountDataForm(forms.ModelForm):
+    """Edits a user's email/first/last name, gated behind re-entering their current
+    password."""
+
     current_password = forms.CharField(
         widget=forms.PasswordInput(attrs={}), label="Aktuelles Passwort", required=True
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fields["email"].label = "E-mail"
         self.fields["first_name"].label = "Vorname"
@@ -109,7 +114,7 @@ class ChangeAccountDataForm(forms.ModelForm):
         )
 
     @sensitive_variables()
-    def clean_current_password(self):
+    def clean_current_password(self) -> str | None:
         """
         Check given password
         """
@@ -123,7 +128,7 @@ class ChangeAccountDataForm(forms.ModelForm):
         else:
             return cleaned_pw
 
-    def clean_email(self):
+    def clean_email(self) -> str:
         """
         Check that lowercase user email is unique (used as username)
         """
@@ -133,9 +138,9 @@ class ChangeAccountDataForm(forms.ModelForm):
             raise forms.ValidationError(email + _(" existiert bereits."))
         return email
 
-    def save(self, commit=True):
+    def save(self, commit: bool = True) -> User:
         """
-        Check that lowercase user email is unique (used as username)
+        Sync the username to the (lowercased) email before saving.
         """
         self.instance.username = self.instance.email.lower()
         user = super().save(commit=commit)

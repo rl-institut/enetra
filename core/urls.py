@@ -57,16 +57,6 @@ urlpatterns = [
         views.delete_account,
         name="delete_user",
     ),
-    # path(
-    #     "reset_password/",
-    #     lambda x: render(x, template_name="core/registration/reset-password.html"),
-    #     name="reset_password",
-    # ),
-    # path(
-    #     "forgot_password/",
-    #     lambda x: render(x, template_name="core/registration/forgot-password.html"),
-    #     name="forgot_password",
-    # ),
     path(
         "projects/",
         views.projects_view,

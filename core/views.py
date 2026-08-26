@@ -1,5 +1,6 @@
 import functools
 import secrets
+from collections.abc import Callable
 from datetime import datetime
 from datetime import timedelta
 from itertools import chain
@@ -10,6 +11,7 @@ from django.contrib.auth import login
 from django.contrib.auth import logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -54,7 +56,8 @@ from .forms import SignUpForm
 class LoginViewWithRemember(LoginView):
     """If the form contains a checkbox with name='remember', this is used to set the session expiration"""
 
-    def form_valid(self, form):
+    def form_valid(self, form: AuthenticationForm) -> HttpResponse:
+        """Log the user in, then set session expiry based on the 'remember' checkbox."""
         response = super().form_valid(form)
 
         if self.request.POST.get("remember"):
@@ -66,7 +69,7 @@ class LoginViewWithRemember(LoginView):
 
 @login_required()
 @require_http_methods(["POST"])
-def delete_account(request):
+def delete_account(request: HttpRequest) -> HttpResponse:
     """
     Deletion of account deletes all content managed by the user
     This can lead cascading deletes of non user content
@@ -90,7 +93,8 @@ def delete_account(request):
 
 @login_required()
 @require_http_methods(["GET", "POST"])
-def account_settings(request):
+def account_settings(request: HttpRequest) -> HttpResponse:
+    """Show and process the account-data and password-change forms on the settings page."""
     context = {}
     match request.method:
         case "GET":
@@ -110,9 +114,12 @@ def account_settings(request):
     return render(request, template_name="core/einstellungen.html", context=context)
 
 
-def ensure_project_rights(func):
+def ensure_project_rights(func: Callable) -> Callable:
+    """Decorate a view keyed by `project_internal_id` to require login and project
+    view permission, and inject the resolved `project` as a kwarg."""
+
     @functools.wraps(func)
-    def wrapped_function(*args, **kwargs):
+    def wrapped_function(*args, **kwargs) -> HttpResponse:
         request = args[0]
         project_internal_id = kwargs.get("project_internal_id")
         if not isinstance(request, HttpRequest) or project_internal_id is None:
@@ -146,7 +153,10 @@ def projects_view(request):
     return render(request, template_name="core/projects.html", context=context)
 
 
-def handle_invite(request: HttpRequest):
+def handle_invite(request: HttpRequest) -> HttpResponse:
+    """Redeem an invite token: log in and add the matching user to the invite's
+    group, redirect to signup for a not-yet-registered email, or reject a
+    mismatched logged-in user."""
     token = request.GET.get("project_token")
     invite = get_object_or_404(Invite, token=token)
     email = invite.payload["email"]
@@ -177,7 +187,11 @@ def handle_invite(request: HttpRequest):
 
 # Decorator which ensures view permission on the project and injects project as kwarg
 @ensure_project_rights
-def user_rights_view(request: HttpRequest, project_internal_id, project):
+def user_rights_view(
+    request: HttpRequest, project_internal_id: str, project: Project
+) -> HttpResponse:
+    """Show a project's users grouped by role (manager/editor/observer), including
+    pending invites, and handle sending a new invite via POST."""
     context = {}
     context["project"] = project
     prefetch_projects_users([project])

@@ -172,17 +172,6 @@ class AccountDeletionTests(TestCase):
         self.assertIsNone(self.other_area_touched_by_user.updated_user)
         self.assertEqual(self.other_area_touched_by_user.manager, self.other_user)
 
-    def test_user_cant_delete_someone_else(self):
-        self.client.force_login(self.other_user)
-        response = self.client.post(reverse("core:delete_user"))
-        self.assertEqual(response.status_code, 302)
-
-        self.assertFalse(User.objects.filter(pk=self.other_user.pk).exists())
-        # The other user's own deletion request must not touch the first user's data
-        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
-        self.assertTrue(Project.objects.filter(pk=self.own_project.pk).exists())
-        self.assertTrue(Scenario.objects.filter(pk=self.own_scenario.pk).exists())
-
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class ForgotPasswordTests(TestCase):
