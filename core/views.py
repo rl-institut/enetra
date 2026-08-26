@@ -65,7 +65,7 @@ class LoginViewWithRemember(LoginView):
 
 
 @login_required()
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["POST"])
 def delete_account(request):
     """
     Deletion of account deletes all content managed by the user
