@@ -3,6 +3,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.debug import sensitive_variables
 
 from core.models import Role
 
@@ -86,3 +87,57 @@ class AuthForm(AuthenticationForm):
         force lowercase (used as username)
         """
         return self.cleaned_data["username"].lower()
+
+
+class ChangeAccountDataForm(forms.ModelForm):
+    current_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={}), label="Aktuelles Passwort", required=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"].label = "E-mail"
+        self.fields["first_name"].label = "Vorname"
+        self.fields["last_name"].label = "Nachname"
+
+    class Meta:
+        model = User
+        fields = (
+            "email",
+            "first_name",
+            "last_name",
+        )
+
+    @sensitive_variables()
+    def clean_current_password(self):
+        """
+        Check given password
+        """
+        cleaned_pw = self.cleaned_data["current_password"]
+        if not self.instance.check_password(cleaned_pw):
+            error = forms.ValidationError(
+                _("Your password was entered incorrectly. Please enter it again."),
+                code="password_mismatch",
+            )
+            self.add_error("current_password", error)
+        else:
+            return cleaned_pw
+
+    def clean_email(self):
+        """
+        Check that lowercase user email is unique (used as username)
+        """
+        email = self.cleaned_data["email"].lower()
+        # Does another user with this email exist already?
+        if User.objects.filter(username=email).exclude(id=self.instance.pk).exists():
+            raise forms.ValidationError(email + _(" existiert bereits."))
+        return email
+
+    def save(self, commit=True):
+        """
+        Check that lowercase user email is unique (used as username)
+        """
+        self.instance.username = self.instance.email.lower()
+        user = super().save(commit=commit)
+        print(user.username, user.email)
+        return user

@@ -1,7 +1,8 @@
-from django.contrib.auth.views import LoginView
 from django.contrib.auth.views import LogoutView
+from django.contrib.auth.views import PasswordResetView
 from django.shortcuts import render
 from django.urls import path
+from django.urls import reverse_lazy
 
 from . import forms
 from . import views  # noqa
@@ -27,7 +28,7 @@ urlpatterns = [
     path("register/", views.signup, name="signup"),
     path(
         "login/",
-        LoginView.as_view(
+        views.LoginViewWithRemember.as_view(
             authentication_form=forms.AuthForm,
             template_name="core/registration/login.html",
             redirect_authenticated_user=True,
@@ -52,15 +53,20 @@ urlpatterns = [
         name="registration_success",
     ),
     path(
-        "reset_password/",
-        lambda x: render(x, template_name="core/registration/reset-password.html"),
-        name="reset_password",
+        "delete_user/",
+        views.delete_account,
+        name="delete_user",
     ),
-    path(
-        "forgot_password/",
-        lambda x: render(x, template_name="core/registration/forgot-password.html"),
-        name="forgot_password",
-    ),
+    # path(
+    #     "reset_password/",
+    #     lambda x: render(x, template_name="core/registration/reset-password.html"),
+    #     name="reset_password",
+    # ),
+    # path(
+    #     "forgot_password/",
+    #     lambda x: render(x, template_name="core/registration/forgot-password.html"),
+    #     name="forgot_password",
+    # ),
     path(
         "projects/",
         views.projects_view,
@@ -78,7 +84,7 @@ urlpatterns = [
     ),
     path(
         "einstellungen/",
-        lambda x: render(x, template_name="core/einstellungen.html"),
+        views.account_settings,
         name="einstellungen",
     ),
     path(
@@ -95,6 +101,20 @@ urlpatterns = [
         "ergebnisse/<uuid:scenario_internal_id>/",
         views.scenario_results,
         name="ergebnisse",
+    ),
+    # Trigger Email with reset link
+    path(
+        "login/forgot_password/",
+        PasswordResetView.as_view(
+            template_name="core/registration/forgot-password.html",
+            success_url=reverse_lazy("core:forgot_password_success"),
+        ),
+        name="forgot_password",
+    ),
+    path(
+        "login/forgot_password_success/",
+        lambda x: render(x, template_name="core/registration/forgot-password-success.html"),
+        name="forgot_password_success",
     ),
 ]
 

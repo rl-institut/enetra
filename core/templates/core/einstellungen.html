@@ -1,27 +1,7 @@
+{% extends "core/base_management.html" %}
+{% load partials %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Einstellungen – Enetra</title>
-    {% include "core/imports.html" %}
-  </head>
-  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
-      <a href="{% url 'core:landing_page' %}">
-        <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
-      </a>
-      <nav class="flex gap-6 items-center">
-        <a href="{% url "core:projects" %}" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
-        <div class="flex gap-2 items-center">
-          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
-          <span class="text-sm font-semibold text-slate-800">Mein Konto</span>
-        </div>
-      </nav>
-    </header>
+{% block mainContent %}
 
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
@@ -36,90 +16,131 @@
         <!-- Konto -->
         <div class="border-t-2 border-slate-200 flex flex-col gap-6 pt-8">
           <h2 class="select-none text-xl font-bold text-slate-800">Konto</h2>
-          <div class="max-w-lg flex flex-col gap-4">
+          <form id="account_change_form"
+            hx-post="."
+            hx-select="#account_change_form"
+            hx-target="this"
+          >
 
+          {% partialdef "field_label_error" %}
+              <div class="flex flex-col gap-1.5">
+              <label for="{{field.id_for_label}}" class="select-none text-sm font-semibold text-slate-800">{{field.label}}</label>
+                <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
+                    <c-input :field=field class="text-sm text-slate-800 m-4 p-<F2> bg-transparent outline-none w-full" />
+                {{field.errors}}
+                </div>
+              </div>
+          {% endpartialdef %}
+
+          <div class="max-w-lg flex flex-col gap-4">
             <!-- Name -->
             <div class="grid grid-cols-2 gap-3">
-              <div class="flex flex-col gap-1.5">
-                <label class="select-none text-sm font-semibold text-slate-800">Vorname</label>
-                <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
-                  <input type="text" value="Anna" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
-                </div>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <label class="select-none text-sm font-semibold text-slate-800">Nachname</label>
-                <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
-                  <input type="text" value="Schmidt" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
-                </div>
-              </div>
+                {% with field=account_form.first_name %}
+                {% partial "field_label_error" %}
+                {% endwith %}
+                {% with field=account_form.last_name %}
+                {% partial "field_label_error" %}
+                {% endwith %}
             </div>
 
             <!-- Email -->
-            <div class="flex flex-col gap-1.5">
-              <label class="select-none text-sm font-semibold text-slate-800">E-Mail</label>
-              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center">
-                <input type="email" value="anna.schmidt@westhafen.de" class="text-sm text-slate-800 bg-transparent outline-none w-full" />
-              </div>
-            </div>
+            {% with field=account_form.email %}
+            {% partial "field_label_error" %}
+            {% endwith %}
 
-            <div class="flex">
-              <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
-                <span class="text-sm font-semibold text-white">Speichern</span>
-              </button>
-            </div>
+            <!-- Email -->
+            {% with field=account_form.current_password %}
+            {% partial "field_label_error" %}
+            {% endwith %}
+
+              <div class="flex"
+                x-data="{status: 'none', start_value: true}"
+                x-init="
+                {% if request.method == "POST" and not account_form.errors %}
+                  status='success'
+                {% elif request.method == "POST" %}
+                  status='error'
+                {% endif %}
+                  "
+              >
+                <button  x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+                  <span x-show="status=='none' && start_value " class="text-sm font-semibold text-white">Speichern</span>
+                  <span x-show="status=='success' && start_value " class="text-sm font-semibold text-white">Gespeichert</span>
+                  <span x-show="status=='error' && start_value " class="text-sm font-semibold text-white">Fehlgeschlagen</span>
+                  <span x-show="!start_value" class="text-sm font-semibold text-white">Speichern</span>
+                </button>
+              </div>
 
           </div>
+          </form>
         </div>
 
         <!-- Passwort ändern -->
+        <form id="password_change_form"
+          hx-post="."
+          hx-select="#password_change_form"
+          hx-target="this"
+        >
         <div class="border-t border-slate-200 flex flex-col gap-6 pt-8">
           <h2 class="select-none text-xl font-bold text-slate-800">Passwort ändern</h2>
           <div class="max-w-lg flex flex-col gap-4">
 
-            <!-- Current password -->
-            <div class="flex flex-col gap-1.5" x-data="{ show: false }">
-              <label class="select-none text-sm font-semibold text-slate-800">Aktuelles Passwort</label>
+            {% partialdef "password_field_with_eye" %}
               <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
-                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+                <c-input :field=field x-bind::type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+                {{field.errors}}
                 <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
                   <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
                   <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
                 </button>
               </div>
+            {% endpartialdef %}
+
+            <!-- Current password -->
+            <div class="flex flex-col gap-1.5" x-data="{ show: false }">
+              <label class="select-none text-sm font-semibold text-slate-800">Aktuelles Passwort</label>
+                {% with field=password_change_form.old_password %}
+                {% partial "password_field_with_eye" %}
+                {% endwith %}
             </div>
 
             <!-- New password -->
             <div class="flex flex-col gap-1.5" x-data="{ show: false }">
               <label class="select-none text-sm font-semibold text-slate-800">Neues Passwort</label>
-              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
-                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
-                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
-                  <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
-                  <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
-                </button>
-              </div>
+                {% with field=password_change_form.new_password1 %}
+                {% partial "password_field_with_eye" %}
+                {% endwith %}
             </div>
 
             <!-- Confirm new password -->
             <div class="flex flex-col gap-1.5" x-data="{ show: false }">
-              <label class="select-none text-sm font-semibold text-slate-800">Neues Passwort bestätigen</label>
-              <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
-                <input :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
-                <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
-                  <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
-                  <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
-                </button>
-              </div>
+              <label class="select-none text-sm font-semibold text-slate-800">Neues Passwort Wiederholen</label>
+                {% with field=password_change_form.new_password2 %}
+                {% partial "password_field_with_eye" %}
+                {% endwith %}
             </div>
 
-            <div class="flex">
-              <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
-                <span class="text-sm font-semibold text-white">Passwort ändern</span>
-              </button>
-            </div>
+              <div class="flex"
+                x-data="{status: 'none', start_value: true}"
+                x-init="
+                {% if request.method == "POST" and not password_change_form.errors %}
+                  status='success'
+                {% elif request.method == "POST" %}
+                  status='error'
+                {% endif %}
+                  "
+              >
+                <button  x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
+                  <span x-show="status=='none' && start_value " class="text-sm font-semibold text-white">Passwort Speichern</span>
+                  <span x-show="status=='success' && start_value " class="text-sm font-semibold text-white">Passwort Gespeichert</span>
+                  <span x-show="status=='error' && start_value " class="text-sm font-semibold text-white">Fehlgeschlagen</span>
+                  <span x-show="!start_value" class="text-sm font-semibold text-white">Passwort Speichern</span>
+                </button>
+              </div>
 
           </div>
         </div>
+        </form>
 
         <!-- Gefahrenzone -->
         <div class="border-t border-slate-200 flex flex-col gap-6 pt-8">
@@ -127,28 +148,21 @@
           <div class="max-w-lg p-6 bg-white rounded-lg shadow-[0px_1px_4px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-red-200 flex items-center justify-between gap-6">
             <div class="flex flex-col gap-1">
               <span class="select-none text-sm font-semibold text-slate-800">Konto löschen</span>
-              <span class="select-none text-sm text-slate-500">Alle Daten werden unwiderruflich gelöscht.</span>
+              <span class="select-none text-sm text-slate-500">Alle Daten werden unwiderruflifh gelöscht.</span>
             </div>
-            <button class="select-none px-6 py-2 text-red-700 rounded-full outline outline-1 outline-offset-[-1px] outline-red-300 hover:bg-red-600 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer shrink-0">
+            <form action="{% url 'core:delete_user' %}" method="POST">
+              {% csrf_token %}
+            <button
+                onclick="console.log( 'foo') ; return (confirm('Willst du sicher dein Konto löschen? Dies löscht unwiederrufflich alle von dir erstellten Projekte, Szenarien, Flächen und Komponenten.'))"
+                class="select-none px-6 py-2 text-red-700 rounded-full outline outline-1 outline-offset-[-1px] outline-red-300 hover:bg-red-600 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer shrink-0">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
               <span class="text-sm font-semibold">Konto löschen</span>
             </button>
+            </form>
           </div>
         </div>
 
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
-      <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-4 object-contain" />
-      <nav class="flex gap-6 items-center">
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
-      </nav>
-    </footer>
-
-    <script>lucide.createIcons();</script>
-  </body>
-</html>
+{% endblock mainContent %}

@@ -4,17 +4,21 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import chain
 
+from django.apps.registry import apps
 from django.conf import settings
-from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth import logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.contrib.auth.views import LoginView
 from django.core import mail
 from django.core import signing
 from django.db.models import F
+from django.db.models import Q
+from django.db.transaction import atomic
 from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponse
@@ -26,6 +30,7 @@ from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
 from core.models import Invite
@@ -35,13 +40,74 @@ from ports.authorization import has_authorization
 from ports.forms import CreateProjectForm
 from ports.models import Project
 from ports.models import Scenario
+from ports.models import ScenarioItem
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
 from ports.util import prefetch_projects_users
 
 from .forms import AuthForm
+from .forms import ChangeAccountDataForm
 from .forms import InviteForm
 from .forms import SignUpForm
+
+
+class LoginViewWithRemember(LoginView):
+    """If the form contains a checkbox with name='remember', this is used to set the session expiration"""
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+
+        if self.request.POST.get("remember"):
+            self.request.session.set_expiry(60 * 60 * 24 * 30)  # 30 days
+        else:
+            self.request.session.set_expiry(0)  # browser session. Gone after browser closes
+        return response
+
+
+@login_required()
+@require_http_methods(["GET", "POST"])
+def delete_account(request):
+    """
+    Deletion of account deletes all content managed by the user
+    This can lead cascading deletes of non user content
+    """
+    user = request.user
+    # All scenarios insdie projects of the user and all scenarios managed by the user
+    with atomic():
+        scenarios = Scenario.objects.filter(Q(project__manager=user) | Q(manager=user))
+        with Scenario.true_delete(scenarios.values_list("id", flat=True)):
+            scenarios.delete()
+        Project.objects.filter(manager=user).delete()
+        port_models = apps.get_app_config("ports").get_models()
+        for Model in port_models:
+            if not issubclass(Model, ScenarioItem):
+                continue
+            Model.objects.filter(manager=user).delete()
+        user.delete()
+    logout(request)
+    return redirect(reverse("core:landing_page"))
+
+
+@login_required()
+@require_http_methods(["GET", "POST"])
+def account_settings(request):
+    context = {}
+    match request.method:
+        case "GET":
+            context["account_form"] = ChangeAccountDataForm(instance=request.user)
+            context["password_change_form"] = PasswordChangeForm(user=request.user)
+        case "POST":
+            change_account_form = ChangeAccountDataForm(data=request.POST, instance=request.user)
+            change_password_form = PasswordChangeForm(data=request.POST, user=request.user)
+            context["account_form"] = change_account_form
+            context["password_change_form"] = change_password_form
+            if change_account_form.is_valid():
+                change_account_form.save()
+            if change_password_form.is_valid():
+                change_password_form.save()
+                update_session_auth_hash(request, request.user)
+
+    return render(request, template_name="core/einstellungen.html", context=context)
 
 
 def ensure_project_rights(func):
@@ -322,23 +388,6 @@ def signup(request):
         # GET, no token: normal registration
         return render(request, "core/registration/signup.html", {"form": SignUpForm()})
     raise Http404()
-
-
-@login_required()
-def changePassword(request):
-    if request.method == "POST":
-        form = PasswordChangeForm(request.user, request.POST)
-        if form.is_valid():
-            user = form.save()
-            update_session_auth_hash(request, user)  # auth user again
-            messages.success(request, "Passwort erfolgreich geändert")
-            return redirect(reverse("core:home"))
-        else:
-            messages.error(request, "Fehlerhafte Eingabe! Passwort nicht geändert.")
-    else:
-        form = PasswordChangeForm(request.user)
-    # return view
-    return render(request, "core/registration/password_change.html", {"form": form})
 
 
 @login_required()
