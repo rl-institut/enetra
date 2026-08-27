@@ -102,6 +102,7 @@ class ChangeAccountDataForm(forms.ModelForm):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fields["email"].label = "E-mail"
+        self.fields["email"].required = True
         self.fields["first_name"].label = "Vorname"
         self.fields["last_name"].label = "Nachname"
 
@@ -133,6 +134,8 @@ class ChangeAccountDataForm(forms.ModelForm):
         Check that lowercase user email is unique (used as username)
         """
         email = self.cleaned_data["email"].lower()
+        if not email:
+            raise forms.ValidationError(_("Die email Adresse darf nicht Leer sein."))
         # Does another user with this email exist already?
         if User.objects.filter(username=email).exclude(id=self.instance.pk).exists():
             raise forms.ValidationError(email + _(" existiert bereits."))
