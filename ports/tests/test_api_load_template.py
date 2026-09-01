@@ -1,5 +1,5 @@
 """
-Tests for the LoadTemplate JSON API endpoint — only the template's manager may access it.
+Tests for the Timeseries JSON API endpoint — only the template's manager may access it.
 """
 
 from uuid import uuid4
@@ -9,11 +9,11 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from ports.models import LoadTemplate
 from ports.models import Scenario
+from ports.models import Timeseries
 
 
-class ApiLoadTemplateTest(TestCase):
+class ApiTimeseriesTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.manager = User.objects.create_user("manager", password="pass")
@@ -22,7 +22,7 @@ class ApiLoadTemplateTest(TestCase):
         cls.scenario = Scenario.objects.create(name="Test Scenario")
         Group.objects.get_or_create(name=cls.scenario.group_name())
 
-        cls.load_template = LoadTemplate.objects.create(
+        cls.load_template = Timeseries.objects.create(
             scenario=cls.scenario,
             name="Template",
             manager=cls.manager,
@@ -32,7 +32,7 @@ class ApiLoadTemplateTest(TestCase):
 
     def api_url(self, scenario_internal_id=None, internal_id=None):
         return reverse(
-            "ports:api_load_template",
+            "ports:api_timeseries",
             kwargs={
                 "scenario_internal_id": scenario_internal_id or self.scenario.internal_id,
                 "internal_id": internal_id or self.load_template.internal_id,

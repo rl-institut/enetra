@@ -1,27 +1,11 @@
 {% load l10n widget_tweaks %}
-{% load constants %}
-{% with internal_id=instances.0.internal_id|stringformat:"s" %}
 <form hx-indicator='this'
-  id="form_{{internal_id}}"
+  id="form_{{instance.internal_id}}"
   hx-encoding="multipart/form-data"
 >
-
-  <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
+  {{ form.internal_id }}
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
-    <button
-      hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.area.model_name  %}?internal_ids={{area_internal_ids|assertValue}}"
-      hx-target="#detailSidebar"
-      hx-trigger="click"
-      hx-indicator="#detailSidebar"
-      hx-swap="innerHTML"
-
-            type="button"
-      class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
-    >
-      <c-icon.arrow_left/>
-      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zurück zu ausgewählten Flächen</span>
-    </button>
     <button
             type="button"
         @click="$dispatch('hide-detail-sidebar')" class="flex-shrink-0 hover:opacity-60 transition-opacity">
@@ -32,35 +16,49 @@
 
 <details-sidebar-content>
   <div class="px-[24px] py-[24px]"
-      x-data="{selectedTemplate:null,
+      x-data="{selectedTemplate:'{{form.template.value}}',
                multiplicator: null,
       }"
     >
     <div class="flex items-center justify-between mb-[24px]">
-      <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
-      <button
-            type="button"
-          class="hover:opacity-60 transition-opacity">
-        <c-icon.three_dots class='w-[20px] h-[20px]'/>
-      </button>
+        <h2 class="font-bold text-[20px] text-[#1e293b]">Lasten Vorlage</h2>
+
+      {% with hx_target="#form_"|add:internal_id %}
+        {% url "ports:template_create"  model="loadtemplate" scenario_internal_id=scenario.internal_id as template_url %}
+        {% url 'ports:templates' model=instance.model_name  scenario_internal_id=scenario.internal_id as form_url %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target form_url=form_url %}
+      {% endwith %}
     </div>
 
     <div class="flex flex-col gap-[16px]">
 
       <div class="flex flex-col gap-[8px]">
+        <label class="inline font-semibold text-[14px] text-[#1e293b]">Name</label>
+        <c-field-required :field="form.name" />
+
+      <c-input :field=form.name x-data=""
+          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
+        </c-input>
+
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
           <div>
             <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+            <span class="text-xs ">Nur die von dir Hochgeladenen Zeitreihen werden angezeigt</span>
             <c-field-required :field="form.template" />
           </div>
+          <div class="make-select2"
+            x-data
+            x-init="
+            $('select', $el).on('change', (e)=>{
+            selectedTemplate=e.target.value
+            });
+            "
+          >
+            {{form.template}}
+          </div>
 
-        <c-input :field=form.template x-data=""
-            @change="selectedTemplate=event.target.value"
-            class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
-        </c-input>
-        <c-field-errors :field="form.template" />
-        <c-input type='file' x-data=""
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Datei Hochladen">
-        </c-input>
         <c-expand.index >
           <c-slot name='title'>
             Plot der ausgewählten Zeitreihe
@@ -70,13 +68,12 @@
               data_url :null,
               template_url : {
             {% for template in form.template.field.queryset %}
-            "{{template.internal_id}}": "{% url "ports:api_timeseries" scenario.internal_id template.internal_id %}",{% endfor %} } } '
-              class="w-full" x-effect="loadPlot(template_url[selectedTemplate], $refs.plot)"
+            "{{template.internal_id}}": "{% url "ports:api_timeseries" template.scenario.internal_id template.internal_id %}",{% endfor %} } } '
+              class="w-full" x-effect="console.log('searching for ' + template_url[selectedTemplate] );loadPlot(template_url[selectedTemplate], $refs.plot)"
           >
               <div x-ref="plot" class="h-64 w-full"></div>
           </div>
         </c-expand.index>
-
         <div class="flex items-center gap-[8px] text-[12px] text-[#94a3b8]">
           <div class="flex-1 h-px bg-[#e2e8f0]"></div>
           <span>oder</span>
@@ -92,7 +89,7 @@
           <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
           <button type="button"
               class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
-              hx-post="{% url 'ports:timeseries_upload_from_load' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}"
+              hx-post="{% url 'ports:timeseries_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}&next={% url 'ports:templates' scenario_internal_id=scenario.internal_id model='loadtemplate' %}?internal_id={{instance.internal_id}}"
               {% with hx_target="#form_"|add:internal_id %}
               hx-target='{{hx_target}}'
               hx-select='{{hx_target}}'
@@ -139,66 +136,14 @@
         </c-select.index>
       </div>
 
-      <div
-          x-data='{templates : {
-          {% for template in form.template.field.queryset %}
-          "{{template.internal_id}}": {
-          1: {{template.get_yearly_average|unlocalize}},
-          2: {{template.get_daily_average|unlocalize}},
-          3: {{template.get_hourly_average|unlocalize}},
-          },
-          {% endfor %}
-          },
-          selectedDuration: null
-          }'
-        >
-
-        <div class="flex flex-col gap-[8px]"
-            @change="selectedDuration=event.target.value"
-          >
-          <label class="font-semibold text-[14px] text-[#1e293b]">Berechnung via...</label>
-          <c-select.index classButton='border-[#cbd5e1]!' selectedValue='1'>
-            <c-select.button selectValue='1'>
-              Jahressumme
-            </c-select.button>
-            <c-select.button selectValue='2'>
-              Tagessumme
-            </c-select.button>
-            <c-select.button selectValue='3'>
-              Stundenwerte
-            </c-select.button>
-          </c-select.index>
-        </div>
-
-
-        <div class="flex flex-col gap-[8px]">
-          <label class="font-semibold text-[14px] text-[#1e293b]" x-data
-              x-text="
-              (selectedDuration =='1' && 'Jahressumme') ||
-              (selectedDuration =='2' && 'Tagessumme') ||
-              (selectedDuration =='3' && 'Stundenwerte')"></label>
-          <div class="relative">
-            <input
-              type="text"
-              @change='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
-              @input='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
-              x-bind:value='templates[selectedTemplate][selectedDuration]*multiplicator'
-              class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
-            />
-            <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">kWh</span>
-          </div>
-        </div>
-      </div>
-
-        {{form.non_field_errors}}
-        {% with hx_target="#form_"|add:internal_id %}
-        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
-        {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target  save_url=save_url   %}
-        {% endwith %}
-
+      {{form.non_field_errors}}
+      {% with hx_target="#form_"|add:internal_id %}
+        {% url 'ports:templates'  model=instance.model_name  scenario_internal_id=scenario.internal_id as save_url %}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target save_url=save_url %}
+      {% endwith %}
 
       <button
-        x-data
+          x-data
         @click="$dispatch('hide-detail-sidebar')"
         class="w-full text-[#1e293b] font-semibold text-[14px] py-[8px] hover:opacity-80 transition-opacity"
           type="button"
@@ -210,4 +155,3 @@
   </div>
 </details-sidebar-content>
 </form>
-{% endwith %}

@@ -1,4 +1,3 @@
-{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <div x-data="{showDropDown: false}" class="relative"
 >
   <button>
@@ -32,7 +31,6 @@
       <li>
         <button type="button"
                 hx-post="{{ form_url }}"
-
                 hx-select="{{hx_target}}"
                 hx-target="{{hx_target}}"
                 hx-swap="outerHTML"
@@ -40,6 +38,18 @@
                 hx-disabled
         >
           POST
+        </button>
+      </li>
+      <li>
+        <button type="button"
+                hx-post="{{ template_url }}"
+                hx-target="{{hx_target}}"
+                hx-include="{{hx_target}}"
+                hx-swap="outerHTML"
+                class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+                hx-disabled
+        >
+          Vorlage Erstellen
         </button>
       </li>
     </ul>

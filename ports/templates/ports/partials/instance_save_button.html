@@ -1,6 +1,6 @@
 
 <button type="button"
-  hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}"
+  hx-post="{{save_url}}"
   hx-select="{{hx_target}}"
   hx-target="{{hx_target}}"
   hx-swap="outerHTML"

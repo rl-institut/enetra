@@ -56,8 +56,10 @@
       </div>
 
       {% with hx_target="#form_"|add:internal_id %}
-      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
-        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target  save_url=save_url  %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target form_url=form_url %}
       {% endwith %}
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"

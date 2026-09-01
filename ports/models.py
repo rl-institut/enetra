@@ -188,6 +188,29 @@ class ItemTemplate(models.Model):
             self.updated_user = self.manager
         return super().save(*args, **kwargs)
 
+    def model_name(self):
+        """Get the _meta.model_name"""
+        return self._meta.model_name
+
+    def model(self):
+        """Get the _meta.model"""
+        return self._meta.model
+
+    def verbose_name(self):
+        """Get the _meta.verbose_name"""
+        return self._meta.verbose_name
+
+    def __str__(self):
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
+
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.circle_full"
+
+    def icon(self) -> str:
+        """The cotton template used as icon for this model"""
+        return "icon.circle_full"
+
 
 class ScenarioItem(ItemTemplate):
     """All items which have a scenario as reference inherit some common functionality"""
@@ -251,18 +274,6 @@ class ScenarioItem(ItemTemplate):
             sender=sender, instance=instance, created=kwargs.get("created")
         )
 
-    def model_name(self):
-        return self._meta.model_name
-
-    def model(self):
-        return self._meta.model
-
-    def verbose_name(self):
-        return self._meta.verbose_name
-
-    def __str__(self):
-        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
-
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 
@@ -283,14 +294,6 @@ class ScenarioItem(ItemTemplate):
 
     def layer_name(self):
         return f"{self._meta.model_name}"
-
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.circle_full"
-
-    def icon(self) -> str:
-        """The cotton template used as icon for this model"""
-        return "icon.circle_full"
 
     @classmethod
     def create_new(cls, scenario: Scenario, manager: User, **kwargs):
@@ -489,7 +492,7 @@ class Area(ScenarioItem):
 
 
 # FIXME: A load template is not part of an area. What permission state should it have?
-class LoadTemplate(ScenarioItem):
+class Timeseries(ScenarioItem):
     """Template for timeseries, mostly power series"""
 
     timeseries = models.JSONField()
@@ -525,7 +528,7 @@ class LoadTemplate(ScenarioItem):
             self.annotateAverages()
         return self.yearlyAvg
 
-    def annotateAverages(self) -> "LoadTemplate":
+    def annotateAverages(self) -> "Timeseries":
         timestep_min = self.timeseries.get("timestep_minutes", 15)
         values = self.timeseries.get("values", [0])
         total_time_min = len(values) * timestep_min
@@ -539,11 +542,38 @@ class LoadTemplate(ScenarioItem):
         return self
 
 
+class LoadTemplate(ItemTemplate):
+    """Power timeseries derived from a Timeseries usable as a template"""
+
+    # Specific id for common access. Needs to be globally unique
+    internal_id = models.UUIDField(db_index=True, unique=True, null=False, default=uuid.uuid4)
+
+    template = models.ForeignKey(Timeseries, on_delete=models.CASCADE, null=True, blank=True)
+    factor = models.FloatField(default=1.0, null=True, blank=True)  # scale template values
+
+    @classmethod
+    def adjust_Form(
+        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
+    ) -> type[ModelForm]:
+        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
+        return FormClass
+
+    @classmethod
+    def create_new(
+        cls,
+        scenario: Scenario,
+        manager: User,
+        _: list[uuid.UUID | str] = None,
+        **kwargs,
+    ):
+        return [LoadTemplate(name="Last Vorlage", manager=manager)]
+
+
 class Load(ScenarioItem):
-    """Power timeseries, derived from LoadTemplate"""
+    """Power timeseries, derived from a Timeseries"""
 
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
-    template = models.ForeignKey(LoadTemplate, on_delete=models.CASCADE)
+    template = models.ForeignKey(Timeseries, on_delete=models.CASCADE)
     factor = models.FloatField(default=1.0)  # scale template values
 
     @classmethod
@@ -565,10 +595,10 @@ class Load(ScenarioItem):
             area_internal_ids = []
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
         count = cls.objects.filter(scenario=scenario).count()
-        template = LoadTemplate.objects.filter(scenario=scenario).first()
+        template = Timeseries.objects.filter(scenario=scenario).first()
 
         if not template:
-            template = LoadTemplate.objects.create(
+            template = Timeseries.objects.create(
                 scenario=scenario, name="Empty template", timeseries=[], spec_load=0
             )
         loads = []
@@ -729,20 +759,20 @@ class AbstractGenerator(models.Model):
             return "Keine Angabe"
         return self.get_carrier_display()
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.generator"
-
     class Meta:
         abstract = True
 
 
 class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.generator"
 
 
 class Generator(ElectricComponent, AbstractGenerator):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.generator"
 
 
 class AbstractHeating(models.Model):
@@ -760,20 +790,20 @@ class AbstractHeating(models.Model):
             return "Keine Angabe"
         return self.get_carrier_display()
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heating"
-
     class Meta:
         abstract = True
 
 
 class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heating"
 
 
 class Heating(ElectricComponent, AbstractHeating):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heating"
 
 
 class AbstractCHP(models.Model):
@@ -796,20 +826,20 @@ class AbstractCHP(models.Model):
             return "Keine Angabe"
         return self.get_carrier_display()
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.chp"
-
     class Meta:
         abstract = True
 
 
 class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.chp"
 
 
 class CHP(ElectricComponent, AbstractCHP):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.chp"
 
 
 class AbstractFuelCell(models.Model):
@@ -818,20 +848,20 @@ class AbstractFuelCell(models.Model):
     # carrier is always hydrogen
     efficiency_thermal = models.FloatField(default=1.0)
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.fuelcell"
-
     class Meta:
         abstract = True
 
 
 class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.fuelcell"
 
 
 class FuelCell(ElectricComponent, AbstractFuelCell):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.fuelcell"
 
 
 class AbstractElectrolyzer(models.Model):
@@ -840,20 +870,20 @@ class AbstractElectrolyzer(models.Model):
     # carrier is always electricity
     efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.electrolyzer"
-
     class Meta:
         abstract = True
 
 
 class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.electrolyzer"
 
 
 class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.electrolyzer"
 
 
 class AbstractHeatpump(models.Model):
@@ -876,20 +906,20 @@ class AbstractHeatpump(models.Model):
     def get_default_args(cls) -> dict:
         return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heat_pump"
-
     class Meta:
         abstract = True
 
 
 class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heat_pump"
 
 
 class Heatpump(ElectricComponent, AbstractHeatpump):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.heat_pump"
 
 
 class AbstractSolar(models.Model):
@@ -915,20 +945,20 @@ class AbstractSolar(models.Model):
     surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
     surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.solar"
-
     class Meta:
         abstract = True
 
 
 class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.solar"
 
 
 class Solar(ElectricComponent, AbstractSolar):
-    pass
+    def list_icon(self) -> str:
+        """The cotton template used as icon for this model inside lists"""
+        return "icon.solar"
 
 
 class AbstractStorage(models.Model):
