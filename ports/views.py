@@ -1,4 +1,3 @@
-import json
 import logging
 import traceback
 from collections.abc import Iterable
@@ -18,7 +17,6 @@ from django.db.models import Q
 from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
-from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseNotAllowed
@@ -33,8 +31,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlsplit
 from django.views.generic import View
-from django_oemof import models as oemof_models
-from django_oemof import simulation
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import get_perms
@@ -1172,45 +1168,6 @@ def api_load_template(request, scenario_internal_id: UUID, internal_id: UUID):
         "updated_at": template.updated_at.isoformat(),
     }
     return JsonResponse(data)
-
-
-def testview(request: HttpRequest):
-    # Example with some hooks
-    logger.info(request.GET.get("scenario"))
-
-    OEMOF_DATAPACKAGE = request.GET.get("scenario") if request.GET.get("scenario") else "dispatch"
-    # working scenarios
-    # dispatch
-    # invest
-    # emission_constraint
-
-    # Hook functions must be defined beforehand
-    # ph = hooks.Hook(OEMOF_DATAPACKAGE, test_parameter_hook)
-    # esh = hooks.Hook(OEMOF_DATAPACKAGE, test_es_hook)
-    # mh = hooks.Hook(OEMOF_DATAPACKAGE, test_model_hook)
-    #
-    # hooks.register_hook(hook_type=hooks.HookType.PARAMETER, hook=ph)
-    # hooks.register_hook(hook_type=hooks.HookType.ENERGYSYSTEM, hook=esh)
-    # hooks.register_hook(hook_type=hooks.HookType.MODEL, hook=mh)
-    #
-    parameters = {}
-    oemof_models.Simulation.objects.filter(scenario=OEMOF_DATAPACKAGE).delete()
-    simulation_id = simulation.simulate_scenario(
-        scenario=OEMOF_DATAPACKAGE, parameters=parameters, lp_file="lastCBCModel.lp"
-    )
-    logger.info("Simulation ID:", simulation_id)
-
-    # Restore oemof results from DB
-
-    sim = oemof_models.Simulation.objects.get(id=simulation_id)
-    inputs, outputs = sim.dataset.restore_results()
-    data = {
-        "result": {
-            "inputs": serialize_string_default(inputs),
-            "outputs": serialize_string_default(outputs),
-        }
-    }
-    return HttpResponse(json.dumps(data), content_type="application/json")
 
 
 # from /django/forms/models.py

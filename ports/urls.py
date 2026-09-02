@@ -16,11 +16,6 @@ urlpatterns = [
         name="enetra_tool",
     ),
     path(
-        "simulate/",
-        views.testview,
-        name="test",
-    ),
-    path(
         "template_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
         views.template_upload_from_load,
         name="template_upload_from_load",

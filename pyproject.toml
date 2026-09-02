@@ -17,9 +17,6 @@ dependencies = [
     "django-fast-update>=0.2.4",
     # nice progressbars in the terminal
     "tqdm>=4.67.1",
-    # oemof dependencies
-    "oemof-network==0.5.0a1",
-    "oemof-tabular",
     "celery>=5.1.2",
     # home/ubuntu/PycharmProjects/django-enetra/.venv/lib/python3.10/site-packages/celery/bin/celery.py:11:
     # UserWarning: pkg_resources is deprecated as an API. See
@@ -29,8 +26,6 @@ dependencies = [
     # better solution would be upgrading celery, but this is not possible due to depenency lock
     # from django-oemof
     "setuptools<81",
-    # specified rev via git
-    "django-oemof",
     "psycopg2>=2.9.10",
     # Module for front end components
     "django-cotton>=2.3.1",
@@ -53,6 +48,10 @@ dependencies = [
     "gunicorn>=23.0.0",
     "django-widget-tweaks>=1.5.0",
     "whitenoise>=6.12.0",
+    "oemof-network==0.5.1b2",
+    "oemof-solph==0.6.4",
+    "django-environ>=0.14.0",
+    "matplotlib>=3.10.9",
 ]
 [dependency-groups]
 dev = [
@@ -145,7 +144,3 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 docstring-code-format = true
-
-[tool.uv.sources]
-oemof-tabular = { git = "https://github.com/oemof/oemof-tabular.git", rev = "0b17194eedf4940aa3abdbdb53cdcddb81880d12" }
-django-oemof = { git = "https://github.com/rl-institut/django-oemof.git", rev = "v0.18.0" }

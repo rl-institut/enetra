@@ -129,28 +129,40 @@ def create_scenario() -> Scenario:
     assign_perm("details", user1, user1_areas)
     assign_perm("details", user2, user2_areas)
 
-    template1 = LoadTemplate.objects.create(
+    LoadTemplate.objects.create(
         scenario=s,
         name="Constant load 1 (by fo)",
         manager=user1,
         timeseries={"timestep_minutes": 15, "values": [1, 4, 99, 99]},
         spec_load=1,
     )
-    template1 = LoadTemplate.objects.create(
+    template2 = LoadTemplate.objects.create(
         scenario=s,
         name="Constant load 1 (by ba)",
         manager=user2,
         timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
     )
-    load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template1)
-    grid = Grid.objects.create(
+    load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template2)
+    grid_el = Grid.objects.create(
         scenario=s,
-        name="My Grid 1",
-        carrier=Grid.CarrierChoices.OIL,
+        name="electric grid",
+        carrier=Grid.CarrierChoices.ELECTRICITY,
         timeseries=load1,
     )
-    grid.areas.add(area1)
+    grid_el.areas.add(area1, area2, area3)
+    grid_diesel = Grid.objects.create(
+        scenario=s,
+        name="diesel pipe",
+        carrier=Grid.CarrierChoices.DIESEL,
+    )
+    grid_diesel.areas.add(area1, area2)
+    grid_heat = Grid.objects.create(
+        scenario=s,
+        name="heating",
+        carrier=Grid.CarrierChoices.HEAT,
+    )
+    grid_heat.areas.add(area2)
 
     Generator.objects.create(
         scenario=s,

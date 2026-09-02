@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
+import pandas as pd
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -585,6 +586,23 @@ class Load(ScenarioItem):
                 )
             )
         return loads
+
+    def resample(self, start, end, time_step):
+        timestep_orig = self.template.timeseries.get("timestep_minutes", 15)
+        values = self.template.timeseries["values"]
+        time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")
+        if len(values) < len(time_index):
+            # not enough values: extend series with empty values, fill later
+            values += [None] * (len(time_index) - len(values))
+        elif len(values) > len(time_index):
+            # too many values: shorten series
+            values = values[: len(time_index)]
+        series = pd.Series(values, index=time_index) * self.factor
+        series.ffill(inplace=True)  # fill up missing values: retain last value
+        if timestep_orig != time_step:
+            # resample if needed (adjust timestep)
+            series = series.resample(f"{time_step}Min").mean()
+        return series
 
 
 class Grid(ScenarioItem):

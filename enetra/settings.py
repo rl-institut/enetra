@@ -81,7 +81,6 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     # custom apps
     "ports",
-    "django_oemof",
     "core",
     # misc
     "django_cotton.apps.SimpleAppConfig",
