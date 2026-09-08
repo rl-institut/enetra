@@ -1,6 +1,6 @@
 <div x-data="{showDropDown: false}" class="relative"
 >
-  <button>
+  <button type="button">
   <c-icon.three_dots class=" h-7 w-7 cursor-pointer" @click.prevent.stop="showDropDown = !showDropDown; hideOtherDropDown('#detail-ellipsis-drop-down-{{ instance.internal_id }}');" @click.outside="showDropDown = false" />
   </button>
   <div  x-show="showDropDown" x-cloak>
@@ -40,6 +40,7 @@
           POST
         </button>
       </li>
+      {% if template_url %}
       <li>
         <button type="button"
                 hx-post="{{ template_url }}"
@@ -52,6 +53,7 @@
           Vorlage Erstellen
         </button>
       </li>
+      {% endif %}
     </ul>
   </div>
 </div>

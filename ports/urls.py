@@ -73,6 +73,11 @@ urlpatterns = [
         name="geometries",
     ),
     path(
+        "templateslist/",
+        views.user_template_list,
+        name="user_template_list",
+    ),
+    path(
         "details/<uuid:scenario_internal_id>/<str:model>/",
         views.DetailsView.as_view(created=False),
         name="details",

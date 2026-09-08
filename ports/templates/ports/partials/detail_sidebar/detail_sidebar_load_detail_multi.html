@@ -192,7 +192,7 @@
 
         {{form.non_field_errors}}
         {% with hx_target="#form_"|add:internal_id %}
-        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as save_url %}
         {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target  save_url=save_url   %}
         {% endwith %}
 

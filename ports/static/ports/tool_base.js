@@ -33,6 +33,7 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
         if (!newEl.id) return;
         const oldEl = document.getElementById(newEl.id);
         if (oldEl) {
+            console.log( 'preserved val')
             newEl.value = oldEl.value;
             newEl.checked = oldEl.checked;
         }

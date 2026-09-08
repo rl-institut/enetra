@@ -1,45 +1,18 @@
 {% load constants %}
 <form
   id="form_{{instance.internal_id}}"
+  hx-on::load="console.log( 'foo')"
 >
   {{ form.internal_id }}
 
-  <div class="htmx-indicator bg-red-500 loader"></div>
-  <div
-    x-data="{show:false }"
-    class="animate-in fade-in duration-1000"
-    x-on:{{instance.changed_event}}.document='if(event.detail.updated_at != "{{instance.updated_at|date:"c"}}")show=true;'
-    x-on:{{instance.deleted_event}}.document="show=true;"
-    x-show="show"
-  >
-    <c-alert class="" variant="warning" title="Änderungsbenachrichtigung">
-      Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die
-      Ansicht, um die Änderungen sehen zu können.
-    </c-alert>
-  </div>
 
   <details-sidebar-header
     class="sticky top-0 z-[9999] block border-b border-[#e2e8f0] bg-white p-[24px]"
   >
     <div class="flex items-center justify-between gap-[8px]">
       <button
-        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"
-          hx-vals='{"internal_id": "{{instance.area.internal_id}}"}'
-          hx-target="#detailSidebar"
-          hx-select="unset"
-          hx-trigger="click"
-          hx-indicator="#detailSidebar"
-          hx-swap="innerHTML"
 
-        type="button"
-        class="flex cursor-pointer items-center gap-[8px] transition-opacity hover:opacity-60"
-      >
-        <c-icon.arrow_left />
-        <span class="name-elem text-[14px] font-semibold text-[#1e293b]"
-          >Zu Fläche {{instance.area.name}}</span
-        >
-      </button>
-      <button
+        x-data
         @click="isOpen=false"
         type="button"
         class="flex-shrink-0 transition-opacity hover:opacity-60"
@@ -54,11 +27,10 @@
 
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-        ENERGIETECHNIK
+        ENERGIETECHNIK Vorlagen
       </h2>
       {% with hx_target="#form_"|add:internal_id %}
-        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
-        {% url "ports:template_create" model=instance.template_model_name scenario_internal_id=scenario.internal_id as template_url %}
+        {% url 'ports:templates' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
       {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target form_url=form_url %}
       {% endwith %}
       </div>
@@ -69,21 +41,8 @@
           <label class="text-[14px] font-semibold text-[#1e293b]"
             >Komponente aus Vorlage</label
           >
-
-          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET.template}}">
-            <c-select.button selectValue="">------</c-select.button>
-            {% for template in templates %}
-            <c-select.button selectValue="{{template.internal_id}}"
-              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}?template={{template.internal_id}}"
-              hx-vals='{"internal_id": "{{instance.internal_id}}"}'
-              hx-target="#detailSidebar"
-              hx-select="unset"
-              hx-trigger="click"
-              hx-indicator="#detailSidebar"
-              hx-swap="innerHTML"
-
-            >{{template.name}}</c-select.button>
-            {% endfor %}
+          <c-select.index classButton="border-[#cbd5e1]!" selectedValue="1">
+            <c-select.button selectValue="1"> Dieselgenerator </c-select.button>
           </c-select.index>
         </div>
 
@@ -100,6 +59,7 @@
 
 
          {% partialdef input-component %}
+        {% if field %}
         <div class="flex flex-col gap-[8px]">
           <label class="flex items-center gap-[8px] text-[14px] font-semibold text-[#1e293b]" >
             {{field.label}}
@@ -119,6 +79,7 @@
           <c-field-errors :field="field" />
           </div>
         </div>
+        {% endif %}
         {% endpartialdef %}
 
         {% with field=form.name unit='' %} {% partial input-component %}{% endwith %}
@@ -126,7 +87,9 @@
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
         {% for field_name in instance.custom_fields %}
+        {% if field_name in form.fields %}
         {% with field=form|get_value:field_name unit='' %} {% partial input-component %}{% endwith %}
+        {% endif %}
         {% endfor %}
 
         {% with field=form.power_kw unit='kW' %}
@@ -147,34 +110,21 @@
 
         {{form.non_field_errors}}
       {% with hx_target="#form_"|add:internal_id %}
-        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
+        {% if scenario  %}
+
+        {% url 'ports:templates' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
+        {% else %}
+        {% url 'ports:templates'  model=instance.model_name  as save_url %}
+        {% endif %}
+
         {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target save_url=save_url  %}
       {% endwith %}
 
-        <button
-          hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}"
-          hx-vals='{"internal_id": "{{instance.area.internal_id}}"}'
-          hx-target="#detailSidebar"
-          hx-trigger="click"
-          hx-indicator="#detailSidebar"
-          hx-swap="innerHTML"
-
-          type="button"
-          class="flex w-full items-center justify-center gap-[8px] py-[8px] text-[14px] font-semibold text-[#64748b] transition-opacity hover:opacity-80"
-        >
-          <c-icon.close class="h-[16px] w-[16px]" />
-          Abbrechen
-        </button>
       </div>
     </div>
   </details-sidebar-content>
 </form>
 
-{% if update %}
-  {% include 'ports/partials/flaechen_tab_panel.html' %}
-  {% include 'ports/partials/komponenten_tab_panel.html' %}
+{% if request.method == "POST" %}
+{% include "ports/partials/komponenten_tab_panel.html#user-template-list" %}
 {% endif %}
-
-{% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
- {% endif %}

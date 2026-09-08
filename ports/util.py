@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 
+from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -202,3 +203,8 @@ def get_template_scenarios(user: User):
         return Scenario.objects.all()
     template_user = User.objects.get(username=settings.DATA_USER)
     return Scenario.objects.filter(manager__in=[user, template_user])
+
+
+def get_template_model(model):
+    template_model_name = model.__qualname__ + "Template"
+    return apps.get_app_config("ports").get_model(template_model_name)

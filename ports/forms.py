@@ -46,28 +46,35 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-def TemplateFormFactory(ItemModel: type[ScenarioItem]):
+def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
     exclude = ["manager", "updated_user"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if issubclass(ItemModel, ItemTemplate):
-        exclude = exclude + ["area"]
-        field_classes = {}
-        for fk_f in filter(lambda x: x not in exclude, fk_fields):
-            field_classes[fk_f] = InternalIDModelChoiceField
+        # exclude all foreign key fields.
+        # Templates should be atomic so they can be easily applied without side effects
+        # manager
+        exclude = set(exclude + fk_fields)
         BaseForm = modelform_factory(
             ItemModel,
             exclude=exclude,
-            field_classes=field_classes,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 "name": forms.TextInput(),
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
+
     else:
         raise NotImplementedError()
+
+    # All fields are optional for a Template except name
+    # and internal_id
+    for field_name, field in BaseForm.base_fields.items():
+        if field_name not in ("name", "internal_id"):
+            field.required = False
+
     return BaseForm
 
 

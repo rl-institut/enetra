@@ -160,8 +160,13 @@ class ItemTemplate(models.Model):
     """Abstract class for item templates"""
 
     id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
-    name = models.TextField(blank=True, null=True, max_length=200)
+    name = models.TextField(blank=False, null=True, max_length=200)
     description = models.TextField(blank=True, null=True)
+
+    # Templates also contain an internal_id for access.
+    # This allows consistent lookup via uuid between ScenarioItems and ItemTemplates
+    # For Scenario Items this is overridden
+    internal_id = models.UUIDField(db_index=True, unique=True, null=False, default=uuid.uuid4)
 
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
@@ -188,28 +193,48 @@ class ItemTemplate(models.Model):
             self.updated_user = self.manager
         return super().save(*args, **kwargs)
 
-    def model_name(self):
+    @classmethod
+    def model_name(cls):
         """Get the _meta.model_name"""
-        return self._meta.model_name
+        return cls._meta.model_name
 
-    def model(self):
+    @classmethod
+    def model(cls):
         """Get the _meta.model"""
-        return self._meta.model
+        return cls._meta.model
 
-    def verbose_name(self):
+    @classmethod
+    def verbose_name(cls):
         """Get the _meta.verbose_name"""
-        return self._meta.verbose_name
+        return cls._meta.verbose_name
 
     def __str__(self):
-        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id}"
 
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.circle_full"
 
-    def icon(self) -> str:
+    @classmethod
+    def icon(cls) -> str:
         """The cotton template used as icon for this model"""
         return "icon.circle_full"
+
+    @classmethod
+    def adjust_Form(
+        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
+    ) -> type[ModelForm]:
+        return FormClass
+
+    @classmethod
+    def rud_url(cls):
+        """Return the url name to read update and delete these types of items"""
+        return "ports:templates"
+
+    @classmethod
+    def create_url(cls):
+        return "ports:template_create"
 
 
 class ScenarioItem(ItemTemplate):
@@ -274,6 +299,9 @@ class ScenarioItem(ItemTemplate):
             sender=sender, instance=instance, created=kwargs.get("created")
         )
 
+    def __str__(self):
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
+
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 
@@ -292,6 +320,7 @@ class ScenarioItem(ItemTemplate):
     def deleted_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-deleted"
 
+    @classmethod
     def layer_name(self):
         return f"{self._meta.model_name}"
 
@@ -301,10 +330,12 @@ class ScenarioItem(ItemTemplate):
         raise NotImplementedError("Missing implementation of Model specific empty Instance")
 
     @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        return FormClass
+    def rud_url(cls):
+        return "ports:details"
+
+    @classmethod
+    def create_url(cls):
+        return "ports:details_create"
 
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
@@ -442,6 +473,15 @@ class Area(ScenarioItem):
         return f"{self.area_type}-{self._meta.model_name}"
 
     class Meta:
+        # When overriding Meta with anything except Abstract True,
+        # Meta options from the BaseClass(ScenarioItem) get lost
+        constraints = [
+            models.UniqueConstraint(
+                fields=["internal_id", "scenario"],
+                name="%(class)s_unique_internal_id_per_scenario",
+            )
+        ]
+        ordering = ["scenario", "id"]  # Optional: share common Meta options
         permissions = (
             ("details", "View area details"),
             ("delete", "delete area"),
@@ -542,33 +582,6 @@ class Timeseries(ScenarioItem):
         return self
 
 
-class LoadTemplate(ItemTemplate):
-    """Power timeseries derived from a Timeseries usable as a template"""
-
-    # Specific id for common access. Needs to be globally unique
-    internal_id = models.UUIDField(db_index=True, unique=True, null=False, default=uuid.uuid4)
-
-    template = models.ForeignKey(Timeseries, on_delete=models.CASCADE, null=True, blank=True)
-    factor = models.FloatField(default=1.0, null=True, blank=True)  # scale template values
-
-    @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
-        return FormClass
-
-    @classmethod
-    def create_new(
-        cls,
-        scenario: Scenario,
-        manager: User,
-        _: list[uuid.UUID | str] = None,
-        **kwargs,
-    ):
-        return [LoadTemplate(name="Last Vorlage", manager=manager)]
-
-
 class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
@@ -643,7 +656,7 @@ class ElectricComponentTemplate(ItemTemplate):
     """Abstract template for electric components, defines shared characteristics"""
 
     power_kw = models.FloatField(verbose_name=_("Leistung"), default=None, null=True, blank=True)
-    efficiency = models.FloatField(verbose_name=_("Effizienz"), default=1.0)
+    efficiency = models.FloatField(verbose_name=_("Effizienz"), default=1.0, blank=False, null=True)
     power_installed = models.FloatField(
         verbose_name=_("Installierte Leistung"), default=None, null=True, blank=True
     )  # kWh
@@ -693,6 +706,13 @@ class ElectricComponentTemplate(ItemTemplate):
         if not self.opex:
             return "Keine Angabe"
         return f"{self.opex} €/a"
+
+    def custom_fields(self):
+        generic_field_names = {f.name for f in ElectricComponentTemplate._meta.get_fields()}
+        for parent in ElectricComponentTemplate.__mro__[1:]:
+            if hasattr(parent, "_meta"):
+                generic_field_names |= {f.name for f in parent._meta.get_fields()}
+        return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -764,15 +784,26 @@ class AbstractGenerator(models.Model):
 
 
 class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Generator Vorlage")
+
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.generator"
 
 
 class Generator(ElectricComponent, AbstractGenerator):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.generator"
+
+    @classmethod
+    def template_model_name(cls):
+        return GeneratorTemplate.model_name()
 
 
 class AbstractHeating(models.Model):
@@ -785,25 +816,37 @@ class AbstractHeating(models.Model):
 
     carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
 
-    def carrier_verbose(self):
-        if not self.carrier:
+    @classmethod
+    def carrier_verbose(cls):
+        if not cls.carrier:
             return "Keine Angabe"
-        return self.get_carrier_display()
+        return cls.get_carrier_display()
 
     class Meta:
         abstract = True
 
 
 class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Heizung Vorlage")
+
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.heating"
 
 
 class Heating(ElectricComponent, AbstractHeating):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.heating"
+
+    @classmethod
+    def template_model_name(cls):
+        return HeatingTemplate.model_name()
 
 
 class AbstractCHP(models.Model):
@@ -831,6 +874,11 @@ class AbstractCHP(models.Model):
 
 
 class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Kraft-Wärme-Kopplung Vorlage")
+
     def list_icon(self) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.chp"
@@ -853,13 +901,20 @@ class AbstractFuelCell(models.Model):
 
 
 class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Brennstoffzelle Vorlage")
+
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.fuelcell"
 
 
 class FuelCell(ElectricComponent, AbstractFuelCell):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.fuelcell"
 
@@ -875,13 +930,20 @@ class AbstractElectrolyzer(models.Model):
 
 
 class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Elektrolyseur Vorlage")
+
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.electrolyzer"
 
 
 class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.electrolyzer"
 
@@ -899,8 +961,8 @@ class AbstractHeatpump(models.Model):
         MONOVALENT = 1
         BIVALENT = 2
 
-    heatsource = models.CharField(choices=HeatChoices)
-    mode = models.IntegerField(choices=ModeChoices)
+    heatsource = models.CharField(choices=HeatChoices, blank=False, null=True)
+    mode = models.IntegerField(choices=ModeChoices, blank=False, null=True)
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -911,13 +973,20 @@ class AbstractHeatpump(models.Model):
 
 
 class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Wärmepumpe Vorlage")
+
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.heat_pump"
 
 
 class Heatpump(ElectricComponent, AbstractHeatpump):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.heat_pump"
 
@@ -950,15 +1019,25 @@ class AbstractSolar(models.Model):
 
 
 class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
-    def list_icon(self) -> str:
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Solare Vorlage")
+
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.solar"
 
 
 class Solar(ElectricComponent, AbstractSolar):
-    def list_icon(self) -> str:
+    @classmethod
+    def list_icon(cls) -> str:
         """The cotton template used as icon for this model inside lists"""
         return "icon.solar"
+
+    @classmethod
+    def template_model_name(cls):
+        return SolarTemplate.model_name()
 
 
 class AbstractStorage(models.Model):
@@ -969,26 +1048,37 @@ class AbstractStorage(models.Model):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    carrier = models.CharField(choices=CarrierChoices)
-    efficiency_load = models.FloatField(default=1.0)
-    efficiency_store = models.FloatField(default=1.0)
+    carrier = models.CharField(choices=CarrierChoices, null=True, blank=False)
+    efficiency_load = models.FloatField(default=1.0, null=True, blank=False)
+    efficiency_store = models.FloatField(default=1.0, null=True, blank=False)
     # capacity: unit depends on carrier. kWh for electricity and heat, liters for H2
     capacity_installed = models.FloatField(default=None, null=True, blank=True)
     capacity_min = models.FloatField(default=None, null=True, blank=True)
     capacity_max = models.FloatField(default=None, null=True, blank=True)
     capex = models.FloatField(default=None, null=True, blank=True)  # €/kWh, €/l
 
-    def carrier_verbose(self):
-        if not self.carrier:
+    def carrier_verbose(cls):
+        if not cls.carrier:
             return "Keine Angabe"
-        return self.get_carrier_display()
+        return cls.get_carrier_display()
+
+    # For the same rendering process and look as Electric components
+    def custom_fields(self):
+        generic_field_names = {f.name for f in ElectricComponentTemplate._meta.get_fields()}
+        for parent in ElectricComponentTemplate.__mro__[1:]:
+            if hasattr(parent, "_meta"):
+                generic_field_names |= {f.name for f in parent._meta.get_fields()}
+        return [f.name for f in self._meta.get_fields() if f.name not in generic_field_names]
 
     class Meta:
         abstract = True
 
 
 class StorageTemplate(ItemTemplate, AbstractStorage):
-    pass
+    @classmethod
+    def verbose_name(cls):
+        """Get the _meta.verbose_name"""
+        return _("Speicher Vorlage")
 
 
 class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)

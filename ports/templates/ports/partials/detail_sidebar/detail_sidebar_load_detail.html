@@ -35,10 +35,7 @@
     >
     <div class="flex items-center justify-between mb-[24px]">
         <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
-        {{scenario}}
-
       {% with hx_target="#form_"|add:internal_id %}
-        {% url "ports:template_create" model="loadtemplate" scenario_internal_id=scenario.internal_id as template_url %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
         {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target template_url=template_url form_url=form_url %}
       {% endwith %}
