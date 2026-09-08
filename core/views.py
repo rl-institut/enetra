@@ -162,7 +162,7 @@ def handle_invite(request: HttpRequest) -> HttpResponse:
     email = invite.payload["email"]
     user = User.objects.filter(email=email).first()
     if user:
-        if request.user == user:
+        if request.user == user or not request.user.is_authenticated:
             try:
                 Invite.add_user_to_group_from_token(token, user)
             except InviteError as error:
