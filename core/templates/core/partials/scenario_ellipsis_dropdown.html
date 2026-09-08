@@ -25,7 +25,7 @@
     <c-api-button
       :hx-delete=delete_url
       hx-confirm="Willst du {{scenario.name}} wirklich löschen?"
-      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      hx-on::after-request="htmx.ajax('GET', location.href, {target: '.toolbar-content-container',select:'.toolbar-content-container', swap: 'outerHTML'})"
       class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
       x-cloak
     >

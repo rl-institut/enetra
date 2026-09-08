@@ -9,13 +9,17 @@ helper to return a component which is easily styled but uses a form.field as inp
 {% endcomment %}
 <c-vars  field></c-vars>
 {% if field|widget_type|lower == 'select' %}
-<c-select.index  :inputName=field.name :selectedValue=field.value :attrs=attrs >
+
+
+{% with field.value|default:field.field.initial as selectedValue %}
+<c-select.index  :inputName=field.name :selectedValue=selectedValue :attrs=attrs >
   {% for value, label in field.field.choices %}
     <c-select.button selectValue={{value}}>
       {{ label }}
     </c-select.button>
   {% endfor %}
 </c-select.index>
+{% endwith %}
 {% else %}
   {% with attrs.class as attrs_class %}
   {{ field|add_class:attrs.class|add_attrs_without_class:attrs}}

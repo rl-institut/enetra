@@ -1,4 +1,7 @@
 {% extends "core/base_management.html" %}
+{% comment %}
+TODO: Replace project.scenario_set.first with proper base scenario
+{% endcomment %}
 {% load static %}
 {% block mainContent %}
     <!-- Main Content -->
@@ -24,38 +27,33 @@
               <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
               <span class="text-sm text-slate-500">Geändert: {{project.updated_at|date:"j.n.Y "}}</span>
             </div>
-            <a href="{% url 'core:user_rechte' %}" class="flex gap-2 items-center">
+            <a href="{% url 'core:user_rechte' project_internal_id=project.internal_id %}" class="flex gap-2 items-center">
               <c-icon.user_rights />
-              <span href="{% url 'core:user_rechte' %}" class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
+              <span class="text-sm font-bold text-cyan-700">{{project.users.view.count}} Nutzer</span>
             </a>
           </div>
         </div>
 
         <!-- Szenarien -->
-
-        {% comment %}
-        removed these since scenario creation from a project without duplication does not
-        make a lot of sense
-        create_label="Technologie-Szenario erstellen"
-        create_icon="plus-circle"
-        {% endcomment %}
         <script>
         // if a rename query parameter is given, trigger the modal and remove the query param
         function showRenameModal(view){
-          const rename_id = new URLSearchParams(window.location.search).get('rename');
+          const url = new URL(window.location.href);
+          const rename_id = url.searchParams.get('rename');
           if (rename_id){
           var modal = document.getElementById('rename_'+view+'_' + rename_id);
           if (modal) modal.showModal();
           }
-          // remove the rename query, so further refreshes dont show the rename modal
-          history.replaceState(null, '', window.location.pathname);
+        // Remove only the rename query parameter
+          url.searchParams.delete('rename');
+          history.replaceState(null, '', url);
         };
 
 
         </script>
           <c-toolbar.index
             search_placeholder="Szenarien Durchsuchen..."
-          x-init="showRenameModal(view)"
+            x-init="showRenameModal(view)"
           >
           <c-slot name="sort_buttons">
             <c-toolbar.sort_button sort_key='name' name="Name" />
@@ -65,9 +63,10 @@
 
             <c-slot name='button_slot'>
             <button
+              hx-post="{% url 'ports:api_duplicate' 'scenario' project.scenario_set.first.internal_id %}?rename=true"
               class="select-none ml-auto px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 shrink-0 cursor-pointer">
               <i data-lucide="plus-circle" class="w-4 h-4 text-white"></i>
-              <span class="text-sm font-semibold text-white">Keine Funktion</span>
+              <span class="text-sm font-semibold text-white">Technologie-Szenario erstellen</span>
             </button>
             </c-slot>
           <c-slot name="card_view">

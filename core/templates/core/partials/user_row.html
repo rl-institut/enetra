@@ -1,0 +1,52 @@
+<tr class="hover:bg-slate-50 transition-colors duration-100">
+  <td class="px-6 py-4">
+    <div class="select-none flex items-center gap-3">
+
+      {% if user.first_name or user.last_name %}
+      <span class="font-semibold text-slate-800">{{user.first_name}} {{user.last_name}}</span>
+
+      {% else  %}
+      <span class="font-semibold text-slate-800">{{user.email}}</span>
+      {% endif %}
+    </div>
+  </td>
+  <td class="px-6 py-4 text-slate-500 select-none">{{user.email}}</td>
+  <td class="px-6 py-4">
+    {% if role == 'manager' %}
+    <span class="select-none px-3 py-0.5 bg-cyan-100 text-cyan-800 text-xs font-semibold rounded-full">
+      Eigentümer
+    </span>
+    {% elif role == "editor" %}
+    <span class="select-none px-3 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full">Bearbeiter</span>
+    {% elif role == "observer" %}
+    <span class="select-none px-3 py-0.5 bg-slate-100 text-slate-500 text-xs font-semibold rounded-full">Betrachter</span>
+      {% else %}
+      No Role Found
+    {% endif %}
+    </span>
+  </td>
+  <td class="px-6 py-4">
+    {% if active  %}
+    <span class="select-none px-3 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Aktiv</span>
+    {% else %}
+    <span class="select-none px-3 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">Ausstehend</span>
+    {% endif %}
+  </td>
+  <td class="px-6 py-4">
+    {% if delete_url %}
+    <div class="flex justify-end">
+      <a
+        title="Nutzer aus Projekt entfernen"
+        href='{{delete_url}}'
+        type='button'
+        hx-post='{{delete_url}}'
+        hx-confirm="Wills du den Nutzer und all seine Flächen und Komponenten wirklich löschen?"
+        hx-swap='none'
+        hx-on::after-request="htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'})"
+        class="select-none cursor-pointer text-slate-400 hover:text-red-500 transition-colors duration-150">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </a>
+    </div>
+    {% endif %}
+  </td>
+</tr>

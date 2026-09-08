@@ -1,7 +1,7 @@
 
 <tr
   data-name="{{title}}"
-  data-last_update="{% firstof last_update_sortable last_update %}"
+  data-last_update="{% firstof created_at_sortable created_at %}"
   class="hover:bg-slate-50 transition-colors duration-100">
   <td class="px-6 py-4">
     <a href={% url 'core:project_overview' project.internal_id %} class="select-none font-semibold text-cyan-700 hover:underline">{{project.name}}</a>
@@ -31,7 +31,7 @@
         <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
         <span class="text-xs font-semibold">Szenarienvergleich</span>
       </a>
-        {% include "core/partials/project_ellipsis_dropdown.html" with key='row' project=project %}
+        {% include "core/partials/project_ellipsis_dropdown.html" with key='table' project=project %}
     </div>
   </td>
 </tr>

@@ -22,7 +22,6 @@ from django.dispatch import receiver
 from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from guardian.utils import get_group_obj_perms_model
 
 logger = logging.getLogger(__name__)
 
@@ -61,18 +60,9 @@ class Project(models.Model):
         """Get all users with some permission for the project as dictionary
         with key of the permission.codename"""
         if not hasattr(self, "_users_cache"):
-            GroupObjectPermission = get_group_obj_perms_model()
-            perms = (
-                GroupObjectPermission.objects.filter(
-                    content_type=ContentType.objects.get_for_model(self.__class__),
-                    object_pk=self.pk,
-                )
-                .select_related("permission")
-                .prefetch_related("group__user_set")
-            )
-            self._users_cache = {
-                perm.permission.codename: perm.group.user_set.all() for perm in perms
-            }
+            from .util import prefetch_projects_users
+
+            prefetch_projects_users([self])
         return self._users_cache
 
     @atomic()

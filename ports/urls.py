@@ -71,6 +71,16 @@ urlpatterns = [
         name="api",
     ),
     path(
+        "api/<uuid:project_internal_id>/<str:email>/remove_project_user/",
+        views.remove_project_user,
+        name="api_remove_project_user",
+    ),
+    path(
+        "api/<str:signed_invite_id>/remove_project_invite/",
+        views.remove_project_invite,
+        name="api_remove_project_invite",
+    ),
+    path(
         "api/<str:model>/<uuid:internal_id>/duplicate/",
         views.ApiView.as_view(action="duplicate"),
         name="api_duplicate",

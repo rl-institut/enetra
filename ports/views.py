@@ -13,6 +13,7 @@ from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from django.db.transaction import atomic
@@ -39,7 +40,10 @@ from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import get_perms
 from guardian.shortcuts import remove_perm
+from guardian.utils import clean_orphan_obj_perms
 
+from core.models import Invite
+from core.views import ensure_project_rights
 from ports import models
 from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
@@ -961,6 +965,52 @@ def create_scenario(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/create_scenario.html", context)
 
 
+@ensure_project_rights
+def remove_project_user(
+    request: HttpRequest, project_internal_id: UUID, email: str, project: Project
+) -> HttpResponse:
+    """Remove a user from a project's group, delete their content within the
+    project, and clean up any now-orphaned object permissions."""
+    # only superusers and project managers can remove users for now
+    if not request.user.is_superuser and project.manager != request.user:
+        return HttpResponseForbidden("Not Allowed")
+    group = Group.objects.get(name=project.group_name())
+    user = get_object_or_404(User, email=email)
+    remove_user_content(project, user)
+    group.user_set.remove(user)
+    # clean up stale permissions, e.g. user permission or group permission
+    # on deleted items
+    clean_orphan_obj_perms()
+    return JsonResponse({"status": "success", "message": "User removed"}, status=200)
+
+
+def remove_user_content(project: Project, user: User) -> None:
+    """Delete all ScenarioItem-derived content the user manages within the project."""
+    port_models = apps.get_app_config("ports").get_models()
+    # NOTE: LoadTemplate deletion cascades Load Deletion
+    # TODO: If ChangedItem or DeletedItem should ever store sensitive information they need to be deleted too
+    for Model in port_models:
+        if not issubclass(Model, ScenarioItem):
+            continue
+        Model.objects.filter(scenario__project=project, manager=user).delete()
+
+
+def remove_project_invite(request: HttpRequest, signed_invite_id: str) -> HttpResponse:
+    """Delete a pending (not-yet-accepted) invite, identified by its signed id."""
+    invite_id = int(signing.loads(signed_invite_id, salt="invite_id"))
+    # assert permission
+    invite = Invite.objects.get(id=invite_id)
+
+    # for now only project manager and superusers see delete links in
+    # project user management
+    internal_id = invite.payload["project_internal_id"]
+    project = Project.objects.get(internal_id=internal_id)
+    if not request.user.is_superuser and request.user != project.manager:
+        return HttpResponseForbidden("Not Allowed")
+    invite.delete()
+    return JsonResponse({"status": "success", "message": "Invite removed"}, status=200)
+
+
 class ApiView(View):
     """Handle delete and duplicate for Project and Scenario, returning JSON responses."""
 
@@ -1033,17 +1083,18 @@ class ApiView(View):
                 new_instance = duplicate_project(self.instance)
             else:
                 new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
-                if request.GET.get("rename"):
-                    # if the extra param rename is used, return a view with opened rename
-                    # instead of the json response
-                    params = request.GET.copy()
-                    params["rename"] = new_instance.internal_id
-                    response = HttpResponse()
-                    current_url = urlsplit(request.headers["HX-Current-URL"]).path
-                    response["HX-Location"] = f"{current_url}?{params.urlencode()}"
-                    response["HX-Reswap"] = "outerHTML"
-                    response["HX-Retarget"] = "body"
-                    return response
+            if request.GET.get("rename"):
+                # if the extra param rename is used, return a view with opened rename
+                # instead of the json response
+                params = request.GET.copy()
+                params["rename"] = new_instance.internal_id
+                response = HttpResponse()
+                current_url = urlsplit(request.headers["HX-Current-URL"]).path
+                response["HX-Location"] = f"{current_url}?{params.urlencode()}"
+                response["HX-Reswap"] = "outerHTML"
+                response["HX-Retarget"] = ".toolbar-content-container "
+                response["HX-Reselect"] = ".toolbar-content-container "
+                return response
 
             return JsonResponse(
                 {

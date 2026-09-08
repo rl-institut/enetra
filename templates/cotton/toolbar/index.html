@@ -7,30 +7,45 @@
 {% endcomment %}
 
 <div class="border-t-2 border-slate-200 flex flex-col gap-6 pt-8"
-  x-data="{ view: $persist('{{startView|default:'card'}}'), search: $persist(''), sort_key: $persist('') ,
-          init() {
-            const parent_table = document.getElementById('filterable_table');
-            const parent_cards = document.getElementById('filterable_cards');
+x-data="{
+  view: $persist('{{startView|default:'card'}}'),
+  search: '',
+  sort_key: '' ,
+  parent_table : null, parent_cards : null,
+            watch_sort_and_search_changes(){
 
-            searchName(this.search, parent_table);
-            searchName(this.search, parent_cards);
+            this.parent_table = document.getElementById('filterable_table');
+            this.parent_cards = document.getElementById('filterable_cards');
+
             this.$watch('search', search => {
+
+            searchName(search, this.parent_table);
+            searchName(search, this.parent_cards);
+            });
+
+            this.$watch('sort_key', key => {
+            sortContainer(this.parent_table, key);
+            sortContainer(this.parent_cards, key);
+            });
+
+          },
+          init() {
+            this.watch_sort_and_search_changes()
+          }
+        }"
+  @htmx:after-settle ="
+            // sort and search after the elements were swapped by htmx
+            parent_table = document.getElementById('filterable_table');
+            parent_cards = document.getElementById('filterable_cards');
+            sortContainer(parent_table, sort_key);
+            sortContainer(parent_cards, sort_key);
             searchName(search, parent_table);
             searchName(search, parent_cards);
-            });
-
-            sortContainer(parent_table, this.sort_key);
-            sortContainer(parent_cards, this.sort_key);
-            this.$watch('sort_key', key => {
-            sortContainer(parent_table, key);
-            sortContainer(parent_cards, key);
-            });
-          },
-        }"
+  "
   {{attrs}}
 >
   <!-- Toolbar row -->
-  <div class="flex gap-4 items-center">
+  <div class="flex gap-4 items-center toolbar-row">
 
     <form >
     <!-- Search input -->
@@ -41,7 +56,7 @@
     </div>
     </form>
     <!-- Sort dropdown -->
-    <div class="relative" x-data="{ open: false, selected: $persist('Sortieren') }">
+    <div class="relative" x-data="{ open: false, selected: 'Sortieren' }">
       <button @click="open = !open" class="select-none h-10 bg-white hover:bg-slate-50 transition-colors duration-150 px-4 py-3 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-4 cursor-pointer">
         <span class="text-sm font-semibold text-slate-800" x-text="selected"></span>
         <i data-lucide="chevron-down" class="w-4 h-4 text-slate-800"></i>
@@ -73,15 +88,16 @@
     {% endif %}
 
   </div>
+  <div class='toolbar-content-container'>
+    <!-- Card view slot -->
+    <div x-show="view === 'card'" x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      {{ card_view }}
+    </div>
 
-  <!-- Card view slot -->
-  <div x-show="view === 'card'" x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-    {{ card_view }}
-  </div>
-
-  <!-- Table view slot -->
-  <div x-show="view !== 'card'"  x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-    {{table_view }}
+    <!-- Table view slot -->
+    <div x-show="view !== 'card'"  x-cloak x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      {{table_view }}
+    </div>
   </div>
 
 </div>
