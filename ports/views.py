@@ -766,14 +766,9 @@ class DetailsView(View):
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
         }
-        if not self.created:
-            instance = self.instance or (self.instances and self.instances[0]) or None
-            match instance:
-                case ElectricComponent():
-                    template_model = util.get_template_model(self.Model)
-                    context["templates"] = template_model.objects.filter(manager=request.user)
-                case _:
-                    pass
+        if issubclass(self.Model, ElectricComponent):
+            template_model = util.get_template_model(self.Model)
+            context["templates"] = template_model.objects.filter(manager=request.user)
 
         for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
             context[model._meta.object_name] = model
