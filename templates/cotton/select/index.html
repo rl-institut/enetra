@@ -7,7 +7,7 @@ I added the modern anchor css to make sure the dropdown/select expands in a dire
 The implementation can be fouind inside the custom css tailwind brackets
 {% endcomment %}
 <div x-data=" {show: false, selectedValue: '{{ selectedValue }}', selectedElement: '{{ selectedValue }}', }"
-   class="w-full [anchor-name:--select-dropdown-{{uid}}]"
+   class=" {{containerClass}} w-full [anchor-name:--select-dropdown-{{uid}}] "
    {{attrs}}
 
 >

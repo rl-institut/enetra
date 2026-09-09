@@ -49,7 +49,7 @@ services:
       DATABASE_URL: postgis://myprojectuser:1234@my-docker-postgres:5432/mydb
       DJANGO_SECRET_KEY: USE.ENV.FORSECRETS
       DJANGO_LOCAL_DEVELOPMENT: True
-      DEBUG: True
+      DJANGO_DEBUG: True
 
   my-docker-redis:
     # in .env_file

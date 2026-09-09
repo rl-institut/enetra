@@ -3,20 +3,65 @@ import logging
 from typing import Any
 
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
+from django.db.models import QuerySet
+from django.http import HttpRequest
 from django.http import HttpResponse
 from django.urls import path
 from django.views.generic import TemplateView
 from guardian.admin import GuardedModelAdmin
 from unfold.admin import ModelAdmin
+from unfold.forms import AdminPasswordChangeForm
+from unfold.forms import UserChangeForm
+from unfold.forms import UserCreationForm
 from unfold.views import UnfoldModelAdminViewMixin
 
 from .forms import ScenarioAreasForm
 from .models import ElectricComponent
+from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
 from .util import process_geojson_dict_to_scenarios
 
 logger = logging.getLogger(__name__)
+
+
+# TODO: Implement more advances permissions using django-guardian
+def get_queryset(self, request: HttpRequest) -> QuerySet:
+    """Restrict the admin changelist to objects managed by the current user,
+    unless they are a superuser."""
+    qs = super(self.__class__, self).get_queryset(request)
+    if request.user.is_superuser:
+        return qs
+    # Only show user's own articles for now
+    return qs.filter(manager=request.user)
+
+
+def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    """Allow change only for superusers or the object's manager."""
+    if request.user.is_superuser:
+        return True
+    if obj and obj.manager != request.user:
+        return False
+    return super(self.__class__, self).has_change_permission(request, obj)
+
+
+def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    """Allow delete only for superusers or the object's manager.
+
+    Without this, `get_actions()` filters out "delete_selected" for every
+    non-superuser (no global delete_x permission is ever granted), which
+    empties `action_form` and hides the Unfold "Run" button entirely.
+    See https://github.com/unfoldadmin/django-unfold/issues/699
+    """
+    if request.user.is_superuser:
+        return True
+    if obj and obj.manager != request.user:
+        return False
+    return super(self.__class__, self).has_delete_permission(request, obj)
 
 
 @admin.register(Scenario)
@@ -31,28 +76,45 @@ class ScenarioAdmin(ModelAdmin, GuardedModelAdmin):
             path("scenario_from_geojson", port_regions_view, name="scenario_from_geojson"),
         ]
 
-
-# TODO: Implement more advances permissions using django-guardian
-def get_queryset(self, request):
-    qs = super(self.__class__, self).get_queryset(request)
-    if request.user.is_superuser:
-        return qs
-    # Only show user's own articles for now
-    return qs.filter(manager=request.user)
-
-
-def has_change_permission(self, request, obj=None):
-    if request.user.is_superuser:
-        return True
-    if obj and obj.manager != request.user:
-        return False
-    return super(self.__class__, self).has_change_permission(request, obj)
+    get_queryset = get_queryset
+    has_change_permission = has_change_permission
+    # has_delete_permission = has_delete_permission
 
 
 methods = {
     "get_queryset": get_queryset,
     "has_change_permission": has_change_permission,
+    "has_delete_permission": has_delete_permission,
+    "search_fields": ("name",),
+    "list_display": ("id", "name", "manager"),
 }
+
+
+admin.site.unregister(User)
+admin.site.unregister(Group)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin, ModelAdmin):
+    """Django's built-in User admin, re-registered with Unfold styling/forms."""
+
+    # Forms loaded from `unfold.forms`
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
+
+
+@admin.register(Group)
+class GroupAdmin(BaseGroupAdmin, ModelAdmin):
+    """Django's built-in Group admin, re-registered with Unfold styling."""
+
+
+DynamicClass = type("ProjectAdmin", (ModelAdmin,), methods)
+admin.site.register(Project, DynamicClass)
+
+
+methods["list_display"] = ("id", "name", "manager", "scenario_id")
+
 # Add all scenario items to the admin panel
 for subclass in ScenarioItem.__subclasses__():
     if subclass == ElectricComponent:

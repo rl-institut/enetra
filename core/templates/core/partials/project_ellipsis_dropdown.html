@@ -1,12 +1,11 @@
 {% load i18n %}
 <div x-cloak class="relative" x-data="{ open: false }">
   <button @click="open = !open" class="select-none cursor-pointer text-slate-800 hover:text-slate-500 transition-colors duration-150">
-    <i data-lucide="ellipsis" class="w-4 h-4"></i>
+    <i data-lucide="more-vertical" class="w-4 h-4"></i>
   </button>
   <div x-show="open" @click.outside="open = false" class="absolute right-0 top-6 mt-1 bg-white rounded-[4px] shadow-[0px_4px_6px_rgba(0,0,0,0.15)] z-10 flex flex-col w-48">
     <c-api-button
-      hx-post="{% url 'ports:api_duplicate' 'project' project.internal_id %}"
-      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      hx-post="{% url 'ports:api_duplicate' 'project' project.internal_id %}?rename=true"
       class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded"
       x-cloak
     >
@@ -14,7 +13,7 @@
       <div x-show="status=='success'">Dupliziert</div>
       <div x-show="status=='error'">Fehlgeschlagen</div>
     </c-api-button>
-    <a href='{% url "core:user_rechte" %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
+    <a href='{% url "core:user_rechte" project_internal_id=project.internal_id %}' class="select-none flex items-center p-3 gap-3 text-sm text-slate-800 hover:bg-slate-50 transition-colors duration-150 w-full text-left rounded">
       <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Nutzer verwalten
     </a>
     <button
@@ -30,7 +29,7 @@
     <c-api-button
       :hx-delete=delete_url
       hx-confirm="Willst du {{project.name}} wirklich löschen?"
-      hx-on::after-request="setTimeout(() => htmx.ajax('GET', location.href, {target: 'body', swap: 'outerHTML'}), 1000)"
+      hx-on::after-request="htmx.ajax('GET', location.href, {target: '.toolbar-content-container',select:'.toolbar-content-container', swap: 'outerHTML'})"
       class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 w-full text-left rounded"
       x-cloak
     >

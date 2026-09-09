@@ -59,7 +59,7 @@
               <a href="forgot-password.html" class="text-xs text-cyan-700 hover:underline">Passwort vergessen?</a>
             </div>
             <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
-              <c-input :field=form.password :type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
+              <c-input :field=form.password x-bind::type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />
               <button type="button" @click="show = !show" class="text-slate-400 hover:text-slate-600 transition-colors duration-150 cursor-pointer shrink-0">
                 <i data-lucide="eye" class="w-4 h-4" x-show="!show"></i>
                 <i data-lucide="eye-off" class="w-4 h-4" x-show="show"></i>
@@ -69,7 +69,7 @@
 
           <!-- Remember me -->
           <div class="flex items-center gap-2">
-            <input type="checkbox" id="remember" class="w-4 h-4 accent-cyan-700 cursor-pointer" />
+            <input type="checkbox" id="remember" name="remember" class="w-4 h-4 accent-cyan-700 cursor-pointer" />
             <label for="remember" class="text-sm text-slate-600 cursor-pointer select-none">Angemeldet bleiben</label>
           </div>
 

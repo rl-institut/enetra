@@ -3,6 +3,10 @@
 {% block mainContent %}
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
+
+      {% if debug %}
+      {% include 'ports/partials/user_debug_buttons.html' %}
+      {% endif %}
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
 
         <!-- Page Header -->
@@ -12,10 +16,29 @@
           <p class="text-xs text-slate-500">Angemeldet als {{request.user.username}}</p>
           <p class="text-base text-slate-500">Verwalte deine Binnenhafenenergie-Forschungsprojekte und Szenarien</p>
         </div>
+        <script>
+        // if a rename query parameter is given, trigger the modal and remove the query param
+        function showRenameModal(view){
+          const url = new URL(window.location.href);
+          const rename_id = url.searchParams.get('rename');
+          if (rename_id){
+          var modal = document.getElementById('rename_'+view+'_' + rename_id);
+            if (modal){
+              modal.showModal();
+            } else{
+              console.log( 'no modal found');
+            }
+          }
+        // Remove only the rename query parameter
+          url.searchParams.delete('rename');
+          history.replaceState(null, '', url);
+        };
 
 
+        </script>
           <c-toolbar.index
             search_placeholder="Projekte Durchsuchen..."
+            x-init="showRenameModal(view); console.log( 'shown rename modal for '+ view)"
           >
           <c-slot name="sort_buttons">
             <c-toolbar.sort_button sort_key='name' name="Name" />
@@ -25,7 +48,7 @@
 
             <div id="filterable_cards" class="grid grid-cols-3 gap-4">
             {% for project in projects %}
-            {% include "core/partials/project_card.html" with title=project.name last_update_sortable=project.last_update %}
+            {% include "core/partials/project_card.html" with title=project.name created_at=project.created_at %}
             {% endfor %}
             </div>
             <c-slot name='button_slot'>
@@ -59,7 +82,7 @@
               </thead>
               <tbody id="filterable_table" class="divide-y divide-slate-100">
               {% for project in projects %}
-              {% include "core/partials/project_row.html" with title=project.name last_update_sortable=project.updated_at %}
+              {% include "core/partials/project_row.html" with title=project.name last_update_sortable=project.created_at %}
               {% endfor %}
 
               </tbody>
