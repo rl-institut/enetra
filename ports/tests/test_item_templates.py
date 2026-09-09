@@ -11,6 +11,8 @@ Covers:
 - Applying a template overwrites all form fields except internal_id, id and manager,
   for both single and multi component selections.
 - Created templates show up in the "Vorlagen" list rendered by the komponenten_tab.
+- Templates are available (in context) both when viewing/editing an existing
+  Generator and when creating a brand new one.
 
 """
 
@@ -95,6 +97,15 @@ class ItemTemplateTestBase(TestCase):
     def details_url(self, model_name):
         return reverse(
             "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": model_name,
+            },
+        )
+
+    def details_create_url(self, model_name):
+        return reverse(
+            "ports:details_create",
             kwargs={
                 "scenario_internal_id": self.scenario.internal_id,
                 "model": model_name,
@@ -429,6 +440,22 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertEqual(form.initial.get("power_kw"), self.generator.power_kw)
+
+    def test_templates_are_available_when_creating_a_generator(self):
+        """
+        Regression test: get_basic_context() used to only add "templates" to the
+        context when not self.created, so the template picker was missing on the
+        "create a new Generator" form. It is now added unconditionally for any
+        ElectricComponent, creation included.
+        """
+        url = self.details_create_url("generator")
+        response = self.client.post(url, {"area_internal_ids": str(self.area.internal_id)})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["created"])
+        self.assertIn("templates", response.context)
+        templates = list(response.context["templates"])
+        self.assertIn(self.generator_template, templates)
+        self.assertNotIn(self.generator_template_other, templates)
 
 
 class TemplateInKomponentenTabListTest(ItemTemplateTestBase):

@@ -951,6 +951,10 @@ class DetailsView(View):
                     template_value = vars(template).get(field)
                     if template_value is not None:
                         template_data[field] = template_value
+                        # mark the fields populated by the templated for styling/indicating
+                        self.Form.base_fields[field].widget.attrs["data-template-value"] = (
+                            template_value
+                        )
 
         initial.update(template_data)
         self.context["form"] = self.Form(initial=initial, instance=self.instance)
