@@ -17,6 +17,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import BooleanField
+from django.db.models import ObjectDoesNotExist
 from django.db.models import Q
 from django.db.models import Value
 from django.db.transaction import atomic
@@ -537,9 +538,13 @@ class ObjectTemplatesView(View):
             self.instance = None
         else:
             # TODO: for now only access for templatemanager
-            self.instance = self.Model.objects.get(
-                manager=request.user, internal_id=self.internal_id
-            )
+            try:
+                self.instance = self.Model.objects.get(
+                    manager=request.user, internal_id=self.internal_id
+                )
+            except ObjectDoesNotExist as err:
+                raise Http404("This item does not for the user") from err
+
         self.Form = TemplateFormFactory(self.Model)
         self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
 
@@ -565,9 +570,6 @@ class ObjectTemplatesView(View):
         self.context = self.get_basic_context(request, *args, **kwargs)
         if self.created:
             return self.create(request, *args, **kwargs)
-        if request.user != self.instance.manager:
-            response = HttpResponse("You are not allowed to change Templates from other Users")
-            return response
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
@@ -761,7 +763,7 @@ class DetailsView(View):
             ],
         }
         if not self.created:
-            instance = self.instance or self.instances[0]
+            instance = self.instance or (self.instances and self.instances[0]) or None
             match instance:
                 case ElectricComponent():
                     template_model = util.get_template_model(self.Model)
