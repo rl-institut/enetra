@@ -44,5 +44,10 @@ def get_value(d: dict, name):
 
 
 @register.filter
+def get_value_or_none(d: dict, name):
+    return d.get(name)
+
+
+@register.filter
 def widget_type(field):
     return field.field.widget.__class__.__name__

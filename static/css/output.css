@@ -2369,6 +2369,31 @@
       }
     }
   }
+  .group-has-\[\[data-template-value\=\`\{\{field\.dataset\.template_value\}\}\`\]\]\:block {
+    &:is(:where(.group):has(*:is([data-template-value=`{{field.dataset.template value}}`])) *) {
+      display: block;
+    }
+  }
+  .group-has-\[\[data-template-value\=field\.dataset\.template_value\]\]\:block {
+    &:is(:where(.group):has(*:is([data-template-value=field.dataset.template value])) *) {
+      display: block;
+    }
+  }
+  .group-has-\[\[data-template-value\=\{\{field\.dataset\.template_value\}\}\]\]\:block {
+    &:is(:where(.group):has(*:is([data-template-value={{field.dataset.template value}}])) *) {
+      display: block;
+    }
+  }
+  .group-has-\[\[data-template-value\]\]\:block {
+    &:is(:where(.group):has(*:is([data-template-value])) *) {
+      display: block;
+    }
+  }
+  .group-has-\[\[data-template-value\]\]\:bg-red-200 {
+    &:is(:where(.group):has(*:is([data-template-value])) *) {
+      background-color: var(--color-red-200);
+    }
+  }
   .group-\[\.destructive\]\:text-red-300 {
     &:is(:where(.group):is(.destructive) *) {
       color: var(--color-red-300);
@@ -3064,6 +3089,26 @@
       }
     }
   }
+  .\[\&_\[data-template-value\]\]\:bg-green-200 {
+    & [data-template-value] {
+      background-color: var(--color-green-200);
+    }
+  }
+  .\[\&_\[data-template-value\]\]\:bg-red-200 {
+    & [data-template-value] {
+      background-color: var(--color-red-200);
+    }
+  }
+  .\[\&_div\]\:bg-red-200 {
+    & div {
+      background-color: var(--color-red-200);
+    }
+  }
+  .\[\&_label\]\:bg-red-200 {
+    & label {
+      background-color: var(--color-red-200);
+    }
+  }
   .\[\&_svg\]\:pointer-events-none {
     & svg {
       pointer-events: none;
@@ -3086,6 +3131,63 @@
       line-height: var(--tw-leading, var(--text-xs--line-height));
     }
   }
+  .\[\&\:has\(\[data-template-value\]\)\]\:m-8 {
+    &:has([data-template-value]) {
+      margin: calc(var(--spacing) * 8);
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:block {
+    &:has([data-template-value]) {
+      display: block;
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:border {
+    &:has([data-template-value]) {
+      border-style: var(--tw-border-style);
+      border-width: 1px;
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:border-2 {
+    &:has([data-template-value]) {
+      border-style: var(--tw-border-style);
+      border-width: 2px;
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:border-green-200 {
+    &:has([data-template-value]) {
+      border-color: var(--color-green-200);
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:bg-green-200 {
+    &:has([data-template-value]) {
+      background-color: var(--color-green-200);
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:bg-red-200 {
+    &:has([data-template-value]) {
+      background-color: var(--color-red-200);
+    }
+  }
+  .\[\&\:has\(\[data-template-value\]\)\]\:p-2 {
+    &:has([data-template-value]) {
+      padding: calc(var(--spacing) * 2);
+    }
+  }
+  .\[group\:has\(\[data-template-value\]\)\]\:bg-red-200 {
+    &:is(group:has([data-template-value])) {
+      background-color: var(--color-red-200);
+    }
+  }
+  .\[\&\:not\(\:has\(\[data-template-value\]\)\)\]\:bg-green-200 {
+    &:not(:has([data-template-value])) {
+      background-color: var(--color-green-200);
+    }
+  }
+  .\[\&\>\[data-template-value\]\]\:bg-red-200 {
+    &>[data-template-value] {
+      background-color: var(--color-red-200);
+    }
+  }
   .\[\&\>div\]\:flex {
     &>div {
       display: flex;
@@ -3099,6 +3201,16 @@
   .\[\&\>div\]\:gap-3 {
     &>div {
       gap: calc(var(--spacing) * 3);
+    }
+  }
+  .\[\&\>div\:has\(\[data-template-value\]\)\]\:bg-red-200 {
+    &>div:has([data-template-value]) {
+      background-color: var(--color-red-200);
+    }
+  }
+  .\[\&\>label\]\:bg-red-200 {
+    &>label {
+      background-color: var(--color-red-200);
     }
   }
   .\[\&\[data-state\=open\]\>svg\]\:rotate-180 {

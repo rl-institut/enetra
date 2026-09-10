@@ -14,11 +14,12 @@ from ports.authorization import has_authorization
 from ports.models import Area
 from ports.models import ChangedItem
 from ports.models import ElectricComponent
+from ports.models import ItemTemplate
 from ports.models import Load
-from ports.models import LoadTemplate
 from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.models import Timeseries
 from ports.util import duplicate_scenario_with_permissions
 
 
@@ -43,6 +44,38 @@ def AreaItemFormFactory():
 class ScenarioAreasForm(forms.Form):
     geojson_ports_regions_file = forms.FileField(required=True)
     geojson_ports_buildings_file = forms.FileField(required=True)
+
+
+def TemplateFormFactory(ItemModel: type[ItemTemplate]):
+    # TODO:
+    # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
+    exclude = ["manager", "updated_user"]
+    fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
+    if issubclass(ItemModel, ItemTemplate):
+        # exclude all foreign key fields.
+        # Templates should be atomic so they can be easily applied without side effects
+        # manager
+        exclude = set(exclude + fk_fields)
+        BaseForm = modelform_factory(
+            ItemModel,
+            exclude=exclude,
+            widgets={
+                "internal_id": forms.HiddenInput(),
+                "name": forms.TextInput(),
+                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+            },
+        )
+
+    else:
+        raise NotImplementedError()
+
+    # All fields are optional for a Template except name
+    # and internal_id
+    for field_name, field in BaseForm.base_fields.items():
+        if field_name not in ("name", "internal_id"):
+            field.required = False
+
+    return BaseForm
 
 
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
@@ -72,7 +105,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             label="Für andere im Projekt sichtbar machen",
         )
 
-    elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
+    elif ItemModel in (Load, ItemModel) or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
@@ -168,7 +201,7 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
 ALLOWED_UPLOAD_SUFFIXES = [".csv"]
 
 
-class LoadTemplateUploadForm(forms.Form):
+class TimeseriesUploadForm(forms.Form):
     allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
     # Set both required to false, so the fields to not mess with the outer load form
     # otherwise we would need form injection for the inputs
@@ -200,7 +233,7 @@ class LoadTemplateUploadForm(forms.Form):
             raise ValidationError(
                 "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
             )
-        values = LoadTemplate.values_from_csv(file=file)
+        values = Timeseries.values_from_csv(file=file)
         if not values:
             raise ValidationError("Keine numerischen Werte gefunden")
         self._parsed_values = values
@@ -210,7 +243,7 @@ class LoadTemplateUploadForm(forms.Form):
         values = self._parsed_values
         timestep_minutes = self.cleaned_data["timestep_minutes"]
         file = self.cleaned_data["template_file"]
-        template_load = LoadTemplate.objects.create(
+        template_load = Timeseries.objects.create(
             timeseries={"values": values, "timestep_minutes": timestep_minutes},
             spec_load=sum(values) / len(values),
             scenario=scenario,

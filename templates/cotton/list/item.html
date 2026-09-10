@@ -39,17 +39,21 @@ wrap everyting in a label so everything toggles the radio/checkbox
         @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
         @select-instance-{{item.internal_id}}.window="$el.click()"
         hx-include="closest form"
-        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
+        {% if scenario %}
+          hx-get="{% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name %}"
+        {% else %}
+          hx-get="{% url item.rud_url  model=item.model_name %}"
+        {% endif %}
+
         hx-trigger='getdetails'
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
-        hx-swap="innerHTML"
+        hx-swap="innerHTML scroll:top"
         hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
       {% endif %}
 
 >
   <div class="relative shrink-0 size-[16px] flex items-center justify-center">
-
     <input :type="isBulkMode ? 'checkbox' : 'radio'"
             {% comment %}
              With hx-preserve we ignore swapped in content but keep the preswaped input. this is
@@ -59,8 +63,10 @@ wrap everyting in a label so everything toggles the radio/checkbox
             Instead we dispatch an event to toggle the alpine state a level above.
             {% endcomment %}
            id="input_{{ value }}_{{ radioName }}"
-           preserve-val
-            {% if selected %}
+          {% if selected is None %}
+            preserve-val
+          {% endif %}
+          {% if selected %}
             checked
           {% endif %}
           {% comment %}

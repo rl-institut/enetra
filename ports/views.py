@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import traceback
@@ -11,11 +12,15 @@ from uuid import uuid4
 import numpy as np
 from django.apps.registry import apps
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import BooleanField
+from django.db.models import ObjectDoesNotExist
 from django.db.models import Q
+from django.db.models import Value
 from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
@@ -32,6 +37,7 @@ from django.shortcuts import render  # noqa
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.http import urlsplit
 from django.views.generic import View
 from django_oemof import models as oemof_models
@@ -45,14 +51,16 @@ from guardian.utils import clean_orphan_obj_perms
 from core.models import Invite
 from core.views import ensure_project_rights
 from ports import models
+from ports import util
 from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
 from ports.forms import ChangeProjectForm
 from ports.forms import ChangeScenarioForm
 from ports.forms import CreateProjectForm
 from ports.forms import CreateScenarioForm
-from ports.forms import LoadTemplateUploadForm
 from ports.forms import ScenarioItemFormFactory
+from ports.forms import TemplateFormFactory
+from ports.forms import TimeseriesUploadForm
 from ports.util import duplicate_scenario_with_permissions
 from ports.util import get_template_scenarios
 
@@ -62,11 +70,14 @@ from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
+from .models import ElectricComponentTemplate
+from .models import ItemTemplate
 from .models import Load
-from .models import LoadTemplate
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
+from .models import StorageTemplate
+from .models import Timeseries
 from .util import duplicate_project
 from .util import duplicate_scenario
 
@@ -379,6 +390,19 @@ def get_home_context(user: User, scenario: Scenario):
     for a in open_areas + building_areas:
         area_forms.append(AreaItemFormFactory()(instance=a))
     data["area_forms"] = area_forms
+
+    # Get all template Classes automatically. They are subclasses from ItemTemplate but not from ScenarioItem
+    # Also Skip abstract classes
+    template_models = [
+        cls
+        for _, cls in inspect.getmembers(models, inspect.isclass)
+        if issubclass(cls, ItemTemplate)
+        and not issubclass(cls, ScenarioItem)
+        and not cls._meta.abstract
+    ]
+    data["template_models"] = template_models
+    data["item_templates"] = get_user_templates(user)
+
     return data
 
 
@@ -439,6 +463,244 @@ def enetra_tool(request, scenario_internal_id: UUID):
     return render(request, "ports/tool_base.html", context)
 
 
+class ObjectTemplatesView(View):
+    """View which handles the CRUD for Templates
+
+    This is not part of the details view, since Templates don't necessarily have a Scenario,
+    and dont need to be bulk generated.
+    This should make the implementation considerably easier in comparison to DetailsView
+    """
+
+    template = ""
+    created = False
+    Model: type[ItemTemplate] | None = None
+    instance: ItemTemplate = None
+    scenario: None | Scenario = None
+    data: dict = {}
+
+    def details_render(
+        self,
+        request,
+        template_name,
+        context=None,
+        content_type=None,
+        status=None,
+        using=None,
+    ):
+        if request.headers.get("HX-Request"):
+            return render(
+                request=request,
+                template_name=template_name,
+                context=context,
+                content_type=content_type,
+                status=None,
+                using=using,
+            )
+        # Details were requested directly, return full response
+        else:
+            content = render_to_string(
+                request=request,
+                template_name=template_name,
+                context=context,
+                using=using,
+            )
+            # Need to inject the scenario if a full page load is requested, maybe simply via query param
+            # TODO: In this case authorization has to be added
+            assert self.scenario, "Will not inject None scenario"
+            context = get_home_context(user=request.user, scenario=self.scenario)
+            context["sidebar_content"] = content
+        return render(
+            request,
+            "ports/tool_base.html",
+            context,
+            content_type=content_type,
+            status=status,
+            using=using,
+        )
+
+    def get_basic_context(self, request, *args, **kwargs) -> dict:
+        context = {
+            "Model": self.Model,
+            "model_name": self.Model._meta.model_name,
+            "internal_id": str(self.internal_id),
+            "instance": self.instance,
+            "scenario": self.scenario,
+        }
+        return context
+
+    def setup_view(self, request, *args, **kwargs) -> None:
+        self.Model = apps.get_model("ports", kwargs["model"])
+        assert issubclass(self.Model, ItemTemplate)
+
+        self.data = request.GET
+        if request.method == "POST":
+            self.data = request.POST
+        # These instances should be shown or posted.
+        self.internal_id = self.data.get("internal_id")
+        # NOTE: created is set through the url resolver
+        if self.created:
+            self.instance = None
+        else:
+            # TODO: for now only access for templatemanager
+            try:
+                self.instance = self.Model.objects.get(
+                    manager=request.user, internal_id=self.internal_id
+                )
+            except ObjectDoesNotExist as err:
+                raise Http404("This item does not for the user") from err
+
+        self.Form = TemplateFormFactory(self.Model)
+        self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
+
+    def adjust_form(self):
+        raise NotImplementedError(
+            "Adjust form is currently needed for Area and Load objects. "
+            "Both do not have templates and therefore no form adjustment is needed"
+        )
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        # Instantiate the class with its fixed attributes
+        self.setup_view(request, *args, **kwargs)
+
+        # optional scenario. this can be used for a full rerender including scenarios
+        self.scenario = None
+        if sid := kwargs.get("scenario_internal_id"):
+            self.scenario = Scenario.objects.select_related("project").get(internal_id=sid)
+            if not has_authorization(self.scenario.project, request.user, "view"):
+                response = HttpResponse("You are not allowed to VIEW this Project")
+                return response
+
+        self.context = self.get_basic_context(request, *args, **kwargs)
+        if self.created:
+            return self.create(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        initial = {}
+        if self.instance is None:
+            raise Http404("This item does not exist")
+        match self.instance:
+            case ElectricComponentTemplate() | StorageTemplate():
+                pass
+            case _:
+                raise Http404("This model does not exist or is not implemented yet")
+
+        self.context["form"] = self.Form(initial=initial, instance=self.instance)
+        response = self.details_render(self.request, self.template, self.context)
+        return response
+
+    def create(self, request, *args, **kwargs):
+        if self.instance:
+            return HttpResponseBadRequest(
+                b"The creation of an object is not possible with an instance"
+            )
+        if issubclass(self.Model, ElectricComponentTemplate) or self.Model == StorageTemplate:
+            self.context["upload_form"] = TimeseriesUploadForm()
+            count = self.Model.objects.filter(manager=request.user).count()
+            self.instance = self.Model.objects.create(
+                manager=request.user, name=f"{self.Model.verbose_name()} {count}"
+            )
+            self.Form = TemplateFormFactory(
+                self.Model,
+            )
+            self.context["instance"] = self.instance
+            self.context["internal_id"] = str(self.instance.internal_id)
+            self.context["form"] = self.Form(
+                instance=self.instance,
+            )
+        else:
+            raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
+
+        self.context["item_templates"] = get_user_templates(request.user)
+        for instance in self.context["item_templates"]:
+            instance.selected = False
+            if instance.id == self.instance.id:
+                instance.selected = True
+
+        response = self.details_render(self.request, self.template, self.context)
+
+        return response
+
+    def delete(self, request, *args, **kwargs):
+        """Delete the instance, and replace the list item with a 'deleted' placeholder"""
+        self.instance.delete()
+        self.context["status"] = "deleted"
+        response = self.details_render(
+            self.request,
+            "ports/partials/update_delete_create_scenario_item.html",
+            self.context,
+        )
+        # Closing the sidebar could be made optional,
+        # since deletes can happen from somewhere else than the detail-sidebar
+        response["HX-Trigger"] = "hide-detail-sidebar"
+        return response
+
+    def post(self, request, *args, **kwargs):
+        if not issubclass(self.Model, ElectricComponentTemplate) and self.Model != StorageTemplate:
+            raise NotImplementedError(f"This model:{self.Model} is not implemented for posting yet")
+        if not self.instance:
+            return HttpResponseBadRequest(b"The patching of an object needs an instance")
+        try:
+            form = self.Form(data=request.POST, instance=self.instance)
+            self.context["form"] = form
+            if form.is_valid():
+                self.instance = form.save()
+                self.context["item"] = form.save()
+                # refresh the form, with the newly created instance.
+                form = self.Form(data=request.POST, instance=self.instance)
+                self.context["form"] = form
+                self.context["success"] = "Erfolgreich gespeichert"
+            else:
+                self.context["errors"] = ["An error occured", form.errors]
+        except Exception:
+            logger.error(traceback.format_exc())
+            self.context["errors"] = ["An unexpected error occured"]
+
+        self.context["item_templates"] = get_user_templates(request.user)
+        response = self.details_render(self.request, self.template, self.context)
+        return response
+
+
+def get_user_templates(user):
+    # Refetch the template list with the newly created item selected
+    template_models = [
+        cls
+        for _, cls in inspect.getmembers(models, inspect.isclass)
+        if issubclass(cls, ItemTemplate)
+        and not issubclass(cls, ScenarioItem)
+        and not cls._meta.abstract
+    ]
+    item_templates = []
+    # add templates to  the home_context
+    user = user
+    for model in template_models:
+        item_templates.extend(
+            list(
+                model.objects.filter(manager=user).annotate(
+                    has_authorization=Value(True, output_field=BooleanField())
+                )
+            )
+        )
+
+    return sorted(item_templates, key=lambda x: (x._meta.model_name, x.name.lower()))
+
+
+@login_required()
+def user_template_list(request):
+    """Return the list of user templates"""
+    # Get all template Classes automatically. They are subclasses from ItemTemplate but not from ScenarioItem
+    # Also Skip abstract classes
+    context = {}
+    context["item_templates"] = get_user_templates(request.user)
+    context["swapOob"] = True
+    response = render(
+        request, "ports/partials/komponenten_tab_panel.html#user-template-list", context
+    )
+    response["HX-Reswap"] = "none"
+    return response
+
+
 class DetailsView(View):
     """View which handles detail request for instances
 
@@ -455,7 +717,13 @@ class DetailsView(View):
     data: dict = {}
 
     def details_render(
-        self, request, template_name, context=None, content_type=None, status=None, using=None
+        self,
+        request,
+        template_name,
+        context=None,
+        content_type=None,
+        status=None,
+        using=None,
     ):
         if request.headers.get("HX-Request"):
             return render(
@@ -498,6 +766,10 @@ class DetailsView(View):
                 m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
             ],
         }
+        if issubclass(self.Model, ElectricComponent):
+            template_model = util.get_template_model(self.Model)
+            context["templates"] = template_model.objects.filter(manager=request.user)
+
         for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
             context[model._meta.object_name] = model
         return context
@@ -507,7 +779,7 @@ class DetailsView(View):
             internal_id=kwargs["scenario_internal_id"]
         )
         self.Model = apps.get_model("ports", kwargs["model"])
-        assert issubclass(self.Model, ScenarioItem)
+        assert issubclass(self.Model, ScenarioItem) or issubclass(self.Model, ItemTemplate)
         self.data = request.GET
         if request.method == "POST":
             self.data = request.POST
@@ -554,9 +826,13 @@ class DetailsView(View):
 
     @staticmethod
     def get_loadtemplates_for_user(user: User, scenario: Scenario, instance: Load | None = None):
-        templates = LoadTemplate.objects.filter(manager=user, scenario=scenario)
+        # TODO: should the timeseries stay bound to the scenario OR
+        # be a TimeseriesTemplate without being bound to the scenario instead?
+        # When a LoadTemplate is used in a different scenario it needs to be handled!
+        # E.g. by copying timeseries to new scenario
+        templates = Timeseries.objects.filter(manager=user, scenario=scenario)
         if instance and instance.template:
-            templates = LoadTemplate.objects.filter(
+            templates = Timeseries.objects.filter(
                 Q(manager=user, scenario=scenario) | Q(id=instance.template_id)
             )
         return templates
@@ -645,7 +921,7 @@ class DetailsView(View):
             initial = {"is_public": "details" in get_perms(group, self.instance)}
             self.context |= self.get_area_context()
         elif self.Model == Load:
-            self.context["upload_form"] = LoadTemplateUploadForm()
+            self.context["upload_form"] = TimeseriesUploadForm()
         elif issubclass(self.Model, ElectricComponent):
             # nothing to do here
             # ElectricComponent does not reference other models and does not need
@@ -654,6 +930,33 @@ class DetailsView(View):
         else:
             raise NotImplementedError("No template defined for this Model")
 
+        template_data = {}
+        if template_internal_id := request.GET.get("template"):
+            template_model = util.get_template_model(self.Model)
+            if template := template_model.objects.filter(
+                manager=request.user, internal_id=template_internal_id
+            ).first():
+                # get template data for instance
+                # TODO: Refactor into function
+                for field in self.Form.base_fields:
+                    if field in (
+                        "manager",
+                        "updated_user",
+                        "internal_id",
+                        "id",
+                        "created_at",
+                        "updated_at",
+                    ):
+                        continue
+                    template_value = vars(template).get(field)
+                    if template_value is not None:
+                        template_data[field] = template_value
+                        # mark the fields populated by the templated for styling/indicating
+                        self.Form.base_fields[field].widget.attrs["data-template-value"] = (
+                            template_value
+                        )
+
+        initial.update(template_data)
         self.context["form"] = self.Form(initial=initial, instance=self.instance)
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -681,13 +984,17 @@ class DetailsView(View):
             self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
         elif self.Model == Load or issubclass(self.Model, ElectricComponent):
             if self.Model == Load:
-                self.context["upload_form"] = LoadTemplateUploadForm()
+                self.context["upload_form"] = TimeseriesUploadForm()
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
             # Check permissions for creation for all areas that are not managed by the request user
             has_permission = has_area_authorization_from_uuids(
-                area_internal_ids, request.user, "details", scenario=self.scenario, model=Area
+                area_internal_ids,
+                request.user,
+                "details",
+                scenario=self.scenario,
+                model=Area,
             )
             if not has_permission:
                 return HttpResponse(
@@ -774,11 +1081,36 @@ class DetailsView(View):
                     if merged_data.get(key) != value and key in merged_data:
                         del merged_data[key]
 
+            template_data = {}
+            if template_internal_id := request.GET.get("template"):
+                template_model = util.get_template_model(self.Model)
+                if template := template_model.objects.filter(
+                    manager=request.user, internal_id=template_internal_id
+                ).first():
+                    # get template data for instance
+                    # TODO: Refactor into function
+                    for field in self.Form.base_fields:
+                        if field in (
+                            "manager",
+                            "updated_user",
+                            "internal_id",
+                            "id",
+                            "created_at",
+                            "updated_at",
+                        ):
+                            continue
+                        template_value = vars(template).get(field)
+                        if template_value is not None:
+                            template_data[field] = template_value
+
+            merged_data.update(template_data)
+            print(merged_data)
+
             form = self.Form(data=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
         elif self.Model == Load:
-            self.context["upload_form"] = LoadTemplateUploadForm()
+            self.context["upload_form"] = TimeseriesUploadForm()
             merged_data = model_to_dict_w_internal_id(self.instances[0])
             for x in self.instances:
                 data = model_to_dict_w_internal_id(x)
@@ -794,7 +1126,7 @@ class DetailsView(View):
                 )
             )
 
-            form = self.Form(data=merged_data)
+            form = self.Form(initial=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
 
@@ -829,7 +1161,7 @@ class DetailsView(View):
 
         if self.Model == Load or issubclass(self.Model, ElectricComponent):
             if self.Model == Load:
-                self.context["upload_form"] = LoadTemplateUploadForm()
+                self.context["upload_form"] = TimeseriesUploadForm()
             # Multi post request for Load needs references to areas
             self.context["area_internal_ids"] = ",".join(
                 str(y)
@@ -862,7 +1194,7 @@ class DetailsView(View):
             if self.Model == Area:
                 self.context |= self.get_area_context()
             elif self.Model == Load:
-                self.context["upload_form"] = LoadTemplateUploadForm()
+                self.context["upload_form"] = TimeseriesUploadForm()
 
             self.context["form"] = form
             if form.is_valid():
@@ -876,7 +1208,7 @@ class DetailsView(View):
                         remove_perm("details", group, form.instance)
                 elif self.Model == Load:
                     # refresh the form, with the newly created instance.
-                    # For Load forms this adjusts the selectable LoadTemplates
+                    # For Load forms this adjusts the selectable Timeseries
                     form = self.adjust_form(instance)(data=request.POST, instance=instance)
                     self.context["form"] = form
 
@@ -1026,7 +1358,8 @@ class ApiView(View):
             self.Model = apps.get_model("ports", kwargs["model"])
         except LookupError:
             return JsonResponse(
-                {"success": False, "message": f"Unknown model: {kwargs['model']}"}, status=400
+                {"success": False, "message": f"Unknown model: {kwargs['model']}"},
+                status=400,
             )
         if self.Model not in self.ALLOWED_MODELS:
             return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
@@ -1064,7 +1397,10 @@ class ApiView(View):
             case Scenario():
                 if self.instance.project.scenario_set.count() == 1:
                     return JsonResponse(
-                        {"success": False, "message": "not allowed to delete the last scenario"},
+                        {
+                            "success": False,
+                            "message": "not allowed to delete the last scenario",
+                        },
                         status=400,
                     )
         try:
@@ -1109,12 +1445,13 @@ class ApiView(View):
             return JsonResponse({"success": False, "message": "Duplicating failed"}, status=400)
 
 
-def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
+@login_required()
+def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str):
     if request.method != "POST":
         return HttpResponseNotAllowed(b"This method only allows POST requests")
-    if not request.user.is_authenticated:
-        return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    Model = apps.get_model("ports", model)
+    assert Model in (Load,)
 
     loads = None
     # check if single or multi upload
@@ -1146,38 +1483,38 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    authorized_scenario = has_authorization(scenario, request.user, "view")
-    if not (authorized_load and authorized_scenario):
+    authorized_project = has_authorization(scenario.project, request.user, "view")
+    if not (authorized_load and authorized_project):
         response = HttpResponseForbidden(b"You are not authorized for this function")
         return retargetForFailure(response)
 
     # Early return if file form is invalid
-    file_form = LoadTemplateUploadForm(request.POST, request.FILES)
+    file_form = TimeseriesUploadForm(request.POST, request.FILES)
     if not file_form.is_valid():
         errors = [e for field_errors in file_form.errors.values() for e in field_errors]
         response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
         return retargetForFailure(response)
 
     # Save Loads so the current user input persists. Authorization is checked already
-    templates = DetailsView.get_loadtemplates_for_user(
+    timeseries = DetailsView.get_loadtemplates_for_user(
         request.user, scenario=scenario, instance=load
-    )
+    ).select_related(["scenario"])
     Form = ScenarioItemFormFactory(Load, multi=multi, scenario=scenario)
-    Form = Load.adjust_Form(Form, load, templates_queryset=templates)
+    Form = Load.adjust_Form(Form, load, templates_queryset=timeseries)
     Form.base_fields.pop("template")
     # template is not required and will be set to the just uploaded file
     load_form = Form(request.POST, instance=load) if not multi else Form(request.POST)
     if load_form.is_valid():
         load_form.save()
 
-    file_form = LoadTemplateUploadForm(request.POST, request.FILES)
+    file_form = TimeseriesUploadForm(request.POST, request.FILES)
     if file_form.is_valid():
         load.refresh_from_db()
-        load_template = file_form.save(scenario, load, request.user)
+        timeseries = file_form.save(scenario, load, request.user)
         if loads:
             updated = []
             for load in loads:
-                load.template = load_template
+                load.template = timeseries
                 updated.append(load)
             Load.objects.bulk_update(updated, fields=["template"])
             return redirect(
@@ -1203,24 +1540,24 @@ def template_upload_from_load(request, scenario_internal_id: UUID, model: str):
         )
 
 
-def api_load_template(request, scenario_internal_id: UUID, internal_id: UUID):
-    """Return a LoadTemplate as JSON. Only accessible to the template's manager."""
+def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
+    """Return a Timeseries as JSON. Only accessible to the template's manager."""
     if not request.user.is_authenticated:
         return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    template = get_object_or_404(LoadTemplate, scenario=scenario, internal_id=internal_id)
-    if request.user != template.manager and not request.user.is_superuser:
+    timeseries = get_object_or_404(Timeseries, scenario=scenario, internal_id=internal_id)
+    if request.user != timeseries.manager and not request.user.is_superuser:
         return HttpResponseForbidden(b"You are not authorized for this function")
 
     data = {
-        "internal_id": str(template.internal_id),
+        "internal_id": str(timeseries.internal_id),
         "scenario_internal_id": str(scenario.internal_id),
-        "name": template.name,
-        "description": template.description,
-        "timeseries": template.timeseries,
-        "spec_load": template.spec_load,
-        "created_at": template.created_at.isoformat(),
-        "updated_at": template.updated_at.isoformat(),
+        "name": timeseries.name,
+        "description": timeseries.description,
+        "timeseries": timeseries.timeseries,
+        "spec_load": timeseries.spec_load,
+        "created_at": timeseries.created_at.isoformat(),
+        "updated_at": timeseries.updated_at.isoformat(),
     }
     return JsonResponse(data)
 

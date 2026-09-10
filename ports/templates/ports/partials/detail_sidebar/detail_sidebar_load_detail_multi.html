@@ -70,7 +70,7 @@
               data_url :null,
               template_url : {
             {% for template in form.template.field.queryset %}
-            "{{template.internal_id}}": "{% url "ports:api_load_template" scenario.internal_id template.internal_id %}",{% endfor %} } } '
+            "{{template.internal_id}}": "{% url "ports:api_timeseries" scenario.internal_id template.internal_id %}",{% endfor %} } } '
               class="w-full" x-effect="loadPlot(template_url[selectedTemplate], $refs.plot)"
           >
               <div x-ref="plot" class="h-64 w-full"></div>
@@ -92,7 +92,7 @@
           <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
           <button type="button"
               class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
-              hx-post="{% url 'ports:template_upload_from_load' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}"
+              hx-post="{% url 'ports:timeseries_upload_from_load' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}"
               {% with hx_target="#form_"|add:internal_id %}
               hx-target='{{hx_target}}'
               hx-select='{{hx_target}}'
@@ -192,7 +192,8 @@
 
         {{form.non_field_errors}}
         {% with hx_target="#form_"|add:internal_id %}
-        {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as save_url %}
+        {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target  save_url=save_url   %}
         {% endwith %}
 
 

@@ -21,9 +21,31 @@ urlpatterns = [
         name="test",
     ),
     path(
-        "template_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
-        views.template_upload_from_load,
-        name="template_upload_from_load",
+        "timeseries_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
+        views.timeseries_upload_from_load,
+        name="timeseries_upload_from_load",
+    ),
+    # two paths each for the templates, so the scenario can be inside the context.
+    # For normal swaps the scenario might not be necessary, since templates dont belong to scenarios
+    path(
+        "template_create/<str:model>/<uuid:scenario_internal_id>/",
+        views.ObjectTemplatesView.as_view(created=True),
+        name="template_create",
+    ),
+    path(
+        "template_create/<str:model>/",
+        views.ObjectTemplatesView.as_view(created=True),
+        name="template_create",
+    ),
+    path(
+        "templates/<str:model>/<uuid:scenario_internal_id>/",
+        views.ObjectTemplatesView.as_view(created=False),
+        name="templates",
+    ),
+    path(
+        "templates/<str:model>/",
+        views.ObjectTemplatesView.as_view(created=False),
+        name="templates",
     ),
     path(
         "details_create/<uuid:scenario_internal_id>/<str:model>/",
@@ -49,6 +71,11 @@ urlpatterns = [
         "geometries/<uuid:scenario_internal_id>/",
         views.geometries,
         name="geometries",
+    ),
+    path(
+        "templateslist/",
+        views.user_template_list,
+        name="user_template_list",
     ),
     path(
         "details/<uuid:scenario_internal_id>/<str:model>/",
@@ -87,8 +114,8 @@ urlpatterns = [
     ),
     path(
         "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
-        views.api_load_template,
-        name="api_load_template",
+        views.api_timeseries,
+        name="api_timeseries",
     ),
     path(
         "debug/switch-user/<str:username>/",
