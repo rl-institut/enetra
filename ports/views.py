@@ -360,23 +360,14 @@ def get_home_context(user: User, scenario: Scenario):
 
     # important:  prefetch all related models to avoid n+1 queries
     all_areas = list(base_qs.prefetch_related("generator_set"))
-    building_areas = list()
-    open_areas = list()
+    data["all_areas"] = all_areas
+
     for area in all_areas:
-        if area.area_type == Area.AreaTypeChoices.BUILDING:
-            building_areas.append(area)
-        if area.area_type == Area.AreaTypeChoices.OPEN:
-            open_areas.append(area)
+        if area.id in allowed_details_ids_union:
+            area.has_authorization = True
 
-    for areas in [building_areas, open_areas]:
-        for area in areas:
-            if area.id in allowed_details_ids_union:
-                area.has_authorization = True
-
-    data["building_areas"] = building_areas
-    data["open_areas"] = open_areas
     area_forms = []
-    for a in open_areas + building_areas:
+    for a in all_areas:
         area_forms.append(AreaItemFormFactory()(instance=a))
     data["area_forms"] = area_forms
     return data
@@ -773,8 +764,10 @@ class DetailsView(View):
                 for key, value in data.items():
                     if merged_data.get(key) != value and key in merged_data:
                         del merged_data[key]
-
             form = self.Form(data=merged_data)
+            if self.Model == Area and len(set(x.area_type for x in self.instances)) > 1:
+                # Select of usage is disabled if multiple area types are selected, since they dont share usage options
+                form.fields.pop("usage")
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
         elif self.Model == Load:

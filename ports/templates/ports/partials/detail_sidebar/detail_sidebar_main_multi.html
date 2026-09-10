@@ -48,20 +48,9 @@
         <div class="flex shrink-0 text-[#a78bfa] ">
           <c-icon.building />
         </div>
-          {% if area_type == Model.AreaTypeChoices.BUILDING %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Gebäudeflächen bearbeiten</h2>
-          {% else %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Freiflächen bearbeiten</h2>
-          {% endif %}
-            <ul>
-         {% for item in instances %}
-          <div class="max-w-10">
-          <li class="font-semibold  text-[#1e293b] text-xs">{{item.name}}</li>
-          </div>
-          {% endfor %}
-
-
-        </ul>
+            <h2 class="font-semibold text-[20px] text-[#1e293b]"
+          title="{% for item in instances %}{{item.name}}&#10;{% endfor %}"
+          >Ausgewählte Flächen bearbeiten</h2>
 
       {% with hx_target="#form_"|add:internal_id %}
         {% include "ports/partials/instance_save_button.html" with instance=instances.0 scenario=scenario success=success errors=errors hx_target=hx_target %}
@@ -76,15 +65,17 @@
       </button>
         {{form.non_field_errors}}
     <!-- {/* Building/Area Type Dropdown */} -->
+    {% if form.usage %}
     <div class="flex flex-col gap-[8px]">
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ instances.0.get_area_type_display }} Options</label>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
-          <c-select.button selectValue={{ value }}>
-            {{ label }}
-          </c-select.button>
+        <c-select.button selectValue={{ value }}>
+          {{ label }}
+        </c-select.button>
         {% endfor %}
       </c-select.index>
+      {% endif %}
     </div>
   </details-sidebar-header>
   <details-sidebar-content class='my-hide'>

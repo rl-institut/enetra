@@ -30,8 +30,8 @@ function findSiblingNodes(nodes, parent) {
   return siblings;
 }
 
-function searchName(search, parent) {
-  var nodes = (getNodes(parent, '[data-name]'));
+function searchName(search, parent, nodeselector) {
+  var nodes = (getNodes(parent, nodeselector));
   const filterFunc = (n) => {
     return n.dataset['name'].toLowerCase().includes(search.toLowerCase());
   };
@@ -41,6 +41,7 @@ function searchName(search, parent) {
   const filtered_siblings = findSiblingNodes(filtered, parent);
   [...all_siblings].forEach((n) => { n.style.display = 'none' });
   filtered_siblings.forEach((n) => { n.style.display = '' });
+  console.log(filtered_siblings.length, all_siblings.length)
   console.log( 'searched')
 };
 

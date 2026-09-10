@@ -19,8 +19,8 @@ x-data="{
 
             this.$watch('search', search => {
 
-            searchName(search, this.parent_table);
-            searchName(search, this.parent_cards);
+            searchName(search, this.parent_table,'[data-name]');
+            searchName(search, this.parent_cards,'[data-name]');
             });
 
             this.$watch('sort_key', key => {
@@ -39,8 +39,8 @@ x-data="{
             parent_cards = document.getElementById('filterable_cards');
             sortContainer(parent_table, sort_key);
             sortContainer(parent_cards, sort_key);
-            searchName(search, parent_table);
-            searchName(search, parent_cards);
+            searchName(search, parent_table,'[data-name]');
+            searchName(search, parent_cards,'[data-name]');
   "
   {{attrs}}
 >

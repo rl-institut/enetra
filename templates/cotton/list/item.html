@@ -98,7 +98,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
     {% comment %}
      shrink-0 stops the element from wrapping? This is bad behaviour if we allow long names.
     {% endcomment %}
-    <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px]"
+    <p title="{{title}}" class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative text-[14px] truncate"
        :class="isSelected ? 'text-[#0E7490]' : 'text-[#64748b]'">{{ title }}</p>
     {% comment %}
     NOTE: Smth is supposed to toggle this indicator here? What is it?

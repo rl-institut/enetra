@@ -18,7 +18,7 @@ For focused elements which are not rendered all the time, a event can be sent
 
   <div
     {% if instance.model_name == "area"  %}
-      hx-swap-oob='beforeend:#flaechen-tab-{{instance.area_type}}-area-list .slot'
+      hx-swap-oob='beforeend:#flaechen-tab-area-list .slot'
     {% else%}
       hx-swap-oob='beforeend:#komponenten-tab-{{instance.model_name}}-list .slot'
     {% endif %}
