@@ -40,13 +40,13 @@
             </label>
             <div class="relative">
               <c-input type="text" :field="field" class="w-full rounded border border-[#cbd5e1] bg-white px-[16px] py-[12px] pr-[60px] pb-2 text-[14px] text-[#1e293b]" />
-              <span class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]">{{ unit }}</span>
+              <span class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]">{{field.field.unit}}</span>
               <c-field-errors :field="field" />
             </div>
           </div>
         {% endif %}
       {% endpartialdef %}
-      {% with field=form.name unit='' %}
+      {% with field=form.name  %}
         {% partial input-component %}
       {% endwith %}
       {% comment %}
@@ -54,30 +54,30 @@
       {% endcomment %}
       {% for field_name in instance.custom_fields %}
         {% if field_name in form.fields %}
-          {% with field=form|get_value:field_name unit='' %}
+          {% with field=form|get_value:field_name  %}
             {% partial input-component %}
           {% endwith %}
         {% endif %}
       {% endfor %}
-      {% with field=form.power_kw unit='kW' %}
+      {% with field=form.power_kw  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.efficiency unit='%' %}
+      {% with field=form.efficiency  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.power_installed unit='kW' %}
+      {% with field=form.power_installed  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.power_min unit='kW' %}
+      {% with field=form.power_min  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.power_max unit='kW' %}
+      {% with field=form.power_max  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.capex unit='€/Jahr' %}
+      {% with field=form.capex  %}
         {% partial input-component %}
       {% endwith %}
-      {% with field=form.opex unit='€/Jahr' %}
+      {% with field=form.opex  %}
         {% partial input-component %}
       {% endwith %}
       <p class="text-center text-[14px] text-[#64748b]">Die Werte werden nur für diese Fläche übernommen.</p>

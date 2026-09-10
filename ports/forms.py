@@ -46,6 +46,24 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
+UNITS = {
+    "power_kw": "kW",
+    "efficiency": "[-]",
+    "efficiency_thermal": "[-]",
+    "power_installed": "kW",
+    "power_min": "kW",
+    "power_max": "kW",
+    "capex": "€",
+    "opex": "€/a",
+    "azimut": "°",
+    "angle": "°",
+    "spec_power": "kW/m²",
+    "surface_area_installed": "m²",
+    "surface_area_min": "m²",
+    "surface_area_max": "m²",
+}
+
+
 def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
@@ -75,6 +93,9 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
         if field_name not in ("name", "internal_id"):
             field.required = False
 
+    # Add units
+    for field_name, field in BaseForm.base_fields.items():
+        field.unit = UNITS.get(field_name, "")
     return BaseForm
 
 
@@ -122,6 +143,10 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         )
     else:
         raise NotImplementedError()
+
+    # Add units
+    for field_name, field in BaseForm.base_fields.items():
+        field.unit = UNITS.get(field_name, "")
 
     if not multi:
         return BaseForm

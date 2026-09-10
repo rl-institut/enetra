@@ -125,31 +125,31 @@
             />
             <span
               class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]"
-            >{{unit}}</span
+            >{{field.field.unit}}</span
             >
             <c-field-errors :field="field" />
           </div>
         </div>
         {% endpartialdef %}
 
-        {% with field=form.name unit='' %} {% partial input-component %}{% endwith %}
+        {% with field=form.name  %} {% partial input-component %}{% endwith %}
         {% comment %}
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
         {% for field_name in instance.custom_fields %}
-        {% with field=form|get_value:field_name unit='' %} {% partial input-component %}{% endwith %}
+        {% with field=form|get_value:field_name  %} {% partial input-component %}{% endwith %}
         {% endfor %}
 
-        {% with field=form.power_kw unit='kW' %}
+        {% with field=form.power_kw  %}
         {% partial input-component %}
         {% endwith %}
 
-        {% with field=form.efficiency unit='%' %} {% partial input-component %}{% endwith %}
-        {% with field=form.power_installed unit='kW' %}{% partial input-component %}{% endwith %}
-        {% with field=form.power_min unit='kW' %}{% partial input-component %}{% endwith %}
-        {% with field=form.power_max unit='kW' %}{% partial input-component %}{% endwith %}
-        {% with field=form.capex unit='€/Jahr' %}{% partial input-component %}{% endwith %}
-        {% with field=form.opex unit='€/Jahr' %}{% partial input-component %}{% endwith %}
+        {% with field=form.efficiency  %} {% partial input-component %}{% endwith %}
+        {% with field=form.power_installed  %}{% partial input-component %}{% endwith %}
+        {% with field=form.power_min  %}{% partial input-component %}{% endwith %}
+        {% with field=form.power_max  %}{% partial input-component %}{% endwith %}
+        {% with field=form.capex  %}{% partial input-component %}{% endwith %}
+        {% with field=form.opex  %}{% partial input-component %}{% endwith %}
 
         <p class="text-center text-[14px] text-[#64748b]">
           Die Werte werden nur für diese Fläche übernommen.
