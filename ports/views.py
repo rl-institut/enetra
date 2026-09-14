@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.db.transaction import atomic
 from django.forms import model_to_dict
 from django.http import Http404
+from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseNotAllowed
@@ -41,6 +42,7 @@ from guardian.utils import clean_orphan_obj_perms
 from core.models import Invite
 from core.views import ensure_project_rights
 from ports import models
+from ports import tasks
 from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from ports.forms import AreaItemFormFactory
 from ports.forms import ChangeProjectForm
@@ -433,6 +435,13 @@ def enetra_tool(request, scenario_internal_id: UUID):
             return HttpResponseForbidden()
     context = get_home_context(user=request.user, scenario=scenario)
     return render(request, "ports/tool_base.html", context)
+
+
+def start_solver(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    # TODO: permission to start solver task?
+    task = tasks.db_to_energysystem.delay(scenario.id)
+    return JsonResponse({"task_id": task.task_id})
 
 
 class DetailsView(View):

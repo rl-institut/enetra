@@ -150,7 +150,14 @@ def create_scenario() -> Scenario:
         carrier=Grid.CarrierChoices.ELECTRICITY,
         timeseries=load1,
     )
-    grid_el.areas.add(area1, area2, area3)
+    grid_pv = Grid.objects.create(
+        scenario=s,
+        name="PV grid",
+        carrier=Grid.CarrierChoices.ELECTRICITY,
+        connected_to=grid_el,
+    )
+    grid_el.areas.add(area1)
+    grid_pv.areas.add(area2, area3)
     grid_diesel = Grid.objects.create(
         scenario=s,
         name="diesel pipe",

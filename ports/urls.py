@@ -86,6 +86,11 @@ urlpatterns = [
         name="api_load_template",
     ),
     path(
+        "solve/<uuid:scenario_internal_id>",
+        views.start_solver,
+        name="start_solver",
+    ),
+    path(
         "debug/switch-user/<str:username>/",
         views.debug_switch_user,
         name="debug_switch_user",

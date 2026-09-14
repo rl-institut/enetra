@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
@@ -101,6 +102,9 @@ class Scenario(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    # oemof solver task
+    task_id = models.UUIDField(default=None, null=True, blank=True)
 
     # Area of the scenario / Port region
     geom = models.PolygonField(default=None, null=True, blank=True)
@@ -973,7 +977,7 @@ class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
 
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Setting(ScenarioItem):
     settings = models.JSONField(default=dict)
 
@@ -1014,3 +1018,18 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 # Custom Exceptions
 class MissingFormValueException(Exception):
     pass
+
+
+# ------------------------------------------------------------------------------
+class Result(models.Model):
+    scenario = models.OneToOneField(Scenario, on_delete=models.CASCADE)
+    started_at = models.DateTimeField(default=None)
+    finished_at = models.DateTimeField(default=None)
+
+
+class ResultData(models.Model):
+    result = models.ForeignKey(Result, on_delete=models.CASCADE)
+    from_node = models.UUIDField(default=None, null=True, blank=True)
+    to_node = models.UUIDField(default=None, null=True, blank=True)
+    attribute = models.CharField(max_length=255)
+    value = ArrayField(base_field=models.FloatField())
