@@ -11,6 +11,7 @@ from uuid import uuid4
 import numpy as np
 from django.apps.registry import apps
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core import signing
@@ -108,8 +109,50 @@ def patch_area(request, scenario_internal_id: UUID):
     return HttpResponse(b"failed")
 
 
+def get_changes_since(
+    scenario: Scenario, start: datetime, end: datetime
+) -> tuple[list[ScenarioItem], list[ScenarioItem], list[ScenarioItem]]:
+    """Get all created, changed and deleted Items for the duration of ]start,end]."""
+    created_items = []
+    changed_items = []
+    deleted_items = []
+    port_models = apps.get_app_config("ports").get_models()
+    for Model in port_models:
+        if Model in [Scenario, ChangedItem]:
+            continue
+        if not issubclass(Model, models.ScenarioItem):
+            continue
+        if Model in [DeletedItem]:
+            filter = {
+                "created_at__gt": start,
+                "created_at__lte": end,
+            }
+            items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
+            for i in items:
+                Model = i.content_type.model_class()
+                data = model_to_dict(i)
+                del data["content_type"]
+                cleaned_data = {}
+                for key, value in data.items():
+                    cleaned_data[Model._meta.get_field(key).attname] = value
+                model_item = Model(**cleaned_data)
+                deleted_items.append(model_item)
+            continue
+        filter = {"created_at__gt": start, "created_at__lte": end}
+        base_qs = Model.objects.filter(scenario=scenario)
+        created_items.extend(list(base_qs.filter(**filter)))
+        filter = {
+            "created_at__lte": start,
+            "updated_at__gt": start,
+            "updated_at__lte": end,
+        }
+        changed_items.extend(list(base_qs.filter(**filter)))
+
+    return created_items, changed_items, deleted_items
+
+
 def changes_count(request, scenario_internal_id: UUID):
-    """Get the count of changes as partial update
+    """Get the count of changes as partial update.
 
     Piggybacks the request to update the page with new content (from other users)
     """
@@ -117,74 +160,40 @@ def changes_count(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
-    last_update = request.GET.get("updated_at")
+    last_fetched_update = (
+        datetime.fromisoformat(dt) if (dt := request.GET.get("updated_at")) else None
+    )
     updated_at = scenario.updated_at
     context["updated_at"] = updated_at
     context["changed"] = False
-    if last_update:
-        last_update = datetime.fromisoformat(last_update)
-        if scenario.updated_at > last_update:
-            context["changed"] = True
-            created_items = []
-            changed_items = []
-            deleted_items = []
-            port_models = apps.get_app_config("ports").get_models()
-            for Model in port_models:
-                if Model in [Scenario, ChangedItem]:
-                    continue
-                if not issubclass(Model, models.ScenarioItem):
-                    continue
-                if Model in [DeletedItem]:
-                    filter = {
-                        "created_at__gt": last_update,
-                        "created_at__lte": updated_at,
-                    }
-                    items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
-                    for i in items:
-                        Model = i.content_type.model_class()
-                        data = model_to_dict(i)
-                        del data["content_type"]
-                        cleaned_data = {}
-                        for key, value in data.items():
-                            cleaned_data[Model._meta.get_field(key).attname] = value
-                        model_item = Model(**cleaned_data)
-                        deleted_items.append(model_item)
-                    continue
-                filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                base_qs = Model.objects.filter(scenario=scenario)
-                created_items.extend(list(base_qs.filter(**filter)))
-                filter = {
-                    "created_at__lte": last_update,
-                    "updated_at__gt": last_update,
-                    "updated_at__lte": updated_at,
-                }
-                changed_items.extend(list(base_qs.filter(**filter)))
+    if last_fetched_update and scenario.updated_at > last_fetched_update:
+        context["changed"] = True
+        created_items, changed_items, deleted_items = get_changes_since(
+            scenario, last_fetched_update, updated_at
+        )
+        context["created_items"] = created_items
+        context["changed_items"] = changed_items
+        context["deleted_items"] = deleted_items
 
-            base_qs = Area.objects.filter(scenario=scenario)
-            allowed_details_ids = set(
-                get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
-            )
-            managed_area_ids = set(
-                base_qs.filter(manager=request.user).values_list("id", flat=True)
-            )
-            allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
-            for items in [created_items, changed_items]:
-                for item in items:
-                    if isinstance(item, Area):
-                        area_id = item.id
-                    else:
-                        try:
-                            area_id = item.area_id
-                        except AttributeError:
-                            # instances without area are not authorized as
-                            # secure default
-                            continue
-                    if area_id in allowed_details_ids_union:
-                        item.has_authorization = True
-
-            context["created_items"] = created_items
-            context["changed_items"] = changed_items
-            context["deleted_items"] = deleted_items
+    base_qs = Area.objects.filter(scenario=scenario)
+    allowed_details_ids = set(
+        get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
+    )
+    managed_area_ids = set(base_qs.filter(manager=request.user).values_list("id", flat=True))
+    allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
+    for items in [created_items, changed_items]:
+        for item in items:
+            if isinstance(item, Area):
+                area_id = item.id
+            else:
+                try:
+                    area_id = item.area_id
+                except AttributeError:
+                    # instances without area are not authorized as
+                    # secure default
+                    continue
+            if area_id in allowed_details_ids_union:
+                item.has_authorization = True
 
     # Reuse the calculated changes
     count = request.GET.get("all_changes_count", None)
@@ -234,8 +243,9 @@ def geometries(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/geometries.html", context)
 
 
+@login_required()
 def changes(request, scenario_internal_id: UUID):
-    """View for changelog
+    """View for changelog.
 
     Different filter options are supported for timespans and user
     """
@@ -246,87 +256,71 @@ def changes(request, scenario_internal_id: UUID):
     otherchanges = request.GET.get("otherchanges", "false").lower() == "true"
     query_time = timezone.now().astimezone() - timedelta(days=days)
 
-    filter = {"scenario": scenario, "created_at__gte": query_time}
-    changed_items_query = ChangedItem.objects.filter(**filter)
-    if request.user.is_authenticated:
-        user_filter = filter | {"manager": request.user}
-        other_exclude = {"manager": request.user}
-        user_changes_count = changed_items_query.filter(manager=request.user).count()
-        other_changes_count = changed_items_query.exclude(manager=request.user).count()
-    else:
-        user_filter = filter | {"manager__isnull": True}
-        other_exclude = {"manager__isnull": True}
+    generic_filter = {"scenario": scenario, "created_at__gte": query_time}
+    user_filter = generic_filter | {"manager": request.user}
+    other_exclude = {"manager": request.user}
 
-    user_changes_count = 0
-    other_changes_count = 0
-    port_models = apps.get_app_config("ports").get_models()
-    # Create a mapping for all scenario items
-    for Model in port_models:
-        # only count scenario items
-        if issubclass(Model, models.ScenarioItem):
-            other_changes_count += Model.objects.filter(**filter).exclude(**other_exclude).count()
-            user_changes_count += Model.objects.filter(**user_filter).count()
-
+    _filter = user_filter
     exclude = {}
     if otherchanges:
         exclude = other_exclude
-        filter = filter
-    elif request.user.is_authenticated:
-        filter = user_filter
-        exclude = {}
+        _filter = generic_filter
+
+    port_models = apps.get_app_config("ports").get_models()
+    scenario_item_models = [
+        model for model in port_models if issubclass(model, models.ScenarioItem)
+    ]
 
     original_items_dict = dict()
-    port_models = apps.get_app_config("ports").get_models()
-    # Create a mapping for all scenario items
-    for Model in port_models:
-        if Model in [DeletedItem, ChangedItem, Scenario]:
-            continue
-        if not issubclass(Model, models.ScenarioItem):
-            continue
+    user_changes_count = 0
+    other_changes_count = 0
+
+    # Create a mapping for all scenario items and count the changes of the user and others
+    for Model in scenario_item_models:
+        other_changes_count += (
+            Model.objects.filter(**generic_filter).exclude(**other_exclude).count()
+        )
+        user_changes_count += Model.objects.filter(**user_filter).count()
+
         original_items = Model.objects.filter(scenario=scenario)
         original_items_dict[Model] = {x.internal_id: x for x in original_items}
 
+    # create a list of changed/deleted/created items, which carry a reference to the original object
     item_original_item = []
-    # NOTE: get_models is an iterator and has to be reset
-    port_models = apps.get_app_config("ports").get_models()
-    for Model in port_models:
-        if Model == Scenario:
-            continue
-        if not issubclass(Model, models.ScenarioItem):
-            continue
-        if Model == DeletedItem:
-            for item in Model.objects.filter(**filter).exclude(**exclude):
-                item_original_item.append(
-                    {
-                        "status": "deleted",
-                        "time": item.created_at,
-                        "item": item,
-                        "original_item": None,
-                    }
-                )
-        elif Model == ChangedItem:
-            for item in Model.objects.filter(**filter).exclude(**exclude):
-                # Original item might have been deleted
-                item_original_item.append(
-                    {
-                        "status": "changed",
-                        "time": item.created_at,
-                        "item": item,
-                        "original_item": original_items_dict[item.content_type.model_class()].get(
-                            item.internal_id
-                        ),
-                    }
-                )
-        else:
-            for item in Model.objects.filter(**filter).exclude(**exclude):
-                item_original_item.append(
-                    {
-                        "status": "created",
-                        "time": item.created_at,
-                        "item": item,
-                        "original_item": item,
-                    }
-                )
+    for item in DeletedItem.objects.filter(**_filter).exclude(**exclude):
+        item_original_item.append(
+            {
+                "status": "deleted",
+                "time": item.created_at,
+                "item": item,
+                "original_item": None,
+            }
+        )
+
+    for item in ChangedItem.objects.filter(**_filter).exclude(**exclude):
+        # Original item might have been deleted -> use get
+        item_original_item.append(
+            {
+                "status": "changed",
+                "time": item.created_at,
+                "item": item,
+                "original_item": original_items_dict[item.content_type.model_class()].get(
+                    item.internal_id
+                ),
+            }
+        )
+
+    for Model in scenario_item_models:
+        for item in Model.objects.filter(**_filter).exclude(**exclude):
+            item_original_item.append(
+                {
+                    "status": "created",
+                    "time": item.created_at,
+                    "item": item,
+                    "original_item": item,
+                }
+            )
+
     item_original_item = sorted(item_original_item, key=lambda x: x["time"], reverse=True)
 
     context = {}
@@ -335,7 +329,6 @@ def changes(request, scenario_internal_id: UUID):
     context["all_changes_count"] = len(item_original_item)
     context["user_changes_count"] = user_changes_count
     context["other_changes_count"] = other_changes_count
-
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
