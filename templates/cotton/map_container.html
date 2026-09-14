@@ -23,6 +23,7 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
 <script src='{% static "js/create_map.js" %}'></script>
 <script>
   const myMap = new MyMap('#mapElement', {
+    getStyle: getStyle,
     getMaxZoom: getMaxZoom,
     getMinZoom: getMinZoom,
     getZoom: () => 16,

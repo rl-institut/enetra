@@ -1,5 +1,9 @@
 // These are things the map needs
 // Why functions? Instead of constants? This allows lazy evaluation if needed
+//
+// Implements the MapSettings interface (see static/js/create_map.js) — these
+// functions are wired into a settings object and passed to `new MyMap()`;
+// see templates/cotton/map_container.html for the wiring.
 function getCenter() {
   return {
     lat: 52.5381,
@@ -29,10 +33,7 @@ function getEditLayerName() {
   return 'map-layer-editable'
 }
 
-
-function getStyle(name, id) {
-  // https://leafletjs.com/reference.html#path-option
-  const defaults = {
+const DEFAULTSTYLE =  {
     stroke: true,
     color: '#3388ff',
     weight: 3,
@@ -52,6 +53,10 @@ function getStyle(name, id) {
     pane: 'overlayPane', // any registered map pane name
     attribution: null,
   }
+
+function getStyle(name, id) {
+  // https://leafletjs.com/reference.html#path-option
+  const defaults = DEFAULTSTYLE
 
   let overrides = {}
   if (name.includes('edit')) overrides = { color: '#ea580c', fillColor: '#fdba74', dashArray: '8,5', fillOpacity: 0.45, weight: 2 } // orange — active editing
@@ -138,7 +143,6 @@ function getGeoJsons() {
         {
           'geojson': geojson,
           'layer': name,
-          'style': getStyle(name, id),
           'id': id,
           'key': key
         }

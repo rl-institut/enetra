@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)
 
 # TODO: Implement more advances permissions using django-guardian
 def get_queryset(self, request: HttpRequest) -> QuerySet:
-    """Restrict the admin changelist to objects managed by the current user,
-    unless they are a superuser."""
+    """Restrict the admin changelist to objects managed by the current user, unless they are a superuser."""
     qs = super(self.__class__, self).get_queryset(request)
     if request.user.is_superuser:
         return qs

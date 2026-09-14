@@ -12,11 +12,15 @@
 >
   {% csrf_token %}
   <c-map-element.index :key="form.instance.internal_id" layer='map-layer-{{form.instance.layer_name}}'>
+    <div>
+      style_value {{form.instance.style_value}}
+    </div>
     <div class='hidden'>
     {{form.internal_id}}
     </div>
     <c-tail-input :field=form.geom
       data-value='{{form.instance.internal_id}}'
+      data-style-value='{{form.instance.style_value}}'
       @map-element-created.window="if (event.detail.key ==$el.dataset.value){
       $el.value = event.detail.geojson;
       $el.dispatchEvent(new Event('change', { bubbles: true }));

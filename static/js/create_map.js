@@ -6,13 +6,48 @@ function debounce(func, timeout = 300) {
   };
 }
 
+/**
+ * Config/data contract that {@link MyMap} needs from its host page: map
+ * bounds/zoom, the feature-group layer names, and the geometries/popups/
+ * markers to draw. Required by `new MyMap(selector, settings)` — there is
+ * no default, since a map with no data source cannot do anything useful.
+ *
+ * Build a plain object literal with these methods — duck typing, {@link MyMap}
+ * never checks `instanceof`.
+ *
+ * @see static/js/map-interface-enetra.js for the accessor functions this
+ *   app wires into a settings object, and templates/cotton/map_container.html
+ *   for how that object is assembled and passed to `new MyMap()`.
+ *
+ * @typedef {Object} MapSettings
+ * @property {function(): number} getMaxZoom maximum allowed Leaflet zoom level
+ * @property {function(): number} getMinZoom minimum allowed Leaflet zoom level
+ * @property {function(): number} getZoom initial Leaflet zoom level
+ * @property {function(): {lat_min: number, lng_min: number, lat_max: number, lng_max: number}} getBounds max pan bounds
+ * @property {function(): {lat: number, lng: number}} getCenter initial map center
+ * @property {function(): string[]} getLayerNames names of the feature-group layers to create
+ * @property {function(): string} getEditLayerName name (from getLayerNames) of the editable layer
+ * @property {function(): Array<{geojson: Object, layer: string, id: string, key: string}>} getGeoJsons one entry per drawable polygon, id is the dom element id
+ * @property {function(string, string): Object} getStyle Leaflet path style options for (layer name, polygon dom element id) — see https://leafletjs.com/reference.html#path-option
+ * @property {function(): Object<string, string>} getPopUps popup HTML keyed by geometry id
+ * @property {function(): Object<string, string[]>} getMarkers marker label HTML keyed by geometry id
+ */
+
 class MyMap {
   static Mode = Object.freeze({
     EDIT: "edit",
     ROTATE: 'rotate',
     MOVE: "move"
   });
-  constructor(selector, settings = {}) {
+
+  /**
+   * @param {string} selector CSS selector for the map container element
+   * @param {MapSettings} settings required; see {@link MapSettings}
+   */
+  constructor(selector, settings) {
+    if (!settings) {
+      throw new TypeError('MyMap requires a settings argument implementing MapSettings (see MapSettings)');
+    }
     this.selector = selector;
     this.settings = settings;
     this.map = null;
@@ -46,33 +81,32 @@ class MyMap {
     this.osm = L.tileLayer(osmUrl, {
       attribution: osmAttrib,
       subdomains: 'abcd',
-      maxZoom: this.settings.getMaxZoom?.() ?? getMaxZoom(),
-      minZoom: this.settings.getMinZoom?.() ?? getMinZoom(),
+      maxZoom: this.settings.getMaxZoom(),
+      minZoom: this.settings.getMinZoom(),
     })
 
-    const b = this.settings.getBounds?.() ?? getBounds();
+    const b = this.settings.getBounds();
     const bounds = L.latLngBounds(
       L.latLng(b.lat_min, b.lng_min),
       L.latLng(b.lat_max, b.lng_max)
     );
 
-    const center = this.settings.getCenter?.() ?? getCenter();
+    const center = this.settings.getCenter();
 
     this.map = new L.Map(this.selector.replace('#', ''), {
       maxBounds: bounds,
       maxBoundsViscosity: 1.0,
       center: new L.LatLng(center.lat, center.lng),
-      zoom: this.settings.getZoom?.() ?? getZoom(),
+      zoom: this.settings.getZoom(),
     });
 
     this.osm.addTo(this.map);
   }
 
   setMode(mode) {
-    console.assert(
-      Object.values(MyMap.Mode).includes(mode),
-      "Invalid status"
-    );
+    if (!Object.values(MyMap.Mode).includes(mode)) {
+      throw new TypeError(`Invalid mode: ${mode}`);
+    }
     this.editingMode = mode;
     this.drawElements();
 
@@ -81,7 +115,7 @@ class MyMap {
 
     this.drawnItems = L.featureGroup().addTo(this.map);
 
-    const layerNames = this.settings.getLayerNames?.() ?? getLayerNames();
+    const layerNames = this.settings.getLayerNames();
     layerNames.forEach((lname) => {
       this.featureGroups[lname] = L.featureGroup().addTo(this.map);
       // this.featureGroups[lname].on('click', (e) => console.log(lname + ' clicked. Layer: ' + e.layer));
@@ -98,7 +132,7 @@ class MyMap {
   // via event/event listener
 
   dispatchLayerChanges(event) {
-    const editLayerName = this._getEditLayerName();
+    const editLayerName = this.settings.getEditLayerName();
     const layers = this.featureGroups[editLayerName].getLayers();
 
     this.map._container.dispatchEvent(new CustomEvent('map-elements-edited', {
@@ -113,7 +147,7 @@ class MyMap {
     this.dispatchLayerChanges(event)
   }
   _initDrawControl() {
-    const editLayerName = this._getEditLayerName();
+    const editLayerName = this.settings.getEditLayerName();
     this.map.pm.addControls({
       position: "topright",
       drawMarker: false,
@@ -202,19 +236,16 @@ class MyMap {
 
   }
 
-  _getEditLayerName() {
-    return this.settings.getEditLayerName?.() ?? getEditLayerName();
-  }
+
 
   drawElements() {
     console.log('drawing elements');
     this._vertexHistory = [];
     this._lastLayerState = new Map();
-    const geometries = this.settings.getGeoJsons?.() ?? getGeoJsons();
+    const geometries = this.settings.getGeoJsons();
     const popups = this.settings.getPopUps();
     const markers = this.settings.getMarkers();
-
-    const editLayerName = this._getEditLayerName();
+    const editLayerName = this.settings.getEditLayerName();
 
 
     this.map.pm.removeControls();
@@ -231,17 +262,18 @@ class MyMap {
     var layers = {}
     this.isEditing = false
     geometries.forEach(({ geojson, layer: layer_name, id, style, key }) => {
-      console.assert(geojson.type === 'Polygon')
+      if (geojson.type !== 'Polygon') {
+        throw new TypeError(`Expected geojson.type 'Polygon', got '${geojson.type}'`);
+      }
 
       const coords = geojson.coordinates[0].map(([lng, lat]) => [lat, lng]);
       const layer = L.polygon(coords, {
-        ...style,
+        ...this.settings.getStyle(name=layer_name, id=id),
         interactive: true,
         bubblingMouseEvents: true,
       });
       layer.on('click', (e) => {
         console.log('id: ' + id + ' top clicked. Layer: ' + e.layer);
-
       });
 
 
@@ -338,7 +370,7 @@ class MyMap {
   }
 
   toggleEditable() {
-    this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
+    this.featureGroups[this.settings.getEditLayerName()].eachLayer((layer) => {
       if (layer.pm.enabled()) {
         layer.pm.disable();
       } else {
@@ -369,13 +401,13 @@ class MyMap {
   }
 
   shiftEditablePolygonLatLngs(d_lat, d_lng) {
-    this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
+    this.featureGroups[this.settings.getEditLayerName()].eachLayer((layer) => {
       this._applyToEditableVertices(layer, (lat, lng) => [lat + d_lat, lng + d_lng]);
     });
   }
 
   rotateEditablePolygonLatLngs(angle) {
-    this.featureGroups[this._getEditLayerName()].eachLayer((layer) => {
+    this.featureGroups[this.settings.getEditLayerName()].eachLayer((layer) => {
       const center = layer.getCenter();
       const rad = (angle * Math.PI) / 180;
       const cos = Math.cos(rad);
@@ -461,7 +493,7 @@ class MyMap {
       const point = turf.point([e.latlng.lng, e.latlng.lat]); // note: turf uses [lng, lat]
       // we can iterate over all map layers directly but map.eachLayer also gives the base layers
       // which we want to avoid
-      const layerNames = this.settings.getLayerNames?.() ?? getLayerNames();
+      const layerNames = this.settings.getLayerNames();
       layerNames.forEach((lname) => {
         const featureGroup = this.featureGroups[lname];
         featureGroup.eachLayer((layer) => {
@@ -474,8 +506,8 @@ class MyMap {
               // fire the select-instance-id event. the list item can listen for it and toggle its state accordingly
               event = new CustomEvent('select-instance-' + layer.key, { detail: { value: layer.key }, bubbles: true });
               // maybe fire different event later on or introduce middlestep
-              // event = new CustomEvent('map-layer-clicked', { detail: { value: layer.key }, bubbles: true });
-
+              const generic_event = new CustomEvent('map-layer-clicked', { detail: { value: layer.key }, bubbles: true });
+              document.dispatchEvent(generic_event);
 
             }
             document.dispatchEvent(event);

@@ -15,6 +15,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import F
 from django.db.models import Q
 from django.db.transaction import atomic
 from django.forms import model_to_dict
@@ -89,7 +90,14 @@ def debug_switch_user(request, username: str):
 
 def patch_area(request, scenario_internal_id: UUID):
     internal_id = request.POST.get("internal_id")
+
+    scenario = Scenario.objects.get(internal_id=scenario_internal_id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("No access")
     area = Area.objects.get(scenario__internal_id=scenario_internal_id, internal_id=internal_id)
+    if not has_authorization(area, request.user, "details"):
+        return HttpResponseForbidden("No access")
+
     form = AreaItemFormFactory()(instance=area, data=request.POST)
     try:
         if form.is_valid():
@@ -198,9 +206,17 @@ def geometries(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
-    all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
-
     base_qs = Area.objects.filter(scenario=scenario)
+    if search := request.GET.get("search-query"):
+        search_dict = json.loads(search)
+        base_qs = base_qs.filter(**search_dict)
+
+    if style_value := request.GET.get("style-query"):
+        base_qs = base_qs.annotate(style_value=F(style_value))
+
+    # TODO: add other sets from branch feature/merge_area_list
+    all_areas = list(base_qs.prefetch_related("generator_set"))
+
     allowed_details_ids = set(
         get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
     )
@@ -970,7 +986,8 @@ def remove_project_user(
     request: HttpRequest, project_internal_id: UUID, email: str, project: Project
 ) -> HttpResponse:
     """Remove a user from a project's group, delete their content within the
-    project, and clean up any now-orphaned object permissions."""
+    project, and clean up any now-orphaned object permissions.
+    """
     # only superusers and project managers can remove users for now
     if not request.user.is_superuser and project.manager != request.user:
         return HttpResponseForbidden("Not Allowed")

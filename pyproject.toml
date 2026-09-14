@@ -124,7 +124,9 @@ select = [
 ]
 ignore = [
     # Line length of 79
-    "E501"
+    "E501",
+    # Module Docstring
+    "D100"
 ]
 
 

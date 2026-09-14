@@ -1,35 +1,17 @@
+{% extends "core/base_management.html" %}
+
+{% load partials %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ergebnisse – Wasserstoff-Integration – Enetra</title>
 
-    {% include "core/imports.html" %}
+{% comment %}
+  Based on
+  https://github.com/bmlancien/enetra-app-prototype/blob/main/app/page.tsx
+{% endcomment %}
 
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-
-  </head>
-  <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="select-none bg-white border-b border-slate-200 flex h-14 items-center justify-between px-6 shrink-0">
-      <a href="{% url 'core:landing_page' %}">
-        <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-5 w-32 object-contain" />
-      </a>
-      <nav class="flex gap-6 items-center">
-        <a href="projects.html" class="text-sm text-slate-800 hover:text-slate-600 transition-colors duration-150">Projekte</a>
-        <div class="flex gap-2 items-center">
-          <i data-lucide="user-circle" class="w-4 h-4 text-slate-800"></i>
-          <span class="text-sm text-slate-800">Mein Konto</span>
-        </div>
-      </nav>
-    </header>
-
+{% block title %}Ergebnisse – Wasserstoff-Integration – Enetra{% endblock %}
+{% block mainContent %}
+  <main hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
+  class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
@@ -46,16 +28,16 @@
             <h1 class="text-[32px] leading-normal text-slate-800">
               <span class="font-bold">Ergebnisse: </span><span class="font-light">Wasserstoff-Integration</span>
             </h1>
-            <p class="text-sm text-slate-500">Zuletzt berechnet 28.04.2026, 11:42</p>
+            <p class="text-sm text-slate-500 bg-red-200">To be implmeneted: Zuletzt berechnet 28.04.2026, 11:42</p>
           </div>
           <div class="flex gap-2 items-center shrink-0">
             <button class="select-none px-6 py-2 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer">
               <i data-lucide="download" class="w-4 h-4"></i>
-              <span class="text-sm font-semibold">CSV</span>
+              <span class="text-sm font-semibold bg-red-200">CSV</span>
             </button>
             <button class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer">
               <i data-lucide="download" class="w-4 h-4 text-white"></i>
-              <span class="text-sm font-semibold text-white">PDF herunterladen</span>
+              <span class="text-sm font-semibold text-white bg-red-200">To be implemented PDF herunterladen</span>
             </button>
           </div>
         </div>
@@ -181,6 +163,9 @@
 
           </div>
         </div>
+
+
+
 
         <!-- Flächenübersicht -->
         <c-flaechen-uebersicht.index >
@@ -350,16 +335,6 @@
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="select-none bg-white border-t border-slate-200 flex items-center justify-between px-6 h-12">
-      <img src="{% static 'img/enetra-logo.svg' %}" alt="Enetra" class="h-4 object-contain" />
-      <nav class="flex gap-6 items-center">
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Impressum</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Datenschutz</a>
-        <a href="#" class="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-150">Kontakt</a>
-      </nav>
-    </footer>
-
     <script>
       // Waterfall chart
       const wfChart = echarts.init(document.getElementById('chart-waterfall'));
@@ -481,5 +456,5 @@
       });
     </script>
     <script>lucide.createIcons();</script>
-  </body>
-</html>
+  </main>
+{% endblock mainContent %}

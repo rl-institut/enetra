@@ -25,11 +25,24 @@
    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 
+<!-- leaflet for results page -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<link rel="stylesheet" href="{% static 'leaflet-geoman.css' %}">
+  <script src='{% static "leaflet-geoman.js" %}'></script>
+  <script src='{% static "map-interface-enetra.js" %}'></script>
+  <script src='{% static "ports/tool_base.js" %}'></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+  <script src='{% static "map_store.js" %}'></script>
+
+
 
 <!-- Remove this later -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Calligraffitti&family=Geist:wght@100..900&family=Geist+Mono&faimily=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
+
 
 <!-- Tailwind CSS (compiled output) -->
 <link rel="stylesheet" href='{% static "css/output.css" %}' />

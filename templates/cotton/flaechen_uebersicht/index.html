@@ -7,6 +7,82 @@ NOTE: Should be refactor to use same interface as main map
   initial_scenario="2"
 />
 
+{% comment %}
+Depending on the state we can show different geometries
+{% endcomment %}
+<input id="search-query" type="search" name='search-query' class="bg-white border rounded p-2" value='{"name__contains":"Neue", "id__gte":2}' />
+
+<input id="style-query" type="search" name='style-query' class="bg-white border rounded p-2" value='id' />
+
+    <!-- "ports/partials/geometries.html", -->
+  <div id="geom_forms_container" class=" h-30 border-2 m-2 overflow-y-scroll overflow-clip no-select cursor-pointer"
+    hx-get="{% url 'ports:geometries' scenario.internal_id %}"
+    hx-include="#search-query, #style-query"
+    hx-trigger="load, change from:#search-query, change from:#style-query"
+    hx-swap='innerHTML'
+    hx-on::after-settle=" htmx.trigger('body' ,'map-redraw-sync');
+    myMap.fitToElements();
+    "
+  >
+  </div>
+
+{% comment %}
+listen for hte mpa-layer-clicked event with detail.value of layer.key/internal_id
+or listen directly for select-instance-{{layer.key/internal_id}}
+{% endcomment %}
+
+<div x-data="{item: 'Nothing clicked yet'}"
+  @map-layer-clicked.document="item=event.detail.value"
+>last clicked element:
+  <span x-text="item"></span>
+
+</div>
+
+
+<div class="w-full h-full relative isolate  bg-red-200">
+  <div id='mapElement' class="w-full h-full min-h-[400px]"></div>
+  <!-- {/* Map Controls Container - Bottom Right */} -->
+  <div class="absolute bottom-[20px] right-[20px] flex flex-col gap-[12px] z-[1000] pointer-events-auto">
+    {{legend}}
+  </div>
+</div>
+{% load static %}
+
+<script src='{% static "js/create_map.js" %}'></script>
+<script>
+function getStyle(layer_name, dom_element_id){
+  const d = Date.now();
+  const styleValue = document.getElementById(dom_element_id).dataset.styleValue;
+  const opacity = (styleValue/11) % 1;
+  const fillColor = name.includes('open') ? "green" : "red" ;
+  console.log( (Date.now()-d))
+
+  const defaults = DEFAULTSTYLE
+
+  const overrides = {
+    opacity: opacity, // stroke opacity
+    fillColor: fillColor,  // any CSS color; inherits `color` when null
+    fillOpacity: opacity,
+  }
+  return { ...defaults, ...overrides}
+}
+
+
+  const myMap = new MyMap('#mapElement', {
+    getStyle: getStyle,
+    getMaxZoom: getMaxZoom,
+    getMinZoom: getMinZoom,
+    getZoom: () => 16,
+    getBounds: getBounds,
+    getCenter: getCenter,
+    getLayerNames: getLayerNames,
+    getEditLayerName: getEditLayerName,
+    getGeoJsons: getGeoJsons,
+    getPopUps: getPopUps,
+    getMarkers: getMarkers,
+  });
+  myMap.drawElements()
+</script>
 
 <div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200">
 
@@ -169,4 +245,7 @@ NOTE: Should be refactor to use same interface as main map
   map.on('click', resetStyles);
 
 })('{{ map_id }}', '{{ scenario_event }}', {{ initial_scenario }});
+
+
+
 </script>
