@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.urls import path
 
 from . import views  # noqa
@@ -94,5 +95,12 @@ urlpatterns = [
         "debug/switch-user/<str:username>/",
         views.debug_switch_user,
         name="debug_switch_user",
+    ),
+    path(
+        "static_val/",
+        lambda request: HttpResponse(
+            "Cached", headers={"Cache-Control": "max-age=9999", "HX-Trigger": "foo"}
+        ),
+        name="cached_response",
     ),
 ]

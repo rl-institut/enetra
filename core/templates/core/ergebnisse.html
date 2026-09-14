@@ -10,8 +10,11 @@
 
 {% block title %}Ergebnisse – Wasserstoff-Integration – Enetra{% endblock %}
 {% block mainContent %}
-  <main hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
-  class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
+  <div hx-headers='{"X-CSRFTOKEN": "{{ csrf_token }}"}'
+  class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col"
+  hx-ext="htmx-js-cache"
+>
+
     <!-- Main Content -->
     <main class="px-6 lg:px-12 py-12 flex-1">
       <div class="max-w-[1344px] mx-auto w-full flex flex-col gap-8">
@@ -456,5 +459,5 @@
       });
     </script>
     <script>lucide.createIcons();</script>
-  </main>
+  </div>
 {% endblock mainContent %}

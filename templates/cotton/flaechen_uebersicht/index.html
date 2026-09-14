@@ -7,6 +7,14 @@ NOTE: Should be refactor to use same interface as main map
   initial_scenario="2"
 />
 
+      <div
+        hx-trigger="foo from:body"
+        hx-on::trigger="console.log( 'foo received')"
+      ></div>
+      <div
+        hx-trigger="bar from:body"
+        hx-on::trigger="console.log( 'bar received')"
+      ></div>
 {% comment %}
 Depending on the state we can show different geometries
 {% endcomment %}
@@ -16,9 +24,10 @@ Depending on the state we can show different geometries
 
     <!-- "ports/partials/geometries.html", -->
   <div id="geom_forms_container" class=" h-30 border-2 m-2 overflow-y-scroll overflow-clip no-select cursor-pointer"
+    htmx-js-cache
     hx-get="{% url 'ports:geometries' scenario.internal_id %}"
     hx-include="#search-query, #style-query"
-    hx-trigger="load, change from:#search-query, change from:#style-query"
+    hx-trigger="load, input from:#search-query, change from:#style-query"
     hx-swap='innerHTML'
     hx-on::after-settle=" htmx.trigger('body' ,'map-redraw-sync');
     myMap.fitToElements();

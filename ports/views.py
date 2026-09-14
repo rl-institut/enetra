@@ -175,25 +175,25 @@ def changes_count(request, scenario_internal_id: UUID):
         context["changed_items"] = changed_items
         context["deleted_items"] = deleted_items
 
-    base_qs = Area.objects.filter(scenario=scenario)
-    allowed_details_ids = set(
-        get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
-    )
-    managed_area_ids = set(base_qs.filter(manager=request.user).values_list("id", flat=True))
-    allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
-    for items in [created_items, changed_items]:
-        for item in items:
-            if isinstance(item, Area):
-                area_id = item.id
-            else:
-                try:
-                    area_id = item.area_id
-                except AttributeError:
-                    # instances without area are not authorized as
-                    # secure default
-                    continue
-            if area_id in allowed_details_ids_union:
-                item.has_authorization = True
+        base_qs = Area.objects.filter(scenario=scenario)
+        allowed_details_ids = set(
+            get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
+        )
+        managed_area_ids = set(base_qs.filter(manager=request.user).values_list("id", flat=True))
+        allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
+        for items in [created_items, changed_items]:
+            for item in items:
+                if isinstance(item, Area):
+                    area_id = item.id
+                else:
+                    try:
+                        area_id = item.area_id
+                    except AttributeError:
+                        # instances without area are not authorized as
+                        # secure default
+                        continue
+                if area_id in allowed_details_ids_union:
+                    item.has_authorization = True
 
     # Reuse the calculated changes
     count = request.GET.get("all_changes_count", None)
@@ -211,6 +211,9 @@ def changes_count(request, scenario_internal_id: UUID):
 
 
 def geometries(request, scenario_internal_id: UUID):
+    import time
+
+    time.sleep(1)
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
@@ -240,7 +243,9 @@ def geometries(request, scenario_internal_id: UUID):
         area_forms.append(form)
     context["area_forms"] = area_forms
     context["scenario"] = scenario
-    return render(request, "ports/partials/geometries.html", context)
+    response = render(request, "ports/partials/geometries.html", context)
+    response["HX-Trigger"] = "bar"
+    return response
 
 
 @login_required()
