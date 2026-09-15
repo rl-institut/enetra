@@ -1,7 +1,6 @@
-{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <div x-data="{showDropDown: false}" class="relative"
 >
-  <button>
+  <button type="button">
   <c-icon.three_dots class=" h-7 w-7 cursor-pointer" @click.prevent.stop="showDropDown = !showDropDown; hideOtherDropDown('#detail-ellipsis-drop-down-{{ instance.internal_id }}');" @click.outside="showDropDown = false" />
   </button>
   <div  x-show="showDropDown" x-cloak>
@@ -32,7 +31,6 @@
       <li>
         <button type="button"
                 hx-post="{{ form_url }}"
-
                 hx-select="{{hx_target}}"
                 hx-target="{{hx_target}}"
                 hx-swap="outerHTML"
@@ -42,6 +40,20 @@
           POST
         </button>
       </li>
+      {% if template_url %}
+      <li>
+        <button type="button"
+                hx-post="{{ template_url }}"
+                hx-target="{{hx_target}}"
+                hx-include="{{hx_target}}"
+                hx-swap="outerHTML"
+                class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+                hx-disabled
+        >
+          Vorlage Erstellen
+        </button>
+      </li>
+      {% endif %}
     </ul>
   </div>
 </div>

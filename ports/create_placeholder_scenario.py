@@ -13,10 +13,10 @@ from .models import Generator
 from .models import Grid
 from .models import Heating
 from .models import Load
-from .models import LoadTemplate
 from .models import Project
 from .models import Scenario
 from .models import Solar
+from .models import Timeseries
 
 
 def create_scenario() -> Scenario:
@@ -129,14 +129,14 @@ def create_scenario() -> Scenario:
     assign_perm("details", user1, user1_areas)
     assign_perm("details", user2, user2_areas)
 
-    template1 = LoadTemplate.objects.create(
+    template1 = Timeseries.objects.create(
         scenario=s,
         name="Constant load 1 (by fo)",
         manager=user1,
         timeseries={"timestep_minutes": 15, "values": [1, 4, 99, 99]},
         spec_load=1,
     )
-    template1 = LoadTemplate.objects.create(
+    template1 = Timeseries.objects.create(
         scenario=s,
         name="Constant load 1 (by ba)",
         manager=user2,

@@ -59,4 +59,19 @@ function hideOtherDropDown(selector) {
         list.dispatchEvent(new CustomEvent("hide"))
     }
     )
+};
+
+
+// make child of div selects of class select2 select2 elements
+document.addEventListener("htmx:afterSettle", (event) => {
+    // fires on the swapped in elements. Search these elements for select2
+    const root = event.target;
+    const els = [...root.querySelectorAll('.make-select2')];
+    if (root.matches?.('.make-select2')) els.unshift(root);   // root itself may match
+    els.forEach(el => {
+        // Search only the direct children, so there are not unintended select2
+        const select_el = el.querySelector(':scope > select');
+        $(select_el)?.select2({ width: "100%" })
+    });
 }
+);
