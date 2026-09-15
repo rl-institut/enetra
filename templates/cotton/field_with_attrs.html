@@ -1,0 +1,12 @@
+{% load constants %}
+{% load widget_tweaks %}
+{% load core_extras %}
+{% comment %}
+NOTE: Currently the input needs a injected class
+e.g. <c-input class='bg-red-200' ..
+helper to return a component which is easily styled but uses a form.field as input
+{% endcomment %}
+<c-vars  field></c-vars>
+  {% with attrs.class as attrs_class %}
+  {{ field|add_class:attrs_class|add_attrs_without_class:attrs}}
+  {% endwith %}
