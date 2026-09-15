@@ -195,21 +195,16 @@ class ItemTemplate(models.Model):
 
     @classmethod
     def verbose_name(cls):
-        """Get the _meta.verbose_name"""
+        """Get the _meta.verbose_name in case the subclass does not implement a proper verbose name"""
         return cls._meta.verbose_name
 
     def __str__(self):
         return f"{self._meta.object_name}: {self.name if self.name is not None else self.id}"
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.circle_full"
-
-    @classmethod
-    def icon(cls) -> str:
-        """The cotton template used as icon for this model"""
-        return "icon.circle_full"
+    # Icon shown in lists
+    list_icon = "icon.circle_full"
+    # Generic Icon shown elsewhere, e.g. map
+    icon = "icon.circle_full"
 
     @classmethod
     def adjust_Form(
@@ -217,14 +212,9 @@ class ItemTemplate(models.Model):
     ) -> type[ModelForm]:
         return FormClass
 
-    @classmethod
-    def rud_url(cls):
-        """Return the url name to read update and delete these types of items"""
-        return "ports:templates"
+    rud_url = "ports:templates"
 
-    @classmethod
-    def create_url(cls):
-        return "ports:template_create"
+    create_url = "ports:template_create"
 
 
 class ScenarioItem(ItemTemplate):
@@ -319,13 +309,9 @@ class ScenarioItem(ItemTemplate):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         raise NotImplementedError("Missing implementation of Model specific empty Instance")
 
-    @classmethod
-    def rud_url(cls):
-        return "ports:details"
+    rud_url = "ports:details"
 
-    @classmethod
-    def create_url(cls):
-        return "ports:details_create"
+    create_url = "ports:details_create"
 
 
 @receiver(ScenarioItem.scenarioitem_post_delete)
@@ -774,26 +760,18 @@ class AbstractGenerator(models.Model):
 
 
 class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Generator Vorlage")
+    list_icon = "icon.generator"
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.generator"
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Generator Vorlage")
 
 
 class Generator(ElectricComponent, AbstractGenerator):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.generator"
+    list_icon = "icon.generator"
+    template_model_name = GeneratorTemplate.model_name()
 
-    @classmethod
-    def template_model_name(cls):
-        return GeneratorTemplate.model_name()
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Generator")
 
 
 class AbstractHeating(models.Model):
@@ -817,26 +795,18 @@ class AbstractHeating(models.Model):
 
 
 class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Heizung Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Heizung Vorlage")
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heating"
+    list_icon = "icon.heating"
 
 
 class Heating(ElectricComponent, AbstractHeating):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heating"
+    list_icon = "icon.heating"
+    template_model_name = HeatingTemplate.model_name()
 
-    @classmethod
-    def template_model_name(cls):
-        return HeatingTemplate.model_name()
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Heizung")
 
 
 class AbstractCHP(models.Model):
@@ -864,20 +834,18 @@ class AbstractCHP(models.Model):
 
 
 class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Kraft-Wärme-Kopplung Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
 
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.chp"
+    list_icon = "icon.chp"
 
 
 class CHP(ElectricComponent, AbstractCHP):
-    def list_icon(self) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.chp"
+    list_icon = "icon.chp"
+    template_model_name = CHPTemplate.model_name()
+
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Kraft-Wärme-Kopplung")
 
 
 class AbstractFuelCell(models.Model):
@@ -891,22 +859,18 @@ class AbstractFuelCell(models.Model):
 
 
 class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Brennstoffzelle Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Brennstoffzelle Vorlage")
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.fuelcell"
+    list_icon = "icon.fuelcell"
 
 
 class FuelCell(ElectricComponent, AbstractFuelCell):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.fuelcell"
+    list_icon = "icon.fuelcell"
+    template_model_name = FuelCellTemplate.model_name()
+
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Brennstoffzelle")
 
 
 class AbstractElectrolyzer(models.Model):
@@ -920,22 +884,18 @@ class AbstractElectrolyzer(models.Model):
 
 
 class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Elektrolyseur Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Elektrolyseur Vorlage")
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.electrolyzer"
+    list_icon = "icon.electrolyzer"
 
 
 class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.electrolyzer"
+    list_icon = "icon.electrolyzer"
+    template_model_name = ElectrolyzerTemplate.model_name()
+
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Elektrolyseur")
 
 
 class AbstractHeatpump(models.Model):
@@ -963,22 +923,18 @@ class AbstractHeatpump(models.Model):
 
 
 class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Wärmepumpe Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Wärmepumpe Vorlage")
 
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heat_pump"
+    list_icon = "icon.heat_pump"
 
 
 class Heatpump(ElectricComponent, AbstractHeatpump):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.heat_pump"
+    list_icon = "icon.heat_pump"
+    template_model_name = HeatpumpTemplate.model_name()
+
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Wärmepumpe")
 
 
 class AbstractSolar(models.Model):
@@ -1009,25 +965,18 @@ class AbstractSolar(models.Model):
 
 
 class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Solare Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Solaranlage Vorlage")
 
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.solar"
+    list_icon = "icon.solar"
 
 
 class Solar(ElectricComponent, AbstractSolar):
-    @classmethod
-    def list_icon(cls) -> str:
-        """The cotton template used as icon for this model inside lists"""
-        return "icon.solar"
+    list_icon = "icon.solar"
+    template_model_name = SolarTemplate.model_name()
 
-    @classmethod
-    def template_model_name(cls):
-        return SolarTemplate.model_name()
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Solaranlage")
 
 
 class AbstractStorage(models.Model):
@@ -1065,14 +1014,16 @@ class AbstractStorage(models.Model):
 
 
 class StorageTemplate(ItemTemplate, AbstractStorage):
-    @classmethod
-    def verbose_name(cls):
-        """Get the _meta.verbose_name"""
-        return _("Speicher Vorlage")
+    class Meta(ElectricComponentTemplate.Meta):
+        verbose_name = _("Speicher Vorlage")
 
 
 class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    template_model_name = StorageTemplate.model_name()
+
+    class Meta(ElectricComponent.Meta):
+        verbose_name = _("Speicher")
 
 
 # --------------------------------------------------------------------------------

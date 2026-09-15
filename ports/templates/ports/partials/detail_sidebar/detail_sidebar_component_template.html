@@ -1,7 +1,6 @@
 {% load constants %}
 
-<form id="form_{{ instance.internal_id }}"
-      hx-on::load="console.log( 'foo')">
+<form id="form_{{ instance.internal_id }}">
   {{ form.internal_id }}
   <details-sidebar-header class="sticky top-0 z-[9999] block border-b border-[#e2e8f0] bg-white p-[24px]">
     <div class="flex items-center justify-between gap-[8px]">

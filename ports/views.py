@@ -646,7 +646,7 @@ class ObjectTemplatesView(View):
             self.context["form"] = form
             if form.is_valid():
                 self.instance = form.save()
-                self.context["item"] = form.save()
+                self.context["item"] = self.instance
                 # refresh the form, with the newly created instance.
                 form = self.Form(data=request.POST, instance=self.instance)
                 self.context["form"] = form
@@ -1104,7 +1104,6 @@ class DetailsView(View):
                             template_data[field] = template_value
 
             merged_data.update(template_data)
-            print(merged_data)
 
             form = self.Form(data=merged_data)
             self.context["form"] = form
