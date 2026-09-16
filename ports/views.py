@@ -10,6 +10,7 @@ from uuid import uuid4
 import numpy as np
 from django.apps.registry import apps
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core import signing
@@ -437,10 +438,14 @@ def enetra_tool(request, scenario_internal_id: UUID):
     return render(request, "ports/tool_base.html", context)
 
 
+@login_required()
 def start_solver(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    # TODO: permission to start solver task?
-    task = tasks.db_to_energysystem.delay(scenario.id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden()
+    # TODO: more permission needed to start solver task?
+    # TODO: check if another task is already running
+    task = tasks.oemof_task.delay(scenario.id)
     return JsonResponse({"task_id": task.task_id})
 
 

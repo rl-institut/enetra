@@ -1,3 +1,4 @@
+import datetime
 import logging
 import uuid
 from collections.abc import Iterable
@@ -581,7 +582,7 @@ class Load(ScenarioItem):
             )
         return loads
 
-    def resample(self, start, end, time_step):
+    def resample(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
         timestep_orig = self.template.timeseries.get("timestep_minutes", 15)
         values = self.template.timeseries["values"]
         time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")

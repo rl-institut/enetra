@@ -52,6 +52,7 @@ dependencies = [
     "oemof-solph==0.6.4",
     "django-environ>=0.14.0",
     "matplotlib>=3.10.9",
+    "pandas>=2.3.1",
 ]
 [dependency-groups]
 dev = [

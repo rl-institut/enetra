@@ -4,25 +4,34 @@ import logging
 import oemof.solph as solph
 import pandas as pd
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
-from ports.models import Grid
-from ports.models import Result
-from ports.models import ResultData
-from ports.models import Scenario
+from .models import Grid
+from .models import Result
+from .models import ResultData
+from .models import Scenario
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, ignore_result=True)
-def db_to_energysystem(self, scenario_id):
+def oemof_task(self, scenario_id):
     scenario = Scenario.objects.get(id=scenario_id)
     Scenario.objects.filter(id=scenario_id).update(task_id=self.request.id)
-    EPS = 1e-10
-    now = timezone.now()
-    start = datetime.datetime(now.year, now.month, now.day)
-    end = start + datetime.timedelta(days=1)  # simulate for one day
-    time_step = 15  # timestep in minutes
+    started_at = timezone.now()
+    es, flows = db_to_energysystem(scenario, started_at)
+    model = solve_energysystem(es)
+    if model is not None:
+        store_results(scenario, model, flows, started_at)
+        # plot_result(scenario_id)
+
+
+def db_to_energysystem(scenario, started_at):
+    EPS = settings.OEMOF_EPS
+    start = datetime.datetime(started_at.year, started_at.month, started_at.day)
+    end = start + datetime.timedelta(days=settings.OEMOF_DAYS)
+    time_step = settings.OEMOF_TS  # timestep in minutes
     time_index = pd.date_range(
         start=start,
         end=end,
@@ -45,10 +54,12 @@ def db_to_energysystem(self, scenario_id):
     # lookup table for flows: flow label -> (source, target)
     # source/target may be component, grid or None
     flows = dict()
-    for grid in scenario.grid_set.order_by("id"):
+    for grid in scenario.grid_set.all():
         label = f"{grid.internal_id}_{grid.carrier}"
         bus = solph.Bus(label=label)
         es.add(bus)
+        grid_busses[grid.id] = bus
+        bus_grids[bus] = grid
         for area in grid.areas.all():
             # assert each area only has at most one bus for each carrier
             if area.id in area_busses[grid.carrier]:
@@ -56,16 +67,12 @@ def db_to_energysystem(self, scenario_id):
                     f"Area {area.name} ({area.internal_id}) has multiple {grid.carrier} grids"
                 )
             area_busses[grid.carrier][area.id] = bus
-            grid_busses[grid.id] = bus
-            bus_grids[bus] = grid
 
     # connect grids
     for grid in scenario.grid_set.filter(connected_to__isnull=False):
         grid_bus = grid_busses[grid.id]
         connected_grid = grid.connected_to
-        connected_bus = grid_busses[
-            connected_grid.id
-        ]  # will fail if there is no grid in connected area
+        connected_bus = grid_busses[connected_grid.id]
         # create connection
         conn = solph.components.Link(
             label=f"Conn_{grid.internal_id}_{connected_grid.internal_id}_{grid.carrier}",
@@ -85,6 +92,8 @@ def db_to_energysystem(self, scenario_id):
         es.add(conn)
         flows[(grid_bus, conn)] = (grid, grid.connected_to)
         flows[(conn, grid_bus)] = (grid.connected_to, grid)
+        # other half of link flows are ignored because output=input
+        # they are redundant for connection between grids
 
     # create grid connections for root grids
     for grid in scenario.grid_set.filter(connected_to__isnull=True):
@@ -226,17 +235,68 @@ def db_to_energysystem(self, scenario_id):
         flows[(bus, gs)] = (bus_grids[bus], storage)
         flows[(gs, bus)] = (storage, bus_grids[bus])
 
+    return es, flows
+
+
+def solve_energysystem(es):
     try:
         model = solph.Model(es)
         model.solve()
-        results = solph.Results(model)
-        ok = True
+        return model
     except Exception as e:
         logger.error(e)
-        ok = False
+    return None
 
-    if not ok:
-        return
+
+def store_results(scenario, model, flows, started_at):
+    # save result in DB
+    results = solph.Results(model)
+    result, _ = Result.objects.update_or_create(  # only one result per scenario (1:1)
+        scenario=scenario,
+        defaults={
+            "started_at": started_at,
+            "finished_at": timezone.now(),
+        },
+    )
+    # delete old result data
+    result.resultdata_set.all().delete()
+
+    # flows
+    for bus, flow in results["flow"].items():
+        try:
+            from_node, to_node = flows[bus]
+        except KeyError:
+            # skip some link flows between grids
+            continue
+        from_node = from_node.internal_id if from_node is not None else None
+        to_node = to_node.internal_id if to_node is not None else None
+        ResultData.objects.create(
+            result=result,
+            from_node=from_node,
+            to_node=to_node,
+            attribute="flow",
+            value=flow.to_list(),
+        )
+        logger.info(f"{from_node} -> {to_node}: {sum(flow)}")
+
+    # storage
+    for storage in scenario.storage_set.all():
+        ResultData.objects.create(
+            result=result,
+            from_node=storage.internal_id,
+            to_node=None,
+            attribute="storage",
+            value=results["storage_content"][storage.internal_id].to_list(),
+        )
+
+    # invest
+    ResultData.objects.create(
+        result=result,
+        from_node=None,
+        to_node=None,
+        attribute="costs",
+        value=[float(results["objective"])],
+    )
 
     """
     # plot energy system as graph
@@ -264,53 +324,6 @@ def db_to_energysystem(self, scenario_id):
         plt.title(bus)
     plt.show()
     """
-
-    # save result in DB
-    result, _ = Result.objects.update_or_create(  # only one result per scenario (1:1)
-        scenario=scenario,
-        defaults={
-            "started_at": now,  # set at start of function
-            "finished_at": timezone.now(),
-        },
-    )
-    # delete old result data
-    result.resultdata_set.all().delete()
-
-    # flows
-    for bus, flow in results["flow"].items():
-        try:
-            from_node, to_node = flows[bus]
-        except KeyError:
-            continue
-        from_node = from_node.internal_id if from_node is not None else None
-        to_node = to_node.internal_id if to_node is not None else None
-        ResultData.objects.create(
-            result=result,
-            from_node=from_node,
-            to_node=to_node,
-            attribute="flow",
-            value=flow.to_list(),
-        )
-        print(from_node, to_node, sum(flow))
-
-    # storage
-    for storage in scenario.storage_set.all():
-        ResultData.objects.create(
-            result=result,
-            from_node=storage.internal_id,
-            to_node=None,
-            attribute="storage",
-            value=results["storage_content"][storage.internal_id].to_list(),
-        )
-
-    # invest
-    ResultData.objects.create(
-        result=result,
-        from_node=None,
-        to_node=None,
-        attribute="costs",
-        value=[float(results["objective"])],
-    )
 
 
 def plot_result(scenario_id):
