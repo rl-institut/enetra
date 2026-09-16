@@ -20,7 +20,11 @@
     {% endcomment %}
     <li><button
       class="hover:bg-slate-300 w-full"
-      hx-delete="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=item.model_name %}"
+      {% if scenario %}
+        hx-delete="{% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name %}"
+      {% else %}
+        hx-delete="{% url item.rud_url  model=item.model_name %}"
+      {% endif %}
       hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
       hx-vals='{"internal_id": "{{ item.internal_id }}"}'
       @htmx:after-request="const form = htmx.find('#form_{{item.internal_id}}');

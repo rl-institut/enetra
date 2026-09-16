@@ -214,8 +214,8 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 LOGIN_URL = "core:login"
-LOGIN_REDIRECT_URL = "/"  # redirect to landing page after login
-LOGOUT_REDIRECT_URL = "/"  # redirect to landing page after logout as well
+LOGIN_REDIRECT_URL = "/landing/"  # redirect to landing page after login
+LOGOUT_REDIRECT_URL = "/landing/"  # redirect to landing page after logout as well
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

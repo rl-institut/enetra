@@ -1,7 +1,7 @@
 {% comment %}
 Minimal ECharts line plot for a timeseries fetched from an API.
 Expected JSON: {"timestep_minutes": <int>, "values": [<float>, ...]}
-(also accepted nested under a "timeseries" key, as returned by api_load_template).
+(also accepted nested under a "timeseries" key, as returned by api_timeseries).
 Reads the reactive Alpine variable `data_url` from the surrounding scope and
 refetches whenever it changes (null clears the plot). Usage:
 <div x-data="{data_url: null}">

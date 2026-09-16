@@ -109,23 +109,78 @@
     </div>
   </div>
   </c-slot>
-  <div class="flex flex-col gap-[8px] pt-[8px] size-full">
-    <div class="flex justify-end">
-      <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">+Vorlage</button>
+
+
+  <!-- Vorlagen Section  -->
+
+  <div class="flex flex-col gap-2 py-2 size-full">
+    <div class="flex flex-col justify-end">
+
+
+    {% partialdef 'add-template-button' %}
+      <button type='button'
+              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              hx-post="{% url 'ports:template_create' scenario_internal_id=scenario.internal_id model=model_name %}"
+              hx-indicator="#detailSidebar"
+              hx-target="#detailSidebar"
+              hx-swap="innerHTML"
+              hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
+        >+ Vorlage für {{model_name}}</button>
+    {% endpartialdef %}
+
+
+        <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">+Vorlage</button>
+        {% for template_model in template_models %}
+        {% with  model_name=template_model.model_name  %}
+        {% partial 'add-template-button' %}
+        {% endwith %}
+        {% endfor %}
     </div>
-    <div class="border border-[#cbd5e1] rounded-[8px] bg-[#f8fafc] overflow-hidden">
+
+    {% partialdef user-template-list  inline %}
+    <div id="user_template_list" class="border border-[#cbd5e1] rounded-[8px] bg-[#f8fafc] overflow-hidden"
+        hx-get="{% url "ports:user_template_list" %}"
+        hx-trigger="refresh-user-templates from:body"
+        hx-swap="innerHTML"
+        hx-swap-oob="true"
+      >
         <form>
       <c-list :border=False customTitle >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Vorlagen</h4>
-              <c-list.button/>
       </div>
           </c-slot>
-      <c-list.item :border=False :selected=False title="Generator Vorlage" :indicated=False callback="handleViewChange('template-detail','Generator','Generator')"/>
+          {% for item  in item_templates %}
+          <c-list.item
+            id='button-list-item-{{ item.internal_id }}'
+            :hx-swap-oob="true"
+            :defaultHxDetails=True
+            :active=True
+            :selected=item.selected
+            :indicated=False
+            :item=item
+            value='{{ item.internal_id }}'
+            title='{{item.name}}'
+            radioName='internal_id'
+            :hx-on::after-settle="console.log( 'bar')"
+        >
+
+          <c-slot name="singleModeIcon">
+            {% include "ports/partials/list_item_ellipsis.html" %}
+          </c-slot>
+          <c-slot name="notSelectedIndicator">
+            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
+          </c-slot>
+          <c-slot name="selectedIndicator">
+            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
+          </c-slot>
+          </c-list.item>
+          {% endfor %}
       </c-list>
         </form>
     </div>
+    {% endpartialdef %}
   </div>
   </c-expand.index>
 </div>
