@@ -125,8 +125,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             widget=forms.CheckboxInput(),
             label="Für andere im Projekt sichtbar machen",
         )
-
-    elif ItemModel in (Load, ItemModel) or issubclass(ItemModel, ElectricComponent):
+    elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):

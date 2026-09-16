@@ -1,4 +1,5 @@
-<c-vars image debugWidget=False selectedValue inputName classButton random=></c-vars>
+<c-vars image debugWidget=False selectedValue inputName classButton random= field></c-vars>
+{% load widget_tweaks %}
 {% load core_extras %}
 {% gen_uuid as uid %}
 {% comment %}
@@ -41,9 +42,19 @@ The implementation can be fouind inside the custom css tailwind brackets
     {% endcomment %}
     {{ slot }}
   </div>
-   <input class="border {% if not debugWidget == True %}hidden{% endif %}"
-         x-effect="selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
-         name="{{inputName}}"
-         value="{{selectedValue}}"
-         x-model="selectedValue">
+  {% if field %}
+  <div class="{% if not debugWidget == True %}hidden{% endif %}">
+    <c-field-with-attrs :field="field" class=""
+           x-effect="selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
+           x-model="selectedValue"
+    />
+  </div>
+  {% else %}
+     <input class="border {% if not debugWidget == True %}hidden{% endif %}"
+           x-effect="selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
+           name="{{inputName}}"
+           value="{{selectedValue}}"
+           x-model="selectedValue"
+  >
+    {% endif %}
 </div>

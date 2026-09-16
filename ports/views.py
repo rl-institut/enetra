@@ -663,7 +663,7 @@ class ObjectTemplatesView(View):
             self.context["form"] = form
             if form.is_valid():
                 self.instance = form.save()
-                self.context["item"] = form.save()
+                self.context["item"] = self.instance
                 # refresh the form, with the newly created instance.
                 form = self.Form(data=request.POST, instance=self.instance)
                 self.context["form"] = form
@@ -1121,7 +1121,6 @@ class DetailsView(View):
                             template_data[field] = template_value
 
             merged_data.update(template_data)
-            print(merged_data)
 
             form = self.Form(data=merged_data)
             self.context["form"] = form
@@ -1515,7 +1514,7 @@ def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str)
     # Save Loads so the current user input persists. Authorization is checked already
     timeseries = DetailsView.get_loadtemplates_for_user(
         request.user, scenario=scenario, instance=load
-    ).select_related(["scenario"])
+    ).select_related("scenario")
     Form = ScenarioItemFormFactory(Load, multi=multi, scenario=scenario)
     Form = Load.adjust_Form(Form, load, templates_queryset=timeseries)
     Form.base_fields.pop("template")

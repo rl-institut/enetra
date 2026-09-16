@@ -1,7 +1,6 @@
 {% load constants %}
 
-<form id="form_{{ instance.internal_id }}"
-      hx-on::load="console.log( 'foo')">
+<form id="form_{{ instance.internal_id }}">
   {{ form.internal_id }}
   <details-sidebar-header class="sticky top-0 z-[9999] block border-b border-[#e2e8f0] bg-white p-[24px]">
     <div class="flex items-center justify-between gap-[8px]">
@@ -40,10 +39,9 @@
             </label>
             <div class="relative">
               <c-input type="text" :field="field" class="w-full rounded border border-[#cbd5e1] bg-white px-[16px] py-[12px] pr-[60px] pb-2 text-[14px] text-[#1e293b]" />
-              <span class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]">{{field.field.unit}}</span>
-              <c-field-errors :field="field" />
-            </div>
+            <span class="absolute top-1/2 right-[16px] -translate-y-1/2 text-[14px] text-[#64748b]">{{field.field.unit}}</span>
           </div>
+          <c-field-errors :field="field" />
         {% endif %}
       {% endpartialdef %}
       {% with field=form.name  %}
