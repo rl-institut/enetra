@@ -35,22 +35,21 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
+from core.forms import AuthForm
+from core.forms import ChangeAccountDataForm
+from core.forms import InviteForm
+from core.forms import SignUpForm
 from core.models import Invite
 from core.models import InviteError
 from core.models import Role
-
-from .authorization import has_authorization
-from .forms import AuthForm
-from .forms import ChangeAccountDataForm
-from .forms import CreateProjectForm
-from .forms import InviteForm
-from .forms import SignUpForm
-from .models import Project
-from .models import Scenario
-from .models import ScenarioItem
-from .util import get_template_scenarios
-from .util import get_user_projects
-from .util import prefetch_projects_users
+from ports.authorization import has_authorization
+from ports.forms import CreateProjectForm
+from ports.models import Project
+from ports.models import Scenario
+from ports.models import ScenarioItem
+from ports.util import get_template_scenarios
+from ports.util import get_user_projects
+from ports.util import prefetch_projects_users
 
 
 class LoginViewWithRemember(LoginView):
