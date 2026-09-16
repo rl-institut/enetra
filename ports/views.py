@@ -50,22 +50,19 @@ from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
 from core.views import ensure_project_rights
-from ports import models
-from ports import util
-from ports.create_placeholder_scenario import create_scenario as create_placeholder_scenario
-from ports.forms import AreaItemFormFactory
-from ports.forms import ChangeProjectForm
-from ports.forms import ChangeScenarioForm
-from ports.forms import CreateProjectForm
-from ports.forms import CreateScenarioForm
-from ports.forms import ScenarioItemFormFactory
-from ports.forms import TemplateFormFactory
-from ports.forms import TimeseriesUploadForm
-from ports.util import duplicate_scenario_with_permissions
-from ports.util import get_template_scenarios
 
+from . import models  # needed to get all component classes
 from .authorization import has_area_authorization_from_uuids
 from .authorization import has_authorization
+from .create_placeholder_scenario import create_scenario as create_placeholder_scenario
+from .forms import AreaItemFormFactory
+from .forms import ChangeProjectForm
+from .forms import ChangeScenarioForm
+from .forms import CreateProjectForm
+from .forms import CreateScenarioForm
+from .forms import ScenarioItemFormFactory
+from .forms import TemplateFormFactory
+from .forms import TimeseriesUploadForm
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
@@ -80,6 +77,9 @@ from .models import StorageTemplate
 from .models import Timeseries
 from .util import duplicate_project
 from .util import duplicate_scenario
+from .util import duplicate_scenario_with_permissions
+from .util import get_template_model
+from .util import get_template_scenarios
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ def changes_count(request, scenario_internal_id: UUID):
             for Model in port_models:
                 if Model in [Scenario, ChangedItem]:
                     continue
-                if not issubclass(Model, models.ScenarioItem):
+                if not issubclass(Model, ScenarioItem):
                     continue
                 if Model in [DeletedItem]:
                     filter = {
@@ -196,7 +196,7 @@ def changes_count(request, scenario_internal_id: UUID):
         port_models = apps.get_app_config("ports").get_models()
         # Create a mapping for all scenario items
         for Model in port_models:
-            if issubclass(Model, models.ScenarioItem):
+            if issubclass(Model, ScenarioItem):
                 count += Model.objects.filter(scenario=scenario).count()
 
     context["all_changes_count"] = count
@@ -258,7 +258,7 @@ def changes(request, scenario_internal_id: UUID):
     # Create a mapping for all scenario items
     for Model in port_models:
         # only count scenario items
-        if issubclass(Model, models.ScenarioItem):
+        if issubclass(Model, ScenarioItem):
             other_changes_count += Model.objects.filter(**filter).exclude(**other_exclude).count()
             user_changes_count += Model.objects.filter(**user_filter).count()
 
@@ -276,7 +276,7 @@ def changes(request, scenario_internal_id: UUID):
     for Model in port_models:
         if Model in [DeletedItem, ChangedItem, Scenario]:
             continue
-        if not issubclass(Model, models.ScenarioItem):
+        if not issubclass(Model, ScenarioItem):
             continue
         original_items = Model.objects.filter(scenario=scenario)
         original_items_dict[Model] = {x.internal_id: x for x in original_items}
@@ -287,7 +287,7 @@ def changes(request, scenario_internal_id: UUID):
     for Model in port_models:
         if Model == Scenario:
             continue
-        if not issubclass(Model, models.ScenarioItem):
+        if not issubclass(Model, ScenarioItem):
             continue
         if Model == DeletedItem:
             for item in Model.objects.filter(**filter).exclude(**exclude):
@@ -710,9 +710,9 @@ class DetailsView(View):
     template = ""
     created = False
     multi = False
-    scenario: models.Scenario | None = None
-    Model: type[models.ScenarioItem] | None = None
-    instance: models.ScenarioItem = None
+    scenario: Scenario | None = None
+    Model: type[ScenarioItem] | None = None
+    instance: ScenarioItem = None
     instances: Iterable[ScenarioItem] = []
     data: dict = {}
 
@@ -767,7 +767,7 @@ class DetailsView(View):
             ],
         }
         if issubclass(self.Model, ElectricComponent):
-            template_model = util.get_template_model(self.Model)
+            template_model = get_template_model(self.Model)
             context["templates"] = template_model.objects.filter(manager=request.user)
 
         for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
@@ -932,7 +932,7 @@ class DetailsView(View):
 
         template_data = {}
         if template_internal_id := request.GET.get("template"):
-            template_model = util.get_template_model(self.Model)
+            template_model = get_template_model(self.Model)
             if template := template_model.objects.filter(
                 manager=request.user, internal_id=template_internal_id
             ).first():
@@ -1083,7 +1083,7 @@ class DetailsView(View):
 
             template_data = {}
             if template_internal_id := request.GET.get("template"):
-                template_model = util.get_template_model(self.Model)
+                template_model = get_template_model(self.Model)
                 if template := template_model.objects.filter(
                     manager=request.user, internal_id=template_internal_id
                 ).first():
