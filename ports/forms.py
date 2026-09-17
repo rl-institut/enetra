@@ -184,6 +184,10 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             ChangedItem.objects.bulk_create(changed_items)
             return qs
 
+    # Add units
+    for field_name, field in BulkForm.base_fields.items():
+        field.unit = UNITS.get(field_name, "")
+
     return BulkForm
 
 
