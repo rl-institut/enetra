@@ -41,7 +41,7 @@ class MyMap {
 
   _initMap() {
     console.log('_initMap()')
-    const osmUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key='+this.settings.carto_api_token ?? "";
+    const osmUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key='+this.settings.carto_api_token;
     const osmAttrib = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
     // Add CartoDB light tile layer
     this.osm = L.tileLayer(osmUrl, {
