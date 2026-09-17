@@ -10,17 +10,17 @@ from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
 
-from ports.authorization import has_authorization
-from ports.models import Area
-from ports.models import ChangedItem
-from ports.models import ElectricComponent
-from ports.models import ItemTemplate
-from ports.models import Load
-from ports.models import Project
-from ports.models import Scenario
-from ports.models import ScenarioItem
-from ports.models import Timeseries
-from ports.util import duplicate_scenario_with_permissions
+from .authorization import has_authorization
+from .models import Area
+from .models import ChangedItem
+from .models import ElectricComponent
+from .models import ItemTemplate
+from .models import Load
+from .models import Project
+from .models import Scenario
+from .models import ScenarioItem
+from .models import Timeseries
+from .util import duplicate_scenario_with_permissions
 
 
 class ScenarioChoiceField(forms.ModelChoiceField):
