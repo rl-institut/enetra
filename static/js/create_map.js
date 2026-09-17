@@ -45,6 +45,7 @@ class MyMap {
     const osmAttrib = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
     // Add CartoDB light tile layer
     this.osm = L.tileLayer(osmUrl, {
+      referrerPolicy: this.settings.referrerPolicy,
       attribution: osmAttrib,
       subdomains: 'abcd',
       maxZoom: this.settings.getMaxZoom?.() ?? getMaxZoom(),

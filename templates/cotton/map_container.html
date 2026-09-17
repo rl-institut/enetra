@@ -22,6 +22,7 @@ the map container needs leaflet.js leaflet.css leaflet.draw and the interface to
 <script src='{% static "js/create_map.js" %}'></script>
 <script>
   const myMap = new MyMap('#mapElement', {
+    referrerPolicy: "strict-origin-when-cross-origin",
     carto_api_token: '{{CARTO_API_TOKEN}}',
     getMaxZoom: getMaxZoom,
     getMinZoom: getMinZoom,
