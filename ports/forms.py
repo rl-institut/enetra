@@ -14,6 +14,7 @@ from .authorization import has_authorization
 from .models import Area
 from .models import ChangedItem
 from .models import ElectricComponent
+from .models import Grid
 from .models import ItemTemplate
 from .models import Load
 from .models import Project
@@ -125,6 +126,14 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             widget=forms.CheckboxInput(),
             label="Für andere im Projekt sichtbar machen",
         )
+
+        # dynamic creation of grid selects
+        # get gridtypes. Each Area can be connected to one grid of each type
+        for gtype in Grid.CarrierChoices:
+            BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
+                queryset=Grid.objects.filter(scenario=kwargs["scenario"], carrier=gtype),
+            )
+
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}

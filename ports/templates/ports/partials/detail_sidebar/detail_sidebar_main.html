@@ -165,7 +165,7 @@
             <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
-        <netzanschluss class="block" inert>
+        <netzanschluss class="block">
         <div class="flex flex-col gap-[16px] pt-[8px">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
@@ -177,18 +177,17 @@
             <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
           </h3>
             not implemented/ made inert
+            foooooooooooo
+            {{form}}
+            baaaaaaaaaar
           <div class="flex flex-col gap-[8px] ">
             <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
             <c-select.index selectedValue="HV" inputName="AnschlussType">
-              <c-select.button selectValue="HV">
-                Hochspannung
-              </c-select.button>
-              <c-select.button selectValue="MV">
-                Mittelspannung
-              </c-select.button>
-              <c-select.button selectValue="LV">
-                Niederspannung
-              </c-select.button>
+              {% for grid in grids  %}
+                <c-select.button selectValue="HV">
+                  Ersters Netz
+                </c-select.button>
+              {% endfor %}
             </c-select.index>
           </div>
           <button type="button"
@@ -198,13 +197,11 @@
           <label class="flex items-center gap-[8px] cursor-pointer">
             <input
               type="checkbox"
-              defaultChecked={itemName !== 'Lagerhalle 2'}
               class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer"
               />
               <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
             </label>
           </div>
-
           </netzanschluss>
         </div>
       </div>
