@@ -18,6 +18,8 @@ from django.contrib.auth.models import User
 from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import BooleanField
+from django.db.models import ForeignObjectRel
+from django.db.models import ManyToManyRel
 from django.db.models import ObjectDoesNotExist
 from django.db.models import Q
 from django.db.models import Value
@@ -334,6 +336,20 @@ def changes(request, scenario_internal_id: UUID):
     return render(request, "ports/partials/detail_sidebar/detail_sidebar_changes.html", context)
 
 
+def prefetch_all_related(qs):
+    """Add all related Sets to the query"""
+    model = qs.model
+    related_lookups = [
+        field.get_accessor_name()
+        for field in model._meta.get_fields()
+        if isinstance(field, ForeignObjectRel | ManyToManyRel)
+        and field.auto_created
+        and not field.hidden
+        and issubclass(field.related_model, ElectricComponent)
+    ]
+    return qs.prefetch_related(*related_lookups)
+
+
 def get_home_context(user: User, scenario: Scenario):
     data = {}
     scenario = scenario or Scenario.objects.select_related("project").last()
@@ -370,7 +386,8 @@ def get_home_context(user: User, scenario: Scenario):
     data["electric_components"] = electric_components
 
     # important:  prefetch all related models to avoid n+1 queries
-    all_areas = list(base_qs.prefetch_related("generator_set"))
+    all_areas = list(prefetch_all_related(base_qs))
+
     building_areas = list()
     open_areas = list()
     for area in all_areas:

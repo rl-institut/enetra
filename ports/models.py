@@ -32,8 +32,10 @@ class Project(models.Model):
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
-    name = models.TextField(blank=False, null=True)
-    description = models.TextField(blank=True, null=True)
+    name = models.TextField(blank=False, null=True, help_text=_("Name des Projekts."))
+    description = models.TextField(
+        blank=True, null=True, help_text=_("Optionale Beschreibung des Projekts.")
+    )
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -88,8 +90,10 @@ class Scenario(models.Model):
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
     )
-    name = models.TextField(blank=False, null=True)
-    description = models.TextField(blank=True, null=True)
+    name = models.TextField(blank=False, null=True, help_text=_("Name des Szenarios."))
+    description = models.TextField(
+        blank=True, null=True, help_text=_("Optionale Beschreibung des Szenarios.")
+    )
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -102,7 +106,9 @@ class Scenario(models.Model):
     )
 
     # Area of the scenario / Port region
-    geom = models.PolygonField(default=None, null=True, blank=True)
+    geom = models.PolygonField(
+        default=None, null=True, blank=True, help_text=_("Geografische Ausdehnung des Szenarios.")
+    )
 
     # Class variable which keeps track of scenarios which should be deleted
     # This disables DeletedItem creation which is slow for large queries
@@ -150,8 +156,12 @@ class ItemTemplate(models.Model):
     """Abstract class for item templates"""
 
     id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
-    name = models.TextField(blank=False, null=True, max_length=200)
-    description = models.TextField(blank=True, null=True)
+    name = models.TextField(
+        blank=False, null=True, max_length=200, help_text=_("Name der Vorlage.")
+    )
+    description = models.TextField(
+        blank=True, null=True, help_text=_("Optionale Beschreibung der Vorlage.")
+    )
 
     # Templates also contain an internal_id for access.
     # This allows consistent lookup via uuid between ScenarioItems and ItemTemplates
@@ -436,13 +446,14 @@ class Area(ScenarioItem):
         OFFICE = "office", "Büro"
         STORAGE = "storage", "Lager"
 
-    geom = models.PolygonField(null=True, blank=False)
-    area_type = models.CharField(choices=AreaTypeChoices, null=True)
+    geom = models.PolygonField(null=True, blank=False, help_text=_("Geometrie der Fläche."))
+    area_type = models.CharField(choices=AreaTypeChoices, null=True, help_text=_("Art der Fläche."))
     usage = models.CharField(
         choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
         null=True,
         blank=True,
         default=None,
+        help_text=_("Nutzung der Fläche."),
     )
 
     def layer_name(self):
@@ -506,14 +517,24 @@ class Area(ScenarioItem):
         )
         return instance
 
+    def get_all_electric_components(self):
+        electric_component_managers = []
+        for field in self._meta.get_fields():
+            if field.is_relation and issubclass(field.related_model, ElectricComponent):
+                # RelatedManagers are dynamically created.
+                # Therefore we can check type directly
+                related_set = getattr(self, field.accessor_name)
+                electric_component_managers.append(related_set.all())
+        return electric_component_managers
+
 
 # FIXME: A load template is not part of an area. What permission state should it have?
 class Timeseries(ScenarioItem):
     """Template for timeseries, mostly power series"""
 
-    timeseries = models.JSONField()
+    timeseries = models.JSONField(help_text=_("Zeitreihendaten."))
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
-        default=None
+        default=None, help_text=_("Spezifische Last der Zeitreihe.")
     )
 
     @classmethod
@@ -561,9 +582,20 @@ class Timeseries(ScenarioItem):
 class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
-    area = models.ForeignKey(Area, on_delete=models.CASCADE)
-    template = models.ForeignKey(Timeseries, on_delete=models.CASCADE)
-    factor = models.FloatField(default=1.0)  # scale template values
+    area = models.ForeignKey(
+        Area, on_delete=models.CASCADE, help_text=_("Fläche, der diese Last zugeordnet ist.")
+    )
+    template = models.ForeignKey(
+        Timeseries, on_delete=models.CASCADE, help_text=_("Zeitreihenvorlage dieser Last.")
+    )
+    # We could allow negative factors, but maybe its confusing
+    factor = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Skalierungsfaktor für die Werte der Zeitreihenvorlage. Muss größer oder gleich 0 sein."
+        ),
+    )  # scale template values
 
     @classmethod
     def adjust_Form(
@@ -617,33 +649,92 @@ class Grid(ScenarioItem):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    carrier = models.CharField(choices=CarrierChoices)
-    feed_in = models.BooleanField(default=False)  # does this grid support feed-in?
+    carrier = models.CharField(choices=CarrierChoices, help_text=_("Energieträger des Netzes."))
+    feed_in = models.BooleanField(
+        default=False, help_text=_("Gibt an, ob dieses Netz Einspeisung unterstützt.")
+    )  # does this grid support feed-in?
     connected_to = models.ForeignKey(
-        "Grid", on_delete=models.SET_NULL, default=None, null=True, blank=True
+        "Grid",
+        on_delete=models.SET_NULL,
+        default=None,
+        null=True,
+        blank=True,
+        help_text=_("Netz, mit dem dieses Netz verbunden ist."),
     )
     timeseries = models.ForeignKey(
-        "Load", on_delete=models.SET_NULL, default=None, null=True, blank=True
+        "Load",
+        on_delete=models.SET_NULL,
+        default=None,
+        null=True,
+        blank=True,
+        help_text=_("Lastzeitreihe dieses Netzes."),
     )
-    areas = models.ManyToManyField("Area")
+    areas = models.ManyToManyField(
+        "Area", help_text=_("Flächen, die an dieses Netz angeschlossen sind.")
+    )
 
 
 class ElectricComponentTemplate(ItemTemplate):
     """Abstract template for electric components, defines shared characteristics"""
 
-    power_kw = models.FloatField(verbose_name=_("Leistung"), default=None, null=True, blank=True)
-    efficiency = models.FloatField(verbose_name=_("Effizienz"), default=1.0, blank=False, null=True)
+    power_kw = models.FloatField(
+        verbose_name=_("Leistung"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Nennleistung der Komponente in kW. Muss größer oder gleich 0 sein."),
+    )
+    efficiency = models.FloatField(
+        verbose_name=_("Effizienz"),
+        default=1.0,
+        blank=False,
+        null=True,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Wirkungsgrad der Komponente. Muss ein Wert zwischen 0 und 1 sein."),
+    )
     power_installed = models.FloatField(
-        verbose_name=_("Installierte Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Installierte Leistung"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Installierte Leistung der Komponente in kW. Muss größer oder gleich 0 sein."),
     )  # kWh
     power_min = models.FloatField(
-        verbose_name=_("Minimale Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Minimale Leistung"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Minimale Leistung der Komponente in kW. Muss größer oder gleich 0 sein."),
     )  # kWh
     power_max = models.FloatField(
-        verbose_name=_("Maximale Leistung"), default=None, null=True, blank=True
+        verbose_name=_("Maximale Leistung"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Maximale Leistung der Komponente in kW. Muss größer oder gleich 0 sein."),
     )  # kWh
-    capex = models.FloatField(verbose_name=_("CAPEX"), default=None, null=True, blank=True)  # €
-    opex = models.FloatField(verbose_name=_("OPEX"), default=None, null=True, blank=True)  # €/a
+    capex = models.FloatField(
+        verbose_name=_("CAPEX"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Investitionskosten der Komponente in €. Muss größer oder gleich 0 sein."),
+    )  # €
+    opex = models.FloatField(
+        verbose_name=_("OPEX"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Jährliche Betriebskosten der Komponente in €/a. Muss größer oder gleich 0 sein."
+        ),
+    )  # €/a
 
     class Meta:
         abstract = True  # abstract table
@@ -698,7 +789,12 @@ class ElectricComponentTemplate(ItemTemplate):
 class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
     """Abstract electric component"""
 
-    area = models.ForeignKey(Area, verbose_name=_("Fläche"), on_delete=models.CASCADE)
+    area = models.ForeignKey(
+        Area,
+        verbose_name=_("Fläche"),
+        on_delete=models.CASCADE,
+        help_text=_("Fläche, der diese Komponente zugeordnet ist."),
+    )
 
     class Meta(ScenarioItem.Meta):
         abstract = True  # abstract table
@@ -748,7 +844,11 @@ class AbstractGenerator(models.Model):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
 
-    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
+    carrier = models.CharField(
+        verbose_name=_("Energieträger"),
+        choices=CarrierChoices,
+        help_text=_("Energieträger, der vom Generator genutzt wird."),
+    )
 
     def carrier_verbose(self):
         if not self.carrier:
@@ -768,6 +868,7 @@ class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
 
 class Generator(ElectricComponent, AbstractGenerator):
     list_icon = "icon.generator"
+    icon = "icon.generator"
     template_model_name = GeneratorTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -782,27 +883,32 @@ class AbstractHeating(models.Model):
         OIL = "oil", "Öl"
         ELECTRICITY = "electricity", "Strom"
 
-    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
+    carrier = models.CharField(
+        verbose_name=_("Energieträger"),
+        choices=CarrierChoices,
+        help_text=_("Energieträger, der von der Heizung genutzt wird."),
+    )
 
-    @classmethod
-    def carrier_verbose(cls):
-        if not cls.carrier:
+    def carrier_verbose(self):
+        if not self.carrier:
             return "Keine Angabe"
-        return cls.get_carrier_display()
+        return self.get_carrier_display()
 
     class Meta:
         abstract = True
 
 
 class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
+    list_icon = "icon.heating"
+    icon = "icon.heating"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Heizung Vorlage")
-
-    list_icon = "icon.heating"
 
 
 class Heating(ElectricComponent, AbstractHeating):
     list_icon = "icon.heating"
+    icon = "icon.heating"
     template_model_name = HeatingTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -817,8 +923,17 @@ class AbstractCHP(models.Model):
         OIL = "oil", "Öl"
         GAS = "gas", "Gas"
 
-    carrier = models.CharField(verbose_name=_("Energieträger"), choices=CarrierChoices)
-    efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
+    carrier = models.CharField(
+        verbose_name=_("Energieträger"),
+        choices=CarrierChoices,
+        help_text=_("Energieträger, der von der Kraft-Wärme-Kopplung genutzt wird."),
+    )
+    efficiency_thermal = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -834,14 +949,16 @@ class AbstractCHP(models.Model):
 
 
 class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
+    list_icon = "icon.chp"
+    icon = "icon.chp"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
-
-    list_icon = "icon.chp"
 
 
 class CHP(ElectricComponent, AbstractCHP):
     list_icon = "icon.chp"
+    icon = "icon.chp"
     template_model_name = CHPTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -852,21 +969,27 @@ class AbstractFuelCell(models.Model):
     """Transform H2 into electricity"""
 
     # carrier is always hydrogen
-    efficiency_thermal = models.FloatField(default=1.0)
+    efficiency_thermal = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
     class Meta:
         abstract = True
 
 
 class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
+    list_icon = "icon.fuelcell"
+    icon = "icon.fuelcell"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Brennstoffzelle Vorlage")
-
-    list_icon = "icon.fuelcell"
 
 
 class FuelCell(ElectricComponent, AbstractFuelCell):
     list_icon = "icon.fuelcell"
+    icon = "icon.fuelcell"
     template_model_name = FuelCellTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -877,21 +1000,28 @@ class AbstractElectrolyzer(models.Model):
     """Transform electricity into H2"""
 
     # carrier is always electricity
-    efficiency_thermal = models.FloatField(verbose_name=_("Thermische Effizienz"), default=1.0)
+    efficiency_thermal = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
     class Meta:
         abstract = True
 
 
 class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
+    list_icon = "icon.electrolyzer"
+    icon = "icon.electrolyzer"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Elektrolyseur Vorlage")
-
-    list_icon = "icon.electrolyzer"
 
 
 class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
     list_icon = "icon.electrolyzer"
+    icon = "icon.electrolyzer"
     template_model_name = ElectrolyzerTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -911,8 +1041,15 @@ class AbstractHeatpump(models.Model):
         MONOVALENT = 1
         BIVALENT = 2
 
-    heatsource = models.CharField(choices=HeatChoices, blank=False, null=True)
-    mode = models.IntegerField(choices=ModeChoices, blank=False, null=True)
+    heatsource = models.CharField(
+        choices=HeatChoices, blank=False, null=True, help_text=_("Wärmequelle der Wärmepumpe.")
+    )
+    mode = models.IntegerField(
+        choices=ModeChoices,
+        blank=False,
+        null=True,
+        help_text=_("Betriebsart der Wärmepumpe (monovalent oder bivalent)."),
+    )
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -923,14 +1060,16 @@ class AbstractHeatpump(models.Model):
 
 
 class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
+    list_icon = "icon.heat_pump"
+    icon = "icon.heat_pump"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Wärmepumpe Vorlage")
-
-    list_icon = "icon.heat_pump"
 
 
 class Heatpump(ElectricComponent, AbstractHeatpump):
     list_icon = "icon.heat_pump"
+    icon = "icon.heat_pump"
     template_model_name = HeatpumpTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -941,38 +1080,77 @@ class AbstractSolar(models.Model):
     """Photovoltaics"""
 
     profile = models.ForeignKey(
-        Load, on_delete=models.SET_NULL, default=None, null=True, blank=True
+        Load,
+        on_delete=models.SET_NULL,
+        default=None,
+        null=True,
+        blank=True,
+        help_text=_("Lastprofil der Solaranlage."),
     )
     azimut = models.FloatField(
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(360)],
+        help_text=_(
+            "Ausrichtung der Solaranlage in Grad. Azimut muss ein Wert zwischen 0 und 360 betragen."
+        ),
     )
     angle = models.FloatField(
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(90)],
+        help_text=_(
+            "Neigungswinkel der Solaranlage in Grad. Winkel muss ein Wert zwischen 0 und 90 betragen."
+        ),
     )
-    spec_power = models.FloatField(default=None, null=True, blank=True)  # kW/m^2
-    surface_area_installed = models.FloatField(default=None, null=True, blank=True)  # m^2
-    surface_area_min = models.FloatField(default=None, null=True, blank=True)  # m^2
-    surface_area_max = models.FloatField(default=None, null=True, blank=True)  # m^2
+    spec_power = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Spezifische Leistung der Solaranlage in kW/m². Muss größer oder gleich 0 sein."
+        ),
+    )  # kW/m^2
+    surface_area_installed = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Installierte Fläche der Solaranlage in m². Muss größer oder gleich 0 sein."),
+    )  # m^2
+    surface_area_min = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Minimale Fläche der Solaranlage in m². Muss größer oder gleich 0 sein."),
+    )  # m^2
+    surface_area_max = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_("Maximale Fläche der Solaranlage in m². Muss größer oder gleich 0 sein."),
+    )  # m^2
 
     class Meta:
         abstract = True
 
 
 class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
+    list_icon = "icon.solar"
+    icon = "icon.solar"
+
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Solaranlage Vorlage")
-
-    list_icon = "icon.solar"
 
 
 class Solar(ElectricComponent, AbstractSolar):
     list_icon = "icon.solar"
+    icon = "icon.solar"
     template_model_name = SolarTemplate.model_name()
 
     class Meta(ElectricComponentTemplate.Meta):
@@ -987,19 +1165,65 @@ class AbstractStorage(models.Model):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    carrier = models.CharField(choices=CarrierChoices, null=True, blank=False)
-    efficiency_load = models.FloatField(default=1.0, null=True, blank=False)
-    efficiency_store = models.FloatField(default=1.0, null=True, blank=False)
+    carrier = models.CharField(
+        choices=CarrierChoices, null=True, blank=False, help_text=_("Energieträger des Speichers.")
+    )
+    efficiency_load = models.FloatField(
+        default=1.0,
+        null=True,
+        blank=False,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Wirkungsgrad beim Beladen. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+    efficiency_store = models.FloatField(
+        default=1.0,
+        null=True,
+        blank=False,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Wirkungsgrad beim Entladen. Muss ein Wert zwischen 0 und 1 sein."),
+    )
     # capacity: unit depends on carrier. kWh for electricity and heat, liters for H2
-    capacity_installed = models.FloatField(default=None, null=True, blank=True)
-    capacity_min = models.FloatField(default=None, null=True, blank=True)
-    capacity_max = models.FloatField(default=None, null=True, blank=True)
-    capex = models.FloatField(default=None, null=True, blank=True)  # €/kWh, €/l
+    capacity_installed = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Installierte Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+        ),
+    )
+    capacity_min = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Minimale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+        ),
+    )
+    capacity_max = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Maximale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+        ),
+    )
+    capex = models.FloatField(
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Investitionskosten des Speichers (€/kWh oder €/l). Muss größer oder gleich 0 sein."
+        ),
+    )  # €/kWh, €/l
 
-    def carrier_verbose(cls):
-        if not cls.carrier:
+    def carrier_verbose(self):
+        if not self.carrier:
             return "Keine Angabe"
-        return cls.get_carrier_display()
+        return self.get_carrier_display()
 
     # For the same rendering process and look as Electric components
     def custom_fields(self):
@@ -1019,7 +1243,9 @@ class StorageTemplate(ItemTemplate, AbstractStorage):
 
 
 class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
-    area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    area = models.ForeignKey(
+        Area, on_delete=models.CASCADE, help_text=_("Fläche, der dieser Speicher zugeordnet ist.")
+    )
     template_model_name = StorageTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1046,8 +1272,8 @@ class UploadedFile(ScenarioItem):
         >>> uploaded_file_instance.save()
     """
 
-    name = models.TextField(blank=False, null=True)
-    file = models.FileField(upload_to=settings.UPLOAD_PATH)
+    name = models.TextField(blank=False, null=True, help_text=_("Name der Datei."))
+    file = models.FileField(upload_to=settings.UPLOAD_PATH, help_text=_("Hochgeladene Datei."))
     # This lets us attach any object to the uploaded file
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField()

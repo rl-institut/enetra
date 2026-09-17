@@ -126,7 +126,7 @@
             </div>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
-          <c-select.button selectValue={{ value }}>
+          <c-select.button selectValue={{value}}>
             {{ label }}
           </c-select.button>
         {% endfor %}
