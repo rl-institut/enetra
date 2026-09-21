@@ -937,11 +937,9 @@ class DetailsView(View):
                     if grids.count() > 1:
                         raise Exception("Only one grid per grid type and area allowed")
                     initial["grid_" + gtype] = grids.first()
-            elif (
-                grids := Grid.objects.filter(areas__in=areas, carrier=gtype.value).distinct()
-                and grids.count() == 1
-            ):
-                initial["grid_" + gtype] = grids.first()
+            elif grids := Grid.objects.filter(areas__in=areas, carrier=gtype.value).distinct():  # noqa
+                if grids.count() == 1:
+                    initial["grid_" + gtype] = grids.first()
         return initial
 
     def get(self, request, *args, **kwargs):
@@ -1119,9 +1117,10 @@ class DetailsView(View):
             return response
 
         if self.Model == Area or issubclass(self.Model, ElectricComponent):
-            initial_grids = self._get_initial_grids(areas=self.instances)
             merged_data = model_to_dict(self.instances[0])
-            merged_data |= initial_grids
+            if self.Model == Area:
+                initial_grids = self._get_initial_grids(areas=self.instances)
+                merged_data |= initial_grids
             for x in self.instances:
                 data = model_to_dict(x)
                 for key, value in data.items():
@@ -1149,6 +1148,13 @@ class DetailsView(View):
                         template_value = vars(template).get(field)
                         if template_value is not None:
                             template_data[field] = template_value
+
+                        if template_value is not None:
+                            template_data[field] = template_value
+                            # mark the fields populated by the templated for styling/indicating
+                            self.Form.base_fields[field].widget.attrs["data-template-value"] = (
+                                template_value
+                            )
 
             merged_data.update(template_data)
 
