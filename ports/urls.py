@@ -113,6 +113,16 @@ urlpatterns = [
         name="api_duplicate",
     ),
     path(
+        "api/<str:model>/<uuid:scenario_internal_id>/create/",
+        views.ApiView.as_view(action="create"),
+        name="api_create",
+    ),
+    path(
+        "api/<str:model>/<uuid:scenario_internal_id>/create/",
+        views.ApiView.as_view(action="create"),
+        name="grid_modal",
+    ),
+    path(
         "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
         views.api_timeseries,
         name="api_timeseries",

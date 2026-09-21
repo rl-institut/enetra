@@ -52,6 +52,7 @@ from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
 from core.views import ensure_project_rights
+from ports.forms import GridFormFactory
 
 from . import models  # needed to get all component classes
 from .authorization import has_area_authorization_from_uuids
@@ -70,6 +71,7 @@ from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import ElectricComponentTemplate
+from .models import Grid
 from .models import ItemTemplate
 from .models import Load
 from .models import Project
@@ -787,6 +789,9 @@ class DetailsView(View):
             template_model = get_template_model(self.Model)
             context["templates"] = template_model.objects.filter(manager=request.user)
 
+        grid_create_form = GridFormFactory()
+        context["grid_create_form"] = grid_create_form
+
         for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
             context[model._meta.object_name] = model
         return context
@@ -860,6 +865,8 @@ class DetailsView(View):
             suffix = "_multi"
         if self.Model == Area:
             template = f"ports/partials/detail_sidebar/detail_sidebar_main{suffix}.html"
+        elif self.Model == Grid:
+            template = "ports/partials/create_grid_modal.html"
         elif self.Model == Load:
             template = f"ports/partials/detail_sidebar/detail_sidebar_load_detail{suffix}.html"
         elif issubclass(self.Model, ElectricComponent):
@@ -924,6 +931,15 @@ class DetailsView(View):
             )
         raise Http404("This instance does not exist")
 
+    def _get_initial_grids(self, area: Area):
+        initial = {}
+        for gtype in Grid.CarrierChoices:
+            if grids := Grid.objects.filter(areas=self.instance, carrier=gtype.value):
+                if grids.count() > 1:
+                    raise Exception("Only one grid per grid type and area allowed")
+                initial["grid_" + gtype] = grids.first()
+        return initial
+
     def get(self, request, *args, **kwargs):
         if not has_authorization(self.instance, request.user, "details"):
             return HttpResponse("You are not allowed to see details")
@@ -936,6 +952,8 @@ class DetailsView(View):
             # If Object permissions are queried multiple times consider using a
             # guardian.core.ObjectPermissionChecker
             initial = {"is_public": "details" in get_perms(group, self.instance)}
+            initial_grids = self._get_initial_grids(self.instance)
+            initial |= initial_grids
             self.context |= self.get_area_context()
         elif self.Model == Load:
             self.context["upload_form"] = TimeseriesUploadForm()
@@ -984,8 +1002,7 @@ class DetailsView(View):
             return HttpResponseBadRequest(
                 b"The creation of an object is not possible with an instance"
             )
-        # Create a new item and pass it back in the default state
-        self.Form(data={"internal_id": uuid4()})
+
         # do NOT pass the request.POST directly into a query
         # which could lead to unauthorized injections
         # ScenarioItem.create_new sanitizes input for allowed attributes
@@ -999,6 +1016,13 @@ class DetailsView(View):
             # Created areas are selected immediately
             self.context["createItemCallback"] = "this.click()"
             self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
+        elif self.Model == Grid:
+            form = self.Form(data=request.POST)
+            if form.is_valid():
+                instance = form.save(commit=False)
+                instance.scenario = self.scenario
+                instance.save()
+
         elif self.Model == Load or issubclass(self.Model, ElectricComponent):
             if self.Model == Load:
                 self.context["upload_form"] = TimeseriesUploadForm()
@@ -1222,6 +1246,14 @@ class DetailsView(View):
                         assign_perm("details", group, form.instance)
                     else:
                         remove_perm("details", group, form.instance)
+                    for key, value in form.cleaned_data.items():
+                        if "grid" in key and value:
+                            # Delete previous assignment of area -> grid
+                            Grid.areas.through.objects.filter(
+                                area=form.instance, grid__carrier=value.carrier
+                            ).delete()
+                            # Add the area to the selected grid
+                            value.areas.add(form.instance)
                 elif self.Model == Load:
                     # refresh the form, with the newly created instance.
                     # For Load forms this adjusts the selectable Timeseries
@@ -1363,7 +1395,7 @@ class ApiView(View):
     """Handle delete and duplicate for Project and Scenario, returning JSON responses."""
 
     action = None
-    ALLOWED_MODELS = (Project, Scenario)
+    ALLOWED_MODELS = (Project, Scenario, Grid)
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -1379,6 +1411,13 @@ class ApiView(View):
             )
         if self.Model not in self.ALLOWED_MODELS:
             return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
+
+        if self.action == "create":
+            scenario_internal_id = kwargs["scenario_internal_id"]
+            scenario = Scenario.objects.get(internal_id=scenario_internal_id)
+            is_authorized = has_authorization(scenario, request.user, "details")
+            return self.create(request, *args, **kwargs, scenario=scenario)
+
         self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
         is_authorized = self._check_permission(request)
         if not is_authorized:
@@ -1387,6 +1426,24 @@ class ApiView(View):
         if self.action == "duplicate":
             return self.duplicate(request, *args, **kwargs)
         return super().dispatch(request, *args, **kwargs)
+
+    def create(self, *args, scenario, **kwargs):
+        if self.Model == Grid:
+            form = GridFormFactory()(data=self.request.POST)
+            if form.is_valid():
+                instance = form.save(commit=False)
+                instance.scenario = scenario
+                instance.save()
+                area_internal_id = self.request.GET.get("area")
+                if area := Area.objects.filter(
+                    scenario=scenario, internal_id=area_internal_id
+                ).first():
+                    instance.areas.add(area)
+                response = JsonResponse({"success": True, "message": "Created"}, status=200)
+                # Trigger a refresh of the area, so the selects contain the new grid
+                response["HX-Trigger"] = f"refresh-{area.internal_id}"
+                return response
+        return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
     def _check_permission(self, request):
         is_authorized = False

@@ -65,6 +65,16 @@ UNITS = {
 }
 
 
+def GridFormFactory():
+    return modelform_factory(
+        Grid,
+        fields=["name", "carrier", "feed_in"],
+        widgets={
+            "name": forms.TextInput(),
+        },
+    )
+
+
 def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
@@ -103,7 +113,7 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
-    exclude = ["manager", "scenario", "updated_user"]
+    exclude = ["manager", "scenario", "updated_user", "description"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
         exclude = exclude + ["area_type", "geom"]
@@ -118,7 +128,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
                 "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
-                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+                # "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
         BaseForm.base_fields["is_public"] = forms.BooleanField(
@@ -131,7 +141,12 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         # get gridtypes. Each Area can be connected to one grid of each type
         for gtype in Grid.CarrierChoices:
             BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
-                queryset=Grid.objects.filter(scenario=kwargs["scenario"], carrier=gtype),
+                queryset=Grid.objects.filter(
+                    scenario=kwargs["scenario"],
+                    carrier=gtype,
+                ),
+                label=gtype.label + "-Netz",
+                required=False,
             )
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
@@ -226,13 +241,6 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
         # Needs hard overwrite
         kwargs["to_field_name"] = "internal_id"
         super().__init__(queryset, **kwargs)
-
-    def prepare_value(self, value):
-        # ModelForm initial data holds the related object's pk,
-        # while the choices are keyed by internal_id
-        if isinstance(value, int):
-            value = self.queryset.filter(pk=value).values_list("internal_id", flat=True).first()
-        return super().prepare_value(value)
 
 
 ALLOWED_UPLOAD_SUFFIXES = [".csv"]

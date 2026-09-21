@@ -156,9 +156,7 @@ class ItemTemplate(models.Model):
     """Abstract class for item templates"""
 
     id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
-    name = models.TextField(
-        blank=False, null=True, max_length=200, help_text=_("Name der Vorlage.")
-    )
+    name = models.TextField(verbose_name=_("Name"), blank=False, null=True, max_length=200)
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung der Vorlage.")
     )
@@ -649,7 +647,12 @@ class Grid(ScenarioItem):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    carrier = models.CharField(choices=CarrierChoices, help_text=_("Energieträger des Netzes."))
+    carrier = models.CharField(
+        choices=CarrierChoices,
+        help_text=_("Energieträger des Netzes."),
+        blank=False,
+        default=CarrierChoices.ELECTRICITY,
+    )
     feed_in = models.BooleanField(
         default=False, help_text=_("Gibt an, ob dieses Netz Einspeisung unterstützt.")
     )  # does this grid support feed-in?

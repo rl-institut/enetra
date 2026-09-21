@@ -20,6 +20,7 @@
                 const ok = (r.success);
                 console.log(r);
                 if (ok){
+                    $el.disabled=true;
                     $dispatch('success')
                     status = 'success';
                 } else {
