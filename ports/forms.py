@@ -200,6 +200,19 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 for k, v in self.cleaned_data.items()
                 if k in self.fields and k != "internal_ids" and v not in [None, ""]
             }
+            if self.instance._meta.model == Area:
+                grids = []
+                for key in data.copy():
+                    if "grid" in key:
+                        grids.append(data.pop(key))
+                for grid in grids:
+                    assert grid.scenario_id == qs.first().scenario_id
+                    # Delete old connection between grid and areas
+                    Grid.areas.through.objects.filter(
+                        area__in=qs, grid__scenario=qs.first().scenario, grid__carrier=grid.carrier
+                    ).delete()
+                    grid.areas.add(*qs)
+
             qs.update(**data)
             changed_items = []
             for instance in qs.all():
@@ -211,6 +224,18 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
     # Add units
     for field_name, field in BulkForm.base_fields.items():
         field.unit = UNITS.get(field_name, "")
+
+    # dynamic creation of grid selects
+    # get gridtypes. Each Area can be connected to one grid of each type
+    for gtype in Grid.CarrierChoices:
+        BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
+            queryset=Grid.objects.filter(
+                scenario=kwargs["scenario"],
+                carrier=gtype,
+            ),
+            label=gtype.label + "-Netz",
+            required=False,
+        )
 
     return BulkForm
 

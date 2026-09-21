@@ -789,9 +789,6 @@ class DetailsView(View):
             template_model = get_template_model(self.Model)
             context["templates"] = template_model.objects.filter(manager=request.user)
 
-        grid_create_form = GridFormFactory()
-        context["grid_create_form"] = grid_create_form
-
         for model in [m for m in apps.get_models() if issubclass(m, ScenarioItem)]:
             context[model._meta.object_name] = model
         return context
@@ -931,12 +928,19 @@ class DetailsView(View):
             )
         raise Http404("This instance does not exist")
 
-    def _get_initial_grids(self, area: Area):
+    def _get_initial_grids(self, area: Area = None, areas=None):
+        assert area or areas
         initial = {}
         for gtype in Grid.CarrierChoices:
-            if grids := Grid.objects.filter(areas=self.instance, carrier=gtype.value):
-                if grids.count() > 1:
-                    raise Exception("Only one grid per grid type and area allowed")
+            if area:
+                if grids := Grid.objects.filter(areas=area, carrier=gtype.value):
+                    if grids.count() > 1:
+                        raise Exception("Only one grid per grid type and area allowed")
+                    initial["grid_" + gtype] = grids.first()
+            elif (
+                grids := Grid.objects.filter(areas__in=areas, carrier=gtype.value).distinct()
+                and grids.count() == 1
+            ):
                 initial["grid_" + gtype] = grids.first()
         return initial
 
@@ -952,7 +956,7 @@ class DetailsView(View):
             # If Object permissions are queried multiple times consider using a
             # guardian.core.ObjectPermissionChecker
             initial = {"is_public": "details" in get_perms(group, self.instance)}
-            initial_grids = self._get_initial_grids(self.instance)
+            initial_grids = self._get_initial_grids(area=self.instance)
             initial |= initial_grids
             self.context |= self.get_area_context()
         elif self.Model == Load:
@@ -1115,7 +1119,9 @@ class DetailsView(View):
             return response
 
         if self.Model == Area or issubclass(self.Model, ElectricComponent):
+            initial_grids = self._get_initial_grids(areas=self.instances)
             merged_data = model_to_dict(self.instances[0])
+            merged_data |= initial_grids
             for x in self.instances:
                 data = model_to_dict(x)
                 for key, value in data.items():
@@ -1211,6 +1217,7 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
+
         self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
 
@@ -1438,6 +1445,9 @@ class ApiView(View):
                 if area := Area.objects.filter(
                     scenario=scenario, internal_id=area_internal_id
                 ).first():
+                    Grid.areas.through.objects.filter(
+                        area=area, grid__carrier=instance.carrier
+                    ).delete()
                     instance.areas.add(area)
                 response = JsonResponse({"success": True, "message": "Created"}, status=200)
                 # Trigger a refresh of the area, so the selects contain the new grid
@@ -1633,6 +1643,16 @@ def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
         "updated_at": timeseries.updated_at.isoformat(),
     }
     return JsonResponse(data)
+
+
+@login_required()
+def grid_modal_view(request, scenario_internal_id, area_internal_id):
+    scenario = Scenario.objects.get(internal_id=scenario_internal_id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("Not authorized")
+    area = Area.objects.get(scenario=scenario, internal_id=area_internal_id)
+    context = {"scenario": scenario, "area": area, "form": GridFormFactory()}
+    return render(request, "ports/partials/create_grid_modal.html", context=context)
 
 
 def testview(request: HttpRequest):

@@ -20,18 +20,18 @@
       </div>
       <form id="create-grid-form"
             class="flex flex-col gap-[16px]">
-        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=grid_create_form.name %}
-        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=grid_create_form.carrier %}
+        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.name %}
+        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.carrier %}
         <label class="flex items-center gap-[8px] cursor-pointer">
-          <c-input :field="grid_create_form.feed_in"
+          <c-input :field="form.feed_in"
               class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer" />
-          <span class="text-[14px] text-[#1e293b]">{{ grid_create_form.feed_in.label }}</span>
+          <span class="text-[14px] text-[#1e293b]">{{ form.feed_in.label }}</span>
         </label>
         <div class="htmx-indicator bg-red-500 loader" id="create-grid-indicator"></div>
 
         <c-api-button
           type='submit'
-          hx-post="{% url 'ports:api_create' scenario_internal_id=scenario.internal_id model="grid"  %}?area={{instance.internal_id}}"
+          hx-post="{% url 'ports:api_create' scenario_internal_id=scenario.internal_id model="grid"  %}?area={{area.internal_id}}"
           hx-target="this"
           x-effect="if (status=='success') {setTimeout(()=>htmx.closest($el, 'dialog').close(),1000)}"
           class="bg-[#0e7490] [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 justify-center px-4 py-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-base disabled:bg-gray-500 disabled:cursor-default"

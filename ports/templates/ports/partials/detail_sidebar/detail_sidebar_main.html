@@ -197,7 +197,9 @@
             {% endfor %}
             <button type="button"
                     hx-get="{% url "ports:grid_modal" scenario_internal_id=scenario.internal_id  area_internal_id=instance.internal_id %}"
-                    command="show-modal" commandfor="create-grid-modal-{{internal_id}}"
+                    hx-swap="innerHTML"
+                    hx-target="#grid-modal-container"
+                    hx-select="unset"
                     class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
               + Anschluss
             </button>
@@ -207,9 +209,12 @@
       </div>
     </details-sidebar-content>
   </form>
-
-<div id="grid-modal-container">
-{% include "ports/partials/create_grid_modal.html" with internal_id=internal_id %}
+{% comment %}
+ htmx loads the inner html of the modal and calls showModal
+{% endcomment %}
+<div id="grid-modal-container"
+hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+>
 </div>
 
 {% endif %}

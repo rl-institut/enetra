@@ -100,7 +100,6 @@
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    --animate-spin: spin 1s linear infinite;
     --blur-xs: 4px;
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -316,9 +315,6 @@
   .inset-y-0 {
     inset-block: calc(var(--spacing) * 0);
   }
-  .\!top-\[40px\] {
-    top: 40px !important;
-  }
   .top-0 {
     top: calc(var(--spacing) * 0);
   }
@@ -330,9 +326,6 @@
   }
   .top-6 {
     top: calc(var(--spacing) * 6);
-  }
-  .top-\[40px\]\! {
-    top: 40px !important;
   }
   .top-\[55px\] {
     top: 55px;
@@ -2883,11 +2876,6 @@
       cursor: not-allowed;
     }
   }
-  .disabled\:bg-gray-200 {
-    &:disabled {
-      background-color: var(--color-gray-200);
-    }
-  }
   .disabled\:bg-gray-500 {
     &:disabled {
       background-color: var(--color-gray-500);
@@ -3673,11 +3661,6 @@
   syntax: "*";
   inherits: false;
   initial-value: 1;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 @keyframes enter {
   from {

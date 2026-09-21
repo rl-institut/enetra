@@ -117,9 +117,14 @@ urlpatterns = [
         views.ApiView.as_view(action="create"),
         name="api_create",
     ),
+    # path(
+    #     "show_grid_modal/<uuid:scenario_internal_id>/<str:area_internal_ids>/",
+    #     views.grid_modal_view,
+    #     name="grid_modal",
+    # ),
     path(
-        "api/<str:model>/<uuid:scenario_internal_id>/create/",
-        views.ApiView.as_view(action="create"),
+        "show_grid_modal/<uuid:scenario_internal_id>/<uuid:area_internal_id>/",
+        views.grid_modal_view,
         name="grid_modal",
     ),
     path(
