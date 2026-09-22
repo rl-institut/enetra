@@ -618,7 +618,7 @@ class Load(ScenarioItem):
 
         if not template:
             template = Timeseries.objects.create(
-                scenario=scenario, name="Empty template", timeseries=[], spec_load=0
+                scenario=scenario, name="Empty template", timeseries={}, spec_load=0
             )
         loads = []
         for area in areas:

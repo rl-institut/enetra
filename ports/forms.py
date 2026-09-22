@@ -267,6 +267,13 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
         kwargs["to_field_name"] = "internal_id"
         super().__init__(queryset, **kwargs)
 
+    def prepare_value(self, value):
+        # ModelForm initial data holds the related object's pk,
+        # while the choices are keyed by internal_id
+        if isinstance(value, int):
+            value = self.queryset.filter(pk=value).values_list("internal_id", flat=True).first()
+        return super().prepare_value(value)
+
 
 ALLOWED_UPLOAD_SUFFIXES = [".csv"]
 
