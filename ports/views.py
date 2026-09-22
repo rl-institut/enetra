@@ -21,7 +21,9 @@ from django.db.models import BooleanField
 from django.db.models import ForeignObjectRel
 from django.db.models import ManyToManyRel
 from django.db.models import ObjectDoesNotExist
+from django.db.models import OuterRef
 from django.db.models import Q
+from django.db.models import Subquery
 from django.db.models import Value
 from django.db.transaction import atomic
 from django.forms import model_to_dict
@@ -937,9 +939,26 @@ class DetailsView(View):
                     if grids.count() > 1:
                         raise Exception("Only one grid per grid type and area allowed")
                     initial["grid_" + gtype] = grids.first()
-            elif grids := Grid.objects.filter(areas__in=areas, carrier=gtype.value).distinct():  # noqa
-                if grids.count() == 1:
-                    initial["grid_" + gtype] = grids.first()
+
+            else:
+                # annotate each area, if it has a grid of this type, with this grids id
+                # Subquery will fail if more than 1 grid_id is found per area and carrier type
+                # distinct casts the ids to a set which may contain None.
+                grid_ids = (
+                    areas.annotate(
+                        grid_id=Subquery(
+                            Grid.areas.through.objects.filter(
+                                area_id=OuterRef("pk"),
+                                grid__carrier=gtype.value,
+                            ).values("grid_id")
+                        )
+                    )
+                    .order_by()
+                    .values_list("grid_id", flat=True)
+                    .distinct()
+                )
+                if len(grid_ids) == 1 and grid_ids[0]:
+                    initial["grid_" + gtype] = Grid.objects.get(id=grid_ids[0])
         return initial
 
     def get(self, request, *args, **kwargs):
