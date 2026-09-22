@@ -156,6 +156,13 @@
               </c-select.button>
               {% endfor %}
             </c-select.index>
+            <button type="button"
+                    hx-post="{% url 'ports:api_remove_carrier' scenario_internal_id=scenario.internal_id model='grid' %}"
+                    hx-vals='{"carrier": "{{ field.name|cut:"grid_" }}"}'
+                    hx-swap="none"
+                    class="text-[12px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
+              Netztyp von allen ausgewählten Flächen entfernen
+            </button>
             {% endpartialdef %}
 
             {% for field in form %}

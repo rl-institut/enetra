@@ -147,6 +147,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 ),
                 label=gtype.label + "-Netz",
                 required=False,
+                empty_label="Kein Netz dieses Typs",
             )
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
@@ -235,6 +236,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             ),
             label=gtype.label + "-Netz",
             required=False,
+            empty_label="Keine Anpassung vornehmen",
         )
 
     return BulkForm

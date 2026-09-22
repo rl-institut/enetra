@@ -10,6 +10,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.db import transaction
 from django.test import TestCase
 from django.urls import reverse
+from guardian.shortcuts import assign_perm
 
 from ports.models import Area
 from ports.models import DuplicateGridCarrierError
@@ -51,6 +52,12 @@ class GridTestBase(TestCase):
     def api_create_url(self, model_name="grid"):
         return reverse(
             "ports:api_create",
+            kwargs={"scenario_internal_id": self.scenario.internal_id, "model": model_name},
+        )
+
+    def api_remove_carrier_url(self, model_name="grid"):
+        return reverse(
+            "ports:api_remove_carrier",
             kwargs={"scenario_internal_id": self.scenario.internal_id, "model": model_name},
         )
 
@@ -279,3 +286,161 @@ class GridGetInitialSelectionTest(GridTestBase):
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertNotIn("grid_electricity", form.data)
+
+
+class GridRemoveCarrierTest(GridTestBase):
+    """Removing all areas' link to a grid of a given carrier via ports:api_remove_carrier."""
+
+    def setUp(self):
+        super().setUp()
+        self.grid = Grid.objects.create(
+            scenario=self.scenario,
+            name="Electricity Grid",
+            carrier=Grid.CarrierChoices.ELECTRICITY,
+            manager=self.user,
+        )
+        self.grid.areas.add(self.area, self.area2)
+
+    def test_remove_carrier_from_multiple_areas(self):
+        url = self.api_remove_carrier_url()
+        data = {
+            "area_internal_ids": f"{self.area.internal_id},{self.area2.internal_id}",
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("success"))
+        self.assertEqual(response.get("HX-Trigger"), f"refresh-{self.area.internal_id}")
+
+        self.assertFalse(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )
+        self.assertFalse(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area2).exists()
+        )
+
+    def test_remove_carrier_from_single_area_keeps_other_area(self):
+        url = self.api_remove_carrier_url()
+        data = {
+            "area_internal_ids": str(self.area.internal_id),
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get("success"))
+
+        self.assertFalse(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )
+        self.assertTrue(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area2).exists()
+        )
+
+    def test_remove_carrier_invalid_carrier(self):
+        url = self.api_remove_carrier_url()
+        data = {
+            "area_internal_ids": str(self.area.internal_id),
+            "carrier": "not-a-real-carrier",
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json().get("success"))
+        self.assertTrue(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )
+
+    def test_remove_carrier_without_permission_is_rejected(self):
+        other_user = User.objects.create_user("otheruser", password="pass")
+        self.client.force_login(other_user)
+        url = self.api_remove_carrier_url()
+        data = {
+            "area_internal_ids": str(self.area.internal_id),
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )
+
+
+class GridAreaAuthorizationTest(TestCase):
+    """
+    ApiView.create (grid creation) and ApiView.remove_carrier are gated by
+    scenario-level "details" authorization, but the areas they mutate are
+    supplied directly in the request body (?area=... / area_internal_ids).
+    A user with scenario access but no area-level "details" permission for
+    a specific area must not be able to sneak that area's internal_id into
+    either request and have it mutated anyway.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user("grid_perm_owner", password="pass")
+        cls.outsider = User.objects.create_user("grid_perm_outsider", password="pass")
+        cls.project = Project.objects.create(name="Perm Test Projekt")
+        cls.scenario = Scenario.objects.create(
+            name="Perm Test Scenario", manager=cls.owner, project=cls.project
+        )
+        cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
+        cls.project_group.user_set.add(cls.owner)
+        cls.project_group.user_set.add(cls.outsider)
+        # Grant scenario-level "details" so ApiView.dispatch's scenario check
+        # passes for the outsider; area-level "details" is deliberately
+        # withheld, which is the permission actually being tested here.
+        assign_perm("details", cls.project_group, cls.scenario)
+
+        cls.area = Area.objects.create(
+            scenario=cls.scenario,
+            name="Owner Area",
+            area_type=Area.AreaTypeChoices.BUILDING,
+            usage=Area.BuildingUsageChoices.OFFICE,
+            geom=GEOSGeometry("SRID=4326;POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))"),
+            manager=cls.owner,
+        )
+        cls.grid = Grid.objects.create(
+            scenario=cls.scenario,
+            name="Owner Grid",
+            carrier=Grid.CarrierChoices.ELECTRICITY,
+            manager=cls.owner,
+        )
+        cls.grid.areas.add(cls.area)
+
+    def api_create_url(self):
+        return reverse(
+            "ports:api_create",
+            kwargs={"scenario_internal_id": self.scenario.internal_id, "model": "grid"},
+        )
+
+    def api_remove_carrier_url(self):
+        return reverse(
+            "ports:api_remove_carrier",
+            kwargs={"scenario_internal_id": self.scenario.internal_id, "model": "grid"},
+        )
+
+    def test_create_grid_rejects_area_without_area_permission(self):
+        self.client.force_login(self.outsider)
+        url = self.api_create_url()
+        data = {
+            "name": "Sneaked-in Grid",
+            "carrier": Grid.CarrierChoices.GAS,
+        }
+        response = self.client.post(url, data, QUERY_STRING=f"area={self.area.internal_id}")
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            Grid.objects.filter(scenario=self.scenario, name="Sneaked-in Grid").exists()
+        )
+
+    def test_remove_carrier_rejects_area_without_area_permission(self):
+        self.client.force_login(self.outsider)
+        url = self.api_remove_carrier_url()
+        data = {
+            "area_internal_ids": str(self.area.internal_id),
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )

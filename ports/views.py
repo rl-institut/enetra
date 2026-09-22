@@ -1444,14 +1444,16 @@ class ApiView(View):
         if self.Model not in self.ALLOWED_MODELS:
             return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
 
-        if self.action == "create":
+        if self.action in ("create", "remove_carrier"):
             scenario_internal_id = kwargs["scenario_internal_id"]
             scenario = Scenario.objects.get(internal_id=scenario_internal_id)
             if not has_authorization(scenario, request.user, "details"):
                 return JsonResponse(
                     {"success": False, "message": "Authorization required"}, status=403
                 )
-            return self.create(request, *args, **kwargs, scenario=scenario)
+            if self.action == "create":
+                return self.create(request, *args, **kwargs, scenario=scenario)
+            return self.remove_carrier(request, *args, **kwargs, scenario=scenario)
 
         self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
         is_authorized = self._check_permission(request)
@@ -1464,12 +1466,22 @@ class ApiView(View):
 
     def create(self, *args, scenario, **kwargs):
         if self.Model == Grid:
+            area_internal_id = self.request.GET.get("area")
+            if area_internal_id and not has_area_authorization_from_uuids(
+                [area_internal_id],
+                self.request.user,
+                "details",
+                scenario=scenario,
+                model=Area,
+            ):
+                return JsonResponse(
+                    {"success": False, "message": "Authorization required"}, status=403
+                )
             form = GridFormFactory()(data=self.request.POST)
             if form.is_valid():
                 instance = form.save(commit=False)
                 instance.scenario = scenario
                 instance.save()
-                area_internal_id = self.request.GET.get("area")
                 response = JsonResponse({"success": True, "message": "Created"}, status=200)
                 if area := Area.objects.filter(
                     scenario=scenario, internal_id=area_internal_id
@@ -1482,6 +1494,33 @@ class ApiView(View):
                     response["HX-Trigger"] = f"refresh-{area.internal_id}"
                 return response
         return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
+
+    def remove_carrier(self, *args, scenario, **kwargs):
+        if self.Model != Grid:
+            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
+        area_internal_ids = [
+            i for i in self.request.POST.get("area_internal_ids", "").split(",") if i
+        ]
+        carrier = self.request.POST.get("carrier")
+        if not area_internal_ids or carrier not in Grid.CarrierChoices.values:
+            return JsonResponse({"success": False, "message": "Invalid parameters"}, status=200)
+        if not has_area_authorization_from_uuids(
+            area_internal_ids,
+            self.request.user,
+            "details",
+            scenario=scenario,
+            model=Area,
+        ):
+            return JsonResponse({"success": False, "message": "Authorization required"}, status=403)
+        Grid.areas.through.objects.filter(
+            area__scenario=scenario,
+            area__internal_id__in=area_internal_ids,
+            grid__carrier=carrier,
+        ).delete()
+        response = JsonResponse({"success": True, "message": "Removed"}, status=200)
+        # Trigger a refresh of the multi detail sidebar, keyed off the first selected area
+        response["HX-Trigger"] = f"refresh-{area_internal_ids[0]}"
+        return response
 
     def _check_permission(self, request):
         is_authorized = False
