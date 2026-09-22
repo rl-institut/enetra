@@ -1447,7 +1447,10 @@ class ApiView(View):
         if self.action == "create":
             scenario_internal_id = kwargs["scenario_internal_id"]
             scenario = Scenario.objects.get(internal_id=scenario_internal_id)
-            is_authorized = has_authorization(scenario, request.user, "details")
+            if not has_authorization(scenario, request.user, "details"):
+                return JsonResponse(
+                    {"success": False, "message": "Authorization required"}, status=403
+                )
             return self.create(request, *args, **kwargs, scenario=scenario)
 
         self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
@@ -1467,6 +1470,7 @@ class ApiView(View):
                 instance.scenario = scenario
                 instance.save()
                 area_internal_id = self.request.GET.get("area")
+                response = JsonResponse({"success": True, "message": "Created"}, status=200)
                 if area := Area.objects.filter(
                     scenario=scenario, internal_id=area_internal_id
                 ).first():
@@ -1474,9 +1478,8 @@ class ApiView(View):
                         area=area, grid__carrier=instance.carrier
                     ).delete()
                     instance.areas.add(area)
-                response = JsonResponse({"success": True, "message": "Created"}, status=200)
-                # Trigger a refresh of the area, so the selects contain the new grid
-                response["HX-Trigger"] = f"refresh-{area.internal_id}"
+                    # Trigger a refresh of the area, so the selects contain the new grid
+                    response["HX-Trigger"] = f"refresh-{area.internal_id}"
                 return response
         return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
