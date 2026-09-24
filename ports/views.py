@@ -1466,9 +1466,14 @@ class ApiView(View):
 
     def create(self, *args, scenario, **kwargs):
         if self.Model == Grid:
-            area_internal_id = self.request.GET.get("area")
-            if area_internal_id and not has_area_authorization_from_uuids(
-                [area_internal_id],
+            # if area/s are provided check if the user is authorized
+            single_area_internal_id = self.request.GET.get("area")
+            multi_area_internal_ids = self.request.GET.get("areas", "").split(",")
+            areas_internal_ids = (
+                [single_area_internal_id] if single_area_internal_id else multi_area_internal_ids
+            )
+            if areas_internal_ids and not has_area_authorization_from_uuids(
+                areas_internal_ids,
                 self.request.user,
                 "details",
                 scenario=scenario,
@@ -1483,15 +1488,16 @@ class ApiView(View):
                 instance.scenario = scenario
                 instance.save()
                 response = JsonResponse({"success": True, "message": "Created"}, status=200)
-                if area := Area.objects.filter(
-                    scenario=scenario, internal_id=area_internal_id
-                ).first():
+                if areas_internal_ids:
+                    area_or_areas = Area.objects.filter(
+                        scenario=scenario, internal_id__in=areas_internal_ids
+                    )
                     Grid.areas.through.objects.filter(
-                        area=area, grid__carrier=instance.carrier
+                        area__in=area_or_areas, grid__carrier=instance.carrier
                     ).delete()
-                    instance.areas.add(area)
+                    instance.areas.add(*area_or_areas)
                     # Trigger a refresh of the area, so the selects contain the new grid
-                    response["HX-Trigger"] = f"refresh-{area.internal_id}"
+                    response["HX-Trigger"] = f"refresh-{areas_internal_ids[0]}"
                 return response
         return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
@@ -1713,12 +1719,23 @@ def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
 
 
 @login_required()
-def grid_modal_view(request, scenario_internal_id, area_internal_id):
+def grid_modal_view(request, scenario_internal_id, area_internal_id=None, areas_internal_ids=None):
+    assert area_internal_id or areas_internal_ids
     scenario = Scenario.objects.get(internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("Not authorized")
-    area = Area.objects.get(scenario=scenario, internal_id=area_internal_id)
-    context = {"scenario": scenario, "area": area, "form": GridFormFactory()}
+    if area_internal_id:
+        context = {
+            "scenario": scenario,
+            "area_internal_id": area_internal_id,
+            "form": GridFormFactory(),
+        }
+    else:
+        context = {
+            "scenario": scenario,
+            "areas_internal_ids": areas_internal_ids,
+            "form": GridFormFactory(),
+        }
     return render(request, "ports/partials/create_grid_modal.html", context=context)
 
 

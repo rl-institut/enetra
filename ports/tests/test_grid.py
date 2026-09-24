@@ -444,3 +444,83 @@ class GridAreaAuthorizationTest(TestCase):
         self.assertTrue(
             Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
         )
+
+
+class GridCreateFromMultiAreaTest(GridTestBase):
+    """
+    Creating a Grid from a multi-area selection via ports:api_create using
+    ?areas=<id1>,<id2>. RED tests: these currently fail because of bugs in
+    ApiView.create() on the multi-area path (see review of feature/grids):
+      - `areas_internal_id = [area_internal_id] or area_internal_ids` references
+        undefined names -> NameError
+      - `?areas=` is read as a raw comma-joined string, never split into a list
+      - `Grid.areas.through.objects.filter(area_in=...)` -> invalid lookup, should
+        be `area__in=`
+      - `instance.areas.add(area_or_areas)` passes a QuerySet instead of
+        unpacking it -> TypeError
+    """
+
+    def test_create_grid_from_multiple_areas(self):
+        url = self.api_create_url()
+        data = {
+            "name": "Multi Area Grid",
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+            "feed_in": "on",
+        }
+        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
+        response = self.client.post(url, data, QUERY_STRING=query_string)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("success"), payload)
+
+        grid = Grid.objects.get(scenario=self.scenario, name="Multi Area Grid")
+        self.assertIn(self.area, grid.areas.all())
+        self.assertIn(self.area2, grid.areas.all())
+
+    def test_create_grid_from_multiple_areas_replaces_existing_same_carrier_grid(self):
+        existing_grid = Grid.objects.create(
+            scenario=self.scenario,
+            name="Existing Electricity Grid",
+            carrier=Grid.CarrierChoices.ELECTRICITY,
+            manager=self.user,
+        )
+        existing_grid.areas.add(self.area, self.area2)
+
+        url = self.api_create_url()
+        data = {
+            "name": "Replacement Grid",
+            "carrier": Grid.CarrierChoices.ELECTRICITY,
+            "feed_in": "on",
+        }
+        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
+        response = self.client.post(url, data, QUERY_STRING=query_string)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("success"), payload)
+
+        new_grid = Grid.objects.get(scenario=self.scenario, name="Replacement Grid")
+        self.assertIn(self.area, new_grid.areas.all())
+        self.assertIn(self.area2, new_grid.areas.all())
+
+        existing_grid.refresh_from_db()
+        self.assertNotIn(self.area, existing_grid.areas.all())
+        self.assertNotIn(self.area2, existing_grid.areas.all())
+
+    def test_create_grid_from_multiple_areas_rejects_without_area_permission(self):
+        outsider = User.objects.create_user("multi-outsider", password="pass")
+        self.client.force_login(outsider)
+
+        url = self.api_create_url()
+        data = {
+            "name": "Sneaked-in Multi Grid",
+            "carrier": Grid.CarrierChoices.GAS,
+        }
+        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
+        response = self.client.post(url, data, QUERY_STRING=query_string)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            Grid.objects.filter(scenario=self.scenario, name="Sneaked-in Multi Grid").exists()
+        )

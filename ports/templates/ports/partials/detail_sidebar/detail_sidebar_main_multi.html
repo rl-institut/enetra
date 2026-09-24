@@ -171,6 +171,15 @@
             {% endif %}
             {% endfor %}
 
+            <button type="button"
+                    hx-get="{% url "ports:grid_modal_multi" scenario_internal_id=scenario.internal_id  areas_internal_ids=internal_ids %}"
+                    hx-swap="innerHTML"
+                    hx-target="#grid-modal-container"
+                    hx-select="unset"
+                    class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+              + Anschluss
+            </button>
+
           </div>
           </netzanschluss>
         </div>
@@ -178,6 +187,10 @@
     </details-sidebar-content>
   </form>
 
+<div id="grid-modal-container"
+hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+>
+</div>
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
 In case of a created element the list is appended through 'beforeend'
