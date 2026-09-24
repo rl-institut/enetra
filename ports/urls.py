@@ -122,11 +122,6 @@ urlpatterns = [
         views.ApiView.as_view(action="remove_carrier"),
         name="api_remove_carrier",
     ),
-    # path(
-    #     "show_grid_modal/<uuid:scenario_internal_id>/<str:area_internal_ids>/",
-    #     views.grid_modal_view,
-    #     name="grid_modal",
-    # ),
     path(
         "show_grid_modal/<uuid:scenario_internal_id>/<str:areas_internal_ids>/",
         views.grid_modal_view,

@@ -436,7 +436,7 @@ class GridAreaAuthorizationTest(TestCase):
         self.client.force_login(self.outsider)
         url = self.api_remove_carrier_url()
         data = {
-            "areas_internal_ids": str(self.area.internal_id),
+            "area_internal_ids": str(self.area.internal_id),
             "carrier": Grid.CarrierChoices.ELECTRICITY,
         }
         response = self.client.post(url, data)
