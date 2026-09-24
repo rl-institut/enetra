@@ -145,7 +145,7 @@
         hx-swap-oob="true"
       >
         <form>
-      <c-list :border=False customTitle >
+      <c-list.index id="vorlagen-list" :border=False customTitle hiddenInputName="vorlagen_selection" >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Vorlagen</h4>
@@ -157,7 +157,7 @@
             :hx-swap-oob="true"
             :defaultHxDetails=True
             :active=True
-            :selected=item.selected
+            :selected=None
             :indicated=False
             :item=item
             value='{{ item.internal_id }}'
@@ -177,7 +177,7 @@
           </c-slot>
           </c-list.item>
           {% endfor %}
-      </c-list>
+      </c-list.index>
         </form>
     </div>
     {% endpartialdef %}

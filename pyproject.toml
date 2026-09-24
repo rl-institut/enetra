@@ -71,8 +71,10 @@ dev = [
     "pre-commit>=4.2.0",
     # better testing, for example pytest --lf --reuse-db to run all test which failed last time and reuse the db
     # make sure to switch reuse of when migrations are needed
+    # xdist allows -n {cpus} flag, for multi cpu testing
     "pytest>=9.1.1",
     "pytest-django>=4.14.0",
+    "pytest-xdist>=3.8.0",
 ]
 docs = [
     # for automatic generation of mkdoc documentation
@@ -83,6 +85,7 @@ docs = [
 
 [tool.pytest]
 DJANGO_SETTINGS_MODULE = "enetra.settings"
+FAIL_INVALID_TEMPLATE_VARS = true
 
 # ==== djLint ====
 [tool.djlint]
