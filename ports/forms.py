@@ -14,6 +14,7 @@ from .authorization import has_authorization
 from .models import Area
 from .models import ChangedItem
 from .models import ElectricComponent
+from .models import Grid
 from .models import ItemTemplate
 from .models import Load
 from .models import Project
@@ -64,6 +65,16 @@ UNITS = {
 }
 
 
+def GridFormFactory():
+    return modelform_factory(
+        Grid,
+        fields=["name", "carrier", "feed_in"],
+        widgets={
+            "name": forms.TextInput(),
+        },
+    )
+
+
 def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
@@ -102,7 +113,7 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
-    exclude = ["manager", "scenario", "updated_user"]
+    exclude = ["manager", "scenario", "updated_user", "description"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
         exclude = exclude + ["area_type", "geom"]
@@ -117,7 +128,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
                 "name": forms.Textarea(attrs={"rows": 1, "cols": 15}),
-                "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
+                # "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
         BaseForm.base_fields["is_public"] = forms.BooleanField(
@@ -125,6 +136,20 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             widget=forms.CheckboxInput(),
             label="Für andere im Projekt sichtbar machen",
         )
+
+        # dynamic creation of grid selects
+        # get gridtypes. Each Area can be connected to one grid of each type
+        for gtype in Grid.CarrierChoices:
+            BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
+                queryset=Grid.objects.filter(
+                    scenario=kwargs["scenario"],
+                    carrier=gtype,
+                ),
+                label=gtype.label + "-Netz",
+                required=False,
+                empty_label="Kein Netz dieses Typs",
+            )
+
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         exclude = exclude + ["area"]
         field_classes = {}
@@ -176,6 +201,19 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 for k, v in self.cleaned_data.items()
                 if k in self.fields and k != "internal_ids" and v not in [None, ""]
             }
+            if self.instance._meta.model == Area:
+                grids = []
+                for key in data.copy():
+                    if "grid" in key:
+                        grids.append(data.pop(key))
+                for grid in grids:
+                    assert grid.scenario_id == qs.first().scenario_id
+                    # Delete old connection between grid and areas
+                    Grid.areas.through.objects.filter(
+                        area__in=qs, grid__scenario=qs.first().scenario, grid__carrier=grid.carrier
+                    ).delete()
+                    grid.areas.add(*qs)
+
             qs.update(**data)
             changed_items = []
             for instance in qs.all():
@@ -187,6 +225,19 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
     # Add units
     for field_name, field in BulkForm.base_fields.items():
         field.unit = UNITS.get(field_name, "")
+
+    # dynamic creation of grid selects
+    # get gridtypes. Each Area can be connected to one grid of each type
+    for gtype in Grid.CarrierChoices:
+        BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
+            queryset=Grid.objects.filter(
+                scenario=kwargs["scenario"],
+                carrier=gtype,
+            ),
+            label=gtype.label + "-Netz",
+            required=False,
+            empty_label="Keine Anpassung vornehmen",
+        )
 
     return BulkForm
 

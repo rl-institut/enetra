@@ -156,9 +156,7 @@ class ItemTemplate(models.Model):
     """Abstract class for item templates"""
 
     id = models.BigAutoField(primary_key=True, auto_created=True, editable=False)
-    name = models.TextField(
-        blank=False, null=True, max_length=200, help_text=_("Name der Vorlage.")
-    )
+    name = models.TextField(verbose_name=_("Name"), blank=False, null=True, max_length=200)
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung der Vorlage.")
     )
@@ -289,8 +287,11 @@ class ScenarioItem(ItemTemplate):
             sender=sender, instance=instance, created=kwargs.get("created")
         )
 
+    # Generic str should never lookup other db instance. this can lead to n fetches of
+    # scenario in the /admin/ panel which is terribly slow. verbose names can be set explicitly for the frontend
+    # self.scenario.name removed
     def __str__(self):
-        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario.name if self.scenario.name is not None else self.scenario_id})"
+        return f"{self._meta.object_name}: {self.name if self.name is not None else self.id} ({self.scenario_id})"
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
@@ -620,7 +621,7 @@ class Load(ScenarioItem):
 
         if not template:
             template = Timeseries.objects.create(
-                scenario=scenario, name="Empty template", timeseries=[], spec_load=0
+                scenario=scenario, name="Empty template", timeseries={}, spec_load=0
             )
         loads = []
         for area in areas:
@@ -649,7 +650,12 @@ class Grid(ScenarioItem):
         HEAT = "heat", "Wärme"
         H2 = "h2", "H2"
 
-    carrier = models.CharField(choices=CarrierChoices, help_text=_("Energieträger des Netzes."))
+    carrier = models.CharField(
+        choices=CarrierChoices,
+        help_text=_("Energieträger des Netzes."),
+        blank=False,
+        default=CarrierChoices.ELECTRICITY,
+    )
     feed_in = models.BooleanField(
         default=False, help_text=_("Gibt an, ob dieses Netz Einspeisung unterstützt.")
     )  # does this grid support feed-in?
@@ -1282,6 +1288,19 @@ class UploadedFile(ScenarioItem):
     content_object = GenericForeignKey("content_type", "object_id")
 
 
+@receiver(models.signals.m2m_changed, sender=Grid.areas.through)
+def prohibit_multi_grid_of_same_carrier_per_area(sender, instance, **kwargs):
+    # different type of m2m_changed signals exist.
+    # prohibition is done before it happens
+    if kwargs["action"] != "pre_add":
+        return
+    area_id_set = kwargs["pk_set"]
+    # instance is a grid not a Grid.areas.through
+    # does this through model already contain a row with this area and grid__carrier
+    if sender.objects.filter(area_id__in=area_id_set, grid__carrier=instance.carrier).exists():
+        raise DuplicateGridCarrierError("An area can only have one grid per carrier")
+
+
 @receiver(models.signals.pre_delete, sender=UploadedFile)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     if instance.file:
@@ -1293,3 +1312,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 # Custom Exceptions
 class MissingFormValueException(Exception):
     pass
+
+
+class DuplicateGridCarrierError(Exception):
+    """Raised when an Area would be linked to more than one Grid of the same carrier."""

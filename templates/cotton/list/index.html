@@ -1,6 +1,6 @@
-<c-vars id button modeCallback :customTitle=False :border=True :bulkMode=False count title description></c-vars>
+<c-vars id hiddenInputName="noInputNameGiven" button modeCallback="" :customTitle=False :border=True :bulkMode=False count title description></c-vars>
 <div id='{{id}}' class="cotton-list bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full "
-  x-data='{isBulkMode: {{bulkMode|lower}}, count:null, selected:"{{selected}}"}' {{attrs}}
+  x-data='{isBulkMode: {{bulkMode|lower}}, count:null, selected:""}' {{attrs}}
     @input ="
   deselectOtherLists($el);
   if (!isBulkMode){

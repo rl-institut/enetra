@@ -295,7 +295,6 @@ class DetailsViewPostTest(DetailsViewBase):
         internal_ids = f"{self.load.internal_id},{self.load2.internal_id}"
         data = {
             "internal_ids": internal_ids,
-            "description": "Bulk updated",
             "factor": "3.5",
             "template": self.load_template.internal_id,
         }
@@ -310,8 +309,6 @@ class DetailsViewPostTest(DetailsViewBase):
         )
         self.load.refresh_from_db()
         self.load2.refresh_from_db()
-        self.assertEqual(self.load.description, "Bulk updated")
-        self.assertEqual(self.load2.description, "Bulk updated")
         self.assertAlmostEqual(self.load.factor, 3.5)
         self.assertAlmostEqual(self.load2.factor, 3.5)
 
@@ -320,7 +317,6 @@ class DetailsViewPostTest(DetailsViewBase):
         internal_ids = f"{self.area.internal_id},{self.area2.internal_id}"
         data = {
             "internal_ids": internal_ids,
-            "description": "Bulk area update",
             "usage": Area.BuildingUsageChoices.STORAGE,
         }
         response = self.client.post(url, data)
@@ -333,16 +329,15 @@ class DetailsViewPostTest(DetailsViewBase):
         )
         self.area.refresh_from_db()
         self.area2.refresh_from_db()
-        self.assertEqual(self.area.description, "Bulk area update")
-        self.assertEqual(self.area2.description, "Bulk area update")
+        self.assertEqual(self.area.usage, Area.BuildingUsageChoices.STORAGE)
+        self.assertEqual(self.area2.usage, Area.BuildingUsageChoices.STORAGE)
 
     def test_post_generator_multi(self):
         url = self.details_url("generator")
         internal_ids = f"{self.generator.internal_id},{self.generator2.internal_id}"
         data = {
             "internal_ids": internal_ids,
-            "description": "Bulk generator update",
-            "carrier": Generator.CarrierChoices.DIESEL,
+            "carrier": Generator.CarrierChoices.OIL,
             "efficiency": "0.85",
         }
         response = self.client.post(url, data)
@@ -355,8 +350,10 @@ class DetailsViewPostTest(DetailsViewBase):
         )
         self.generator.refresh_from_db()
         self.generator2.refresh_from_db()
-        self.assertEqual(self.generator.description, "Bulk generator update")
-        self.assertEqual(self.generator2.description, "Bulk generator update")
+        self.assertEqual(self.generator.carrier, Generator.CarrierChoices.OIL)
+        self.assertEqual(self.generator2.carrier, Generator.CarrierChoices.OIL)
+        self.assertAlmostEqual(self.generator.efficiency, 0.85)
+        self.assertAlmostEqual(self.generator2.efficiency, 0.85)
 
 
 class DetailsViewDeleteTest(DetailsViewBase):
@@ -632,7 +629,7 @@ class DetailsViewPermissionsTest(TestCase):
         self.load.refresh_from_db()
         self.assertNotEqual(self.load.name, "TAMPERED_BY_USER_B")
 
-    def test_post_load_description_allowed_for_owner(self):
+    def test_post_load_factor_allowed_for_owner(self):
         self.client.force_login(self.user_a)
         url = reverse(
             "ports:details",
@@ -646,14 +643,13 @@ class DetailsViewPermissionsTest(TestCase):
             {
                 "internal_id": str(self.load.internal_id),
                 "name": self.load.name,
-                "description": "Owner set description",
-                "factor": "1.0",
+                "factor": "2.5",
                 "template": self.load_template.internal_id,
             },
         )
         self.assertNotIn(b"not allowed", response.content.lower())
         self.load.refresh_from_db()
-        self.assertEqual(self.load.description, "Owner set description")
+        self.assertAlmostEqual(self.load.factor, 2.5)
 
     def test_multi_post_load_blocked_for_non_owner(self):
         self.client.force_login(self.user_b)
@@ -668,14 +664,13 @@ class DetailsViewPermissionsTest(TestCase):
             url,
             {
                 "internal_ids": str(self.load.internal_id),
-                "description": "TAMPERED_MULTI_BY_USER_B",
                 "factor": "9.9",
                 "template": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())
         self.load.refresh_from_db()
-        self.assertNotEqual(self.load.description, "TAMPERED_MULTI_BY_USER_B")
+        self.assertNotEqual(self.load.factor, 9.9)
 
 
 @override_settings(DEBUG=False)
