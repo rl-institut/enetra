@@ -78,7 +78,7 @@ class GridCreateFromAreaTest(GridTestBase):
             "carrier": Grid.CarrierChoices.ELECTRICITY,
             "feed_in": "on",
         }
-        response = self.client.post(url, data, QUERY_STRING=f"area={self.area.internal_id}")
+        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload.get("success"))
@@ -426,24 +426,24 @@ class GridAreaAuthorizationTest(TestCase):
             "name": "Sneaked-in Grid",
             "carrier": Grid.CarrierChoices.GAS,
         }
-        response = self.client.post(url, data, QUERY_STRING=f"area={self.area.internal_id}")
-        self.assertEqual(response.status_code, 403)
+        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
         self.assertFalse(
             Grid.objects.filter(scenario=self.scenario, name="Sneaked-in Grid").exists()
         )
+        self.assertEqual(response.status_code, 403)
 
     def test_remove_carrier_rejects_area_without_area_permission(self):
         self.client.force_login(self.outsider)
         url = self.api_remove_carrier_url()
         data = {
-            "area_internal_ids": str(self.area.internal_id),
+            "areas_internal_ids": str(self.area.internal_id),
             "carrier": Grid.CarrierChoices.ELECTRICITY,
         }
         response = self.client.post(url, data)
-        self.assertEqual(response.status_code, 403)
         self.assertTrue(
             Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
         )
+        self.assertEqual(response.status_code, 403)
 
 
 class GridCreateFromMultiAreaTest(GridTestBase):

@@ -128,14 +128,9 @@ urlpatterns = [
     #     name="grid_modal",
     # ),
     path(
-        "show_grid_modal/<uuid:scenario_internal_id>/<uuid:area_internal_id>/",
-        views.grid_modal_view,
-        name="grid_modal_single",
-    ),
-    path(
         "show_grid_modal/<uuid:scenario_internal_id>/<str:areas_internal_ids>/",
         views.grid_modal_view,
-        name="grid_modal_multi",
+        name="grid_modal",
     ),
     path(
         "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",

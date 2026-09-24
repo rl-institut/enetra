@@ -69,6 +69,10 @@ dev = [
     # to force commits during work in progress use
     # git commit --no-verify -m "commit message"
     "pre-commit>=4.2.0",
+    # better testing, for example pytest --lf --reuse-db to run all test which failed last time and reuse the db
+    # make sure to switch reuse of when migrations are needed
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
 ]
 docs = [
     # for automatic generation of mkdoc documentation
@@ -76,6 +80,9 @@ docs = [
     "mkdocs>=1.6.1",
     "mkdocstrings-python>=1.16.12",
 ]
+
+[tool.pytest]
+DJANGO_SETTINGS_MODULE = "enetra.settings"
 
 # ==== djLint ====
 [tool.djlint]
