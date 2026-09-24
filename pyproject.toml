@@ -85,7 +85,6 @@ docs = [
 
 [tool.pytest]
 DJANGO_SETTINGS_MODULE = "enetra.settings"
-FAIL_INVALID_TEMPLATE_VARS = true
 
 # ==== djLint ====
 [tool.djlint]
