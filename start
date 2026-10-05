@@ -5,6 +5,9 @@ set -o pipefail
 set -o nounset
 
 # TODO: Replace with gunicorn, collect static etc
+python manage.py collectstatic -c --noinput &
 python manage.py makemigrations
 python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
+
+# Set the number of Gunicorn Workers to the Envvariable. Defaults to 4. make sure to bind to 0.0.0.0:8000
+python -m gunicorn enetra.wsgi --bind 0.0.0.0:8000 --chdir=/app --workers ${GUNICORN_WORKER_NR:-4}
