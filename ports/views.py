@@ -447,7 +447,8 @@ def home(request):
             # fallback for development
             s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
         else:
-            return Http404()
+            # no scenario id --> back to base view (redirect of core:login)
+            return redirect(reverse("core:login"))
     return redirect(
         reverse(
             "ports:enetra_tool",
@@ -1310,7 +1311,7 @@ def create_scenario(request, scenario_internal_id: UUID):
         context["form"] = form
         context["success"] = success
 
-    return render(request, "ports/partials/create_scenario.html", context)
+    return render(request, "ports/partials/create_scenario_modal.html", context)
 
 
 @ensure_project_rights
