@@ -930,7 +930,7 @@ class DetailsView(View):
             )
         raise Http404("This instance does not exist")
 
-    def _get_initial_grids(self, area: Area = None, areas=None):
+    def _get_initial_grids(self, area: Area | None = None, areas=None):
         assert area or areas
         initial = {}
         for gtype in Grid.CarrierChoices:
@@ -1165,12 +1165,10 @@ class DetailsView(View):
                         ):
                             continue
                         template_value = vars(template).get(field)
-                        if template_value is not None:
-                            template_data[field] = template_value
 
                         if template_value is not None:
                             template_data[field] = template_value
-                            # mark the fields populated by the templated for styling/indicating
+                            # mark the fields populated by the template for styling/indicating
                             self.Form.base_fields[field].widget.attrs["data-template-value"] = (
                                 template_value
                             )
@@ -1278,14 +1276,20 @@ class DetailsView(View):
                         assign_perm("details", group, form.instance)
                     else:
                         remove_perm("details", group, form.instance)
+
+                    # Delete previous assignment of area -> grid
+                    # All connections are recreated next based on the current selection
+                    Grid.areas.through.objects.filter(area=form.instance).delete()
+                    grid_areas = []
                     for key, value in form.cleaned_data.items():
-                        if "grid" in key and value:
-                            # Delete previous assignment of area -> grid
-                            Grid.areas.through.objects.filter(
-                                area=form.instance, grid__carrier=value.carrier
-                            ).delete()
+                        if "grid" in key and isinstance(value, Grid):
+                            grid_area = Grid.areas.through(
+                                area_id=form.instance.id, grid_id=value.id
+                            )
                             # Add the area to the selected grid
-                            value.areas.add(form.instance)
+                            grid_areas.append(grid_area)
+                    Grid.areas.through.objects.bulk_create(grid_areas)
+
                 elif self.Model == Load:
                     # refresh the form, with the newly created instance.
                     # For Load forms this adjusts the selectable Timeseries
@@ -1447,7 +1451,7 @@ class ApiView(View):
         if self.action in ("create", "remove_carrier"):
             scenario_internal_id = kwargs["scenario_internal_id"]
             scenario = Scenario.objects.get(internal_id=scenario_internal_id)
-            if not has_authorization(scenario, request.user, "details"):
+            if not has_authorization(scenario.project, request.user, "details"):
                 return JsonResponse(
                     {"success": False, "message": "Authorization required"}, status=403
                 )

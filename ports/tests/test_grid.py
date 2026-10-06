@@ -186,6 +186,26 @@ class GridPostFromAreaTest(GridTestBase):
             Grid.objects.filter(internal_id=self.other_grid.internal_id, areas=self.area).exists()
         )
 
+    def test_post_area_single_clears_grid_selection(self):
+        # Regression test: clearing a grid selection (submitting no value for
+        # grid_electricity) must remove the existing area -> grid link, not
+        # just leave it stale because the field is empty.
+        self.grid.areas.add(self.area)
+        url = self.details_url("area")
+        data = {
+            "internal_id": str(self.area.internal_id),
+            "name": self.area.name,
+            "usage": Area.BuildingUsageChoices.OFFICE,
+            "grid_electricity": "",
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context.get("success"))
+
+        self.assertFalse(
+            Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
+        )
+
     def test_post_area_multi_selects_grid_for_all_areas(self):
         url = self.details_url("area")
         internal_ids = f"{self.area.internal_id},{self.area2.internal_id}"
@@ -444,6 +464,30 @@ class GridAreaAuthorizationTest(TestCase):
             Grid.objects.filter(internal_id=self.grid.internal_id, areas=self.area).exists()
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_create_grid_allowed_via_project_level_permission(self):
+        # Regression test: ApiView.dispatch must authorize create/remove_carrier
+        # against scenario.project, not scenario itself. A user who is neither
+        # the scenario's manager nor a superuser, but has "details" permission
+        # on the Project (the normal way project collaborators are granted
+        # access, see assign_perm usage in ports/util.py), must be let through.
+        collaborator = User.objects.create_user("grid_perm_collaborator", password="pass")
+        collaborator_group, _ = Group.objects.get_or_create(name="Project Collaborators Grid")
+        collaborator_group.user_set.add(collaborator)
+        assign_perm("details", collaborator_group, self.project)
+        assign_perm("details", collaborator_group, self.area)
+
+        self.client.force_login(collaborator)
+        url = self.api_create_url()
+        data = {
+            "name": "Collaborator Grid",
+            "carrier": Grid.CarrierChoices.GAS,
+        }
+        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Grid.objects.filter(scenario=self.scenario, name="Collaborator Grid").exists()
+        )
 
 
 class GridCreateFromMultiAreaTest(GridTestBase):

@@ -1290,6 +1290,8 @@ class UploadedFile(ScenarioItem):
 
 @receiver(models.signals.m2m_changed, sender=Grid.areas.through)
 def prohibit_multi_grid_of_same_carrier_per_area(sender, instance, **kwargs):
+    # NOTE: This does not catch the direct bulk creation via through ,e.g. Grid.areas.through.bulk_create(..)
+
     # different type of m2m_changed signals exist.
     # prohibition is done before it happens
     if kwargs["action"] != "pre_add":
