@@ -124,8 +124,8 @@
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label>
               <c-field-required :field=form.name />
             </div>
-      <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
-        {% for value, label in form.fields.usage.choices %}
+      <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue="form.usage.value" :field=form.usage >
+        {% for value, label in form.usage.field.choices %}
           <c-select.button selectValue={{value}}>
             {{ label }}
           </c-select.button>
@@ -165,7 +165,7 @@
             <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
           </c-slot>
         </c-detail-sidebar-section>
-        <netzanschluss class="block" inert>
+        <netzanschluss class="block">
         <div class="flex flex-col gap-[16px] pt-[8px">
           <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
             <span class="w-[16px] h-[16px]">
@@ -176,40 +176,47 @@
             NETZANSCHLÜSSE
             <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
           </h3>
-            not implemented/ made inert
-          <div class="flex flex-col gap-[8px] ">
-            <label class="font-semibold text-[14px] text-[#1e293b]">Stromnetz</label>
-            <c-select.index selectedValue="HV" inputName="AnschlussType">
-              <c-select.button selectValue="HV">
-                Hochspannung
-              </c-select.button>
-              <c-select.button selectValue="MV">
-                Mittelspannung
-              </c-select.button>
-              <c-select.button selectValue="LV">
-                Niederspannung
-              </c-select.button>
-            </c-select.index>
-          </div>
-          <button type="button"
-                  class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
-            + Anschluss
-          </button>
-          <label class="flex items-center gap-[8px] cursor-pointer">
-            <input
-              type="checkbox"
-              defaultChecked={itemName !== 'Lagerhalle 2'}
-              class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer"
-              />
-              <span class="text-[14px] text-[#1e293b]">Fläche speist in das Netz ein</span>
-            </label>
-          </div>
 
+
+            {% partialdef grid_select %}
+            <label class="font-semibold text-[14px] text-[#1e293b]">{{field.label}}</label>
+            <c-select.index :id="field.name|concat:_select_container" classButton="border-[#cbd5e1]!" :inputName=field.name :selectedValue=field.value
+             :selectedValue=field.value >
+              {% for value, label in field.field.choices %}
+              <c-select.button :selectValue="value" >
+                {{ label }}
+              </c-select.button>
+              {% endfor %}
+            </c-select.index>
+            {% endpartialdef %}
+
+            {% for field in form %}
+            {% if 'grid' in field.name %}
+            {% partial grid_select %}
+            {% endif %}
+            {% endfor %}
+            <button type="button"
+                    hx-get="{% url "ports:grid_modal" scenario_internal_id=scenario.internal_id  areas_internal_ids=instance.internal_id %}"
+                    hx-swap="innerHTML"
+                    hx-target="#grid-modal-container"
+                    hx-select="unset"
+                    class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+              + Anschluss
+            </button>
+          </div>
           </netzanschluss>
         </div>
       </div>
     </details-sidebar-content>
   </form>
+{% comment %}
+ htmx loads the inner html of the modal and calls showModal
+{% endcomment %}
+<div id="grid-modal-container"
+hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+>
+</div>
+
 {% endif %}
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.

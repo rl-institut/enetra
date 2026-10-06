@@ -1,0 +1,53 @@
+  {% comment %}
+  Grid creation is a separate resource from the Area form above, so it lives in its
+  own <dialog> (same pattern as create_scenario_modal.html / scenario_calculation_modal.html)
+  instead of being nested inside the Area <form>.
+  {% endcomment %}
+  <dialog id="create-grid-modal"
+          closedby="any"
+          class="fixed inset-0 m-auto overflow-visible bg-transparent p-0 backdrop:bg-black/80">
+    <div class="relative w-full max-w-[500px] content-stretch items-start rounded-[16px] bg-white p-[24px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.95)]">
+      <div class="relative flex w-full shrink-0 content-stretch items-center justify-between mb-[16px]">
+        <p class="relative shrink-0 font-['Inter:Regular',sans-serif] text-[20px] leading-[normal] font-normal text-[#1e293b] not-italic">
+          Netzanschluss erstellen
+        </p>
+        <button type="button"
+                commandfor="create-grid-modal"
+                command="close"
+                class="relative size-[24px] shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-opacity hover:opacity-60">
+          <c-icon.close />
+        </button>
+      </div>
+      <form id="create-grid-form"
+            class="flex flex-col gap-[16px]">
+        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.name %}
+        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.carrier %}
+        <label class="flex items-center gap-[8px] cursor-pointer">
+          <c-input :field="form.feed_in"
+              class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer" />
+          <span class="text-[14px] text-[#1e293b]">{{ form.feed_in.label }}</span>
+        </label>
+        <div class="htmx-indicator bg-red-500 loader" id="create-grid-indicator"></div>
+        <c-api-button
+          type='submit'
+          :hx-post="{% url 'ports:api_create' scenario_internal_id=scenario.internal_id model="grid"  %}?areas={{areas_internal_ids}}"
+          hx-target="this"
+          x-effect="if (status=='success') {setTimeout(()=>htmx.closest($el, 'dialog').close(),1000)}"
+          class="bg-[#0e7490] [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 justify-center px-4 py-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-base disabled:bg-gray-500 disabled:cursor-default"
+          x-cloak
+        >
+          <div x-show="status=='default'"><i data-lucide="save" class="w-4 h-4 shrink-0"></i>Anschluss erstellen<span class='htmx-indicator loader align-middle'></span></div>
+          <div x-show="status=='success'">Gespeichert</div>
+          <div x-show="status=='error'">Fehlgeschlagen</div>
+        </c-api-button>
+        <button type="button"
+                commandfor="create-grid-modal"
+                command="close"
+                class="bg-white content-stretch flex gap-[8px] items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 w-full border border-[#cbd5e1] border-solid cursor-pointer hover:bg-[#f8fafc] transition-colors">
+          <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
+            Abbrechen
+          </p>
+        </button>
+      </form>
+    </div>
+  </dialog>
