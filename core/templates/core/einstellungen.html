@@ -161,7 +161,7 @@
             <form action="{% url 'core:delete_user' %}" method="POST">
               {% csrf_token %}
             <button
-                onclick="console.log( 'foo') ; return (confirm('Willst du sicher dein Konto löschen? Dies löscht unwiederrufflich alle von dir erstellten Projekte, Szenarien, Flächen und Komponenten.'))"
+                onclick="return (confirm('Willst du sicher dein Konto löschen? Dies löscht unwiederrufflich alle von dir erstellten Projekte, Szenarien, Flächen und Komponenten.'))"
                 class="select-none px-6 py-2 text-red-700 rounded-full outline outline-1 outline-offset-[-1px] outline-red-300 hover:bg-red-600 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer shrink-0">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
               <span class="text-sm font-semibold">Konto löschen</span>

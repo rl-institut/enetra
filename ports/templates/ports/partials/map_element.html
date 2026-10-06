@@ -43,7 +43,9 @@
       {% if form.instance.has_authorization %}
       <c-map-element.marker :name='form.instance.name'>
 
-      {% for component in  form.instance.generator_set.all %}
+      {% for item_set in form.instance.get_all_electric_components %}
+
+      {% for component in  item_set %}
           <!-- Put a marker icon on the map -->
           <c-map-element.marker-icon>
             <c-component is="{{component.icon}}" class='w-[28px] h-[28px]'/>
@@ -58,6 +60,7 @@
             </c-slot>
           </c-map-element.marker-icon>
         {% endfor %}
+      {% endfor %}
       </c-map-element.marker>
       {% endif %}
     </template>

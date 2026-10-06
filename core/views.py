@@ -35,6 +35,10 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
+from core.forms import AuthForm
+from core.forms import ChangeAccountDataForm
+from core.forms import InviteForm
+from core.forms import SignUpForm
 from core.models import Invite
 from core.models import InviteError
 from core.models import Role
@@ -46,11 +50,6 @@ from ports.models import ScenarioItem
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
 from ports.util import prefetch_projects_users
-
-from .forms import AuthForm
-from .forms import ChangeAccountDataForm
-from .forms import InviteForm
-from .forms import SignUpForm
 
 
 class LoginViewWithRemember(LoginView):

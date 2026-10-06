@@ -34,13 +34,12 @@
       }"
     >
     <div class="flex items-center justify-between mb-[24px]">
-      <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
-
+        <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
       {% with hx_target="#form_"|add:internal_id %}
-        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+        {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target template_url=template_url form_url=form_url %}
       {% endwith %}
     </div>
-
     <div class="flex flex-col gap-[16px]">
 
       <div class="flex flex-col gap-[8px]">
@@ -63,11 +62,12 @@
           listener scoped to jquery land
           {% endcomment %}
           <div
+            class='make-select2'
             x-data
-            x-init="$('select', $el).select2({width: '100%' });
+            x-init="
             $('select', $el).on('change', (e)=>{
             selectedTemplate=e.target.value
-            })
+            });
             "
           >
             {{form.template}}
@@ -86,7 +86,7 @@
               data_url :null,
               template_url : {
             {% for template in form.template.field.queryset %}
-            "{{template.internal_id}}": "{% url "ports:api_load_template" scenario.internal_id template.internal_id %}",{% endfor %} } } '
+            "{{template.internal_id}}": "{% url "ports:api_timeseries" scenario.internal_id template.internal_id %}",{% endfor %} } } '
               class="w-full" x-effect="loadPlot(template_url[selectedTemplate], $refs.plot)"
           >
               <div x-ref="plot" class="h-64 w-full"></div>
@@ -108,7 +108,7 @@
           <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
           <button type="button"
               class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
-              hx-post="{% url 'ports:template_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}"
+              hx-post="{% url 'ports:timeseries_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}"
               {% with hx_target="#form_"|add:internal_id %}
               hx-target='{{hx_target}}'
               hx-select='{{hx_target}}'
@@ -196,8 +196,8 @@
           <div class="relative">
             <input
               type="text"
-              @change='multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
-              x-bind:value='templates[selectedTemplate][selectedDuration]*multiplicator'
+              @change='if (!selectedTemplate) return;multiplicator=$el.value/templates[selectedTemplate][selectedDuration]'
+              x-bind:value='if (!selectedTemplate) return;templates[selectedTemplate][selectedDuration]*multiplicator'
               class="bg-white border border-[#cbd5e1] rounded px-[16px] py-[12px] text-[14px] text-[#1e293b] w-full pr-[70px] pb-2"
             />
             <span class="absolute right-[16px] top-1/2 -translate-y-1/2 text-[14px] text-[#64748b]">kWh</span>
@@ -208,7 +208,8 @@
 
       {{form.non_field_errors}}
       {% with hx_target="#form_"|add:internal_id %}
-      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target %}
+        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as save_url %}
+      {% include "ports/partials/instance_save_button.html" with instance=instance scenario=scenario success=success errors=errors hx_target=hx_target  save_url=save_url %}
       {% endwith %}
 
       <button

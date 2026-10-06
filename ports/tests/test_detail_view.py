@@ -17,9 +17,9 @@ from guardian.shortcuts import remove_perm
 from ports.models import Area
 from ports.models import Generator
 from ports.models import Load
-from ports.models import LoadTemplate
 from ports.models import Project
 from ports.models import Scenario
+from ports.models import Timeseries
 
 
 class DetailsViewBase(TestCase):
@@ -52,7 +52,7 @@ class DetailsViewBase(TestCase):
             geom=GEOSGeometry("SRID=4326;POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))"),
         )
 
-        cls.load_template = LoadTemplate.objects.create(
+        cls.load_template = Timeseries.objects.create(
             scenario=cls.scenario,
             name="Template",
             manager=cls.user,
@@ -503,14 +503,14 @@ class DetailsViewPermissionsTest(TestCase):
             geom=GEOSGeometry("SRID=4326;POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))"),
             manager=cls.user_a,
         )
-        cls.load_template = LoadTemplate.objects.create(
+        cls.load_template = Timeseries.objects.create(
             scenario=cls.scenario,
             name="Template",
             manager=cls.user_a,
             timeseries={},
             spec_load=0.0,
         )
-        cls.load_template_b = LoadTemplate.objects.create(
+        cls.load_template_b = Timeseries.objects.create(
             scenario=cls.scenario,
             manager=cls.user_b,
             name="Template",

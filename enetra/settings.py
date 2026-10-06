@@ -38,6 +38,7 @@ env.read_env(str(BASE_DIR / ".env"))
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+CARTO_API_TOKEN = env("DJANGO_CARTO_API_TOKEN", default="missing_token")
 
 DATA_USER = env.str("DATA_USER", default="data")
 # Password for the auto-created 'data' superuser (see ports migration 0018).
@@ -157,6 +158,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "ports.context_processor.default_ports_context",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
@@ -213,8 +215,8 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 LOGIN_URL = "core:login"
-LOGIN_REDIRECT_URL = "/"  # redirect to landing page after login
-LOGOUT_REDIRECT_URL = "/"  # redirect to landing page after logout as well
+LOGIN_REDIRECT_URL = "/landing/"  # redirect to landing page after login
+LOGOUT_REDIRECT_URL = "/landing/"  # redirect to landing page after logout as well
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
