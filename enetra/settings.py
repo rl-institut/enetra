@@ -345,3 +345,35 @@ with open("ports/static/ports/events.json") as f:
 OEMOF_TS = env.int("OEMOF_TS", default=15)  # minutes per timestep
 OEMOF_EPS = env.float("OEMOF_EPS", default=1e-10)  # a really small number
 OEMOF_DAYS = env.int("OEMOF_DAYS", default=1)  # number of days to simulate
+
+# NOTE: By default these are secure settings. Can always be explicitly overwritten by .env
+# Small value for testing, maybe increase?
+# https://docs.djangoproject.com/en/5.1/ref/middleware/#http-strict-transport-security
+SECURE_HSTS_SECONDS = env.bool("DJANGO_SECURE_HSTS_SECONDS", default=60)
+# https://docs.djangoproject.com/en/dev/ref/settings/#secure-ssl-redirect
+SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=True)
+CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=True)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+SECURE_HSTS_PRELOAD = env.bool("DJANGO_SECURE_HSTS_PRELOAD", default=True)
+# https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# under which URL can server be reached? Used in email verification
+DJANGO_HOST_URL = env("DJANGO_HOST_URL", default="").rstrip("/")
+
+if not DJANGO_HOST_URL:
+    print("No DJANGO_HOST_URL set, emails might contain only partial links")
+
+# NOTE: Explicitly setting local development will use unsecure development defaults instead
+if env.bool("DJANGO_LOCAL_DEVELOPMENT", default=False):
+    # NOTE: Development defaults
+    SECURE_HSTS_SECONDS = env.bool("DJANGO_SECURE_HSTS_SECONDS", default=0)
+    # https://docs.djangoproject.com/en/dev/ref/settings/#secure-ssl-redirect
+    SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
+    SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=False)
+    CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=False)
+    # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
+    SECURE_PROXY_SSL_HEADER = env.tuple("SECURE_PROXY_SSL_HEADER", default=None)
+
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+    SECURE_HSTS_PRELOAD = env.bool("DJANGO_SECURE_HSTS_PRELOAD", default=True)

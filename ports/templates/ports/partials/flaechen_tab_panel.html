@@ -34,7 +34,7 @@
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
             :active=True
-            :selected=False
+            :selected=None
             :indicated=False
             :item=item
             hx-swap-oob='true'
@@ -57,7 +57,7 @@
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :active=False
-            :selected=False
+            :selected=None
             :indicated=False
             :item=item
             hx-swap-oob='true'
