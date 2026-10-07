@@ -39,8 +39,6 @@
             <p class="text-[14px] text-[#64748b]">Keine Komponente hinzugefügt</p>
             {% endif %}
 
-          <button
-
         {% for model in models %}
           <button
             hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model=model  %}"
