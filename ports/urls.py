@@ -118,6 +118,11 @@ urlpatterns = [
         name="start_solver",
     ),
     path(
+        "ergebnisse/<uuid:scenario_internal_id>/",
+        views.scenario_results,
+        name="ergebnisse",
+    ),
+    path(
         "debug/switch-user/<str:username>/",
         views.debug_switch_user,
         name="debug_switch_user",

@@ -87,11 +87,6 @@ urlpatterns = [
         lambda x: render(x, template_name="core/szenarienvergleich.html"),
         name="szenarienvergleich",
     ),
-    path(
-        "ergebnisse/<uuid:scenario_internal_id>/",
-        views.scenario_results,
-        name="ergebnisse",
-    ),
     # Trigger Email with reset link
     path(
         "login/forgot_password/",

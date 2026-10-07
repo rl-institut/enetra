@@ -73,7 +73,7 @@ def db_to_energysystem(scenario, started_at):
         grid_bus = grid_busses[grid.id]
         connected_grid = grid.connected_to
         connected_bus = grid_busses[connected_grid.id]
-        # create connection
+        # create connection between grids (i.e. their busses) via Link
         conn = solph.components.Link(
             label=f"Conn_{grid.internal_id}_{connected_grid.internal_id}_{grid.carrier}",
             inputs={
@@ -260,6 +260,15 @@ def store_results(scenario, model, flows, started_at):
     )
     # delete old result data
     result.resultdata_set.all().delete()
+
+    # time
+    ResultData.objects.create(
+        result=result,
+        from_node=None,
+        to_node=None,
+        attribute="timeindex",
+        value=[t.timestamp() for t in model.es.timeindex],
+    )
 
     # flows
     for bus, flow in results["flow"].items():

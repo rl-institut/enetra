@@ -1,4 +1,5 @@
 import inspect
+import json
 import logging
 import traceback
 from collections.abc import Iterable
@@ -68,6 +69,7 @@ from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import ElectricComponentTemplate
+from .models import Grid
 from .models import ItemTemplate
 from .models import Load
 from .models import Project
@@ -487,6 +489,95 @@ def start_solver(request, scenario_internal_id: UUID):
     # TODO: check if another task is already running
     task = tasks.oemof_task.delay(scenario.id)
     return JsonResponse({"task_id": task.task_id})
+
+
+@login_required()
+def scenario_results(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden()
+    result = scenario.result
+    if result is None:
+        # scenario not simulated yet
+        return Http404()
+    if result.started_at < scenario.items_updated_at:
+        return HttpResponse("Outdated simulation", status=500)
+    result_data = result.resultdata_set.all()
+    # get areas information (geometry, components)
+    areas = [
+        {
+            "name": area.name,
+            "category": area.area_type,
+            "geom": json.loads(area.geom.json),
+            "components": {
+                str(model_qs.model._meta.verbose_name): [
+                    {
+                        "name": c.name,
+                        "power": c.power_installed or c.power_kw,
+                    }
+                    for c in model_qs.order_by("id")
+                ]
+                for model_qs in area.get_all_electric_components()  # will not get storage
+                if model_qs.exists()
+            },
+        }
+        for area in scenario.area_set.filter(geom__isnull=False)
+    ]
+    # gather electricity generation
+    electric_grids = scenario.grid_set.filter(carrier=Grid.CarrierChoices.ELECTRICITY)
+    electric_grid_internal_ids = electric_grids.values("internal_id")
+    grids = list()
+    for grid in electric_grids:
+        # find all sources of electricity (from_node=not grid, to_node=grid)
+        sources = result_data.filter(attribute="flow", to_node=grid.internal_id).exclude(
+            from_node__in=electric_grid_internal_ids
+        )
+        is_root = grid.connected_to is None
+        gc_timeseries = None
+        if is_root:
+            from_gc = (
+                result_data.filter(attribute="flow", from_node=None, to_node=grid.internal_id)
+                .first()
+                .value
+            )
+            to_gc = result_data.filter(
+                attribute="flow", from_node=grid.internal_id, to_node=None
+            ).first()
+            if to_gc is not None:
+                to_gc = to_gc.value
+                gc_timeseries = [a - b for a, b in zip(to_gc, from_gc, strict=False)]
+            else:
+                gc_timeseries = from_gc
+        grids.append(
+            {
+                "name": grid.name,
+                "generation": round(sum([sum(s.value) for s in sources])),
+                "areas": ", ".join([a.name for a in grid.areas.all()]),
+                "is_root": is_root,
+                "gc_ts": gc_timeseries,
+            }
+        )
+    total_generation = sum([g["generation"] for g in grids])
+    for v in grids:
+        if total_generation > 0:
+            v["percent"] = round(v["generation"] * 100 / total_generation)
+        else:
+            v["percent"] = 0
+
+    timeindex = result_data.get(attribute="timeindex").value
+    timeindex = [timezone.datetime.fromtimestamp(t).isoformat() for t in timeindex]
+
+    context = {
+        "scenario": scenario,
+        "project": scenario.project,
+        "result": result,
+        "carto_api_token": settings.CARTO_API_TOKEN,
+        "areas": areas,
+        "grids": grids,
+        "time": timeindex,
+        "generation": {"electricity": total_generation},
+    }
+    return render(request, template_name="core/ergebnisse.html", context=context)
 
 
 class ObjectTemplatesView(View):
