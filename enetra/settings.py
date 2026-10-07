@@ -82,7 +82,6 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     # custom apps
     "ports",
-    "django_oemof",
     "core",
     # misc
     "django_cotton.apps.SimpleAppConfig",
@@ -342,6 +341,10 @@ EVENTS_DICT = dict()
 with open("ports/static/ports/events.json") as f:
     EVENTS_DICT = json.load(f)
 
+# Oemof / solver specific
+OEMOF_TS = env.int("OEMOF_TS", default=15)  # minutes per timestep
+OEMOF_EPS = env.float("OEMOF_EPS", default=1e-10)  # a really small number
+OEMOF_DAYS = env.int("OEMOF_DAYS", default=1)  # number of days to simulate
 
 # NOTE: By default these are secure settings. Can always be explicitly overwritten by .env
 # Small value for testing, maybe increase?

@@ -46,7 +46,7 @@
             <h1 class="text-[32px] leading-normal text-slate-800">
               <span class="font-bold">Ergebnisse: </span><span class="font-light">Wasserstoff-Integration</span>
             </h1>
-            <p class="text-sm text-slate-500">Zuletzt berechnet 28.04.2026, 11:42</p>
+            <p class="text-sm text-slate-500">Zuletzt berechnet {{ result.finished_at }}</p>
           </div>
           <div class="flex gap-2 items-center shrink-0">
             <button class="select-none px-6 py-2 text-cyan-700 rounded-full outline outline-1 outline-offset-[-1px] outline-cyan-700 hover:bg-cyan-700 hover:text-white transition-colors duration-150 flex items-center gap-2 cursor-pointer">
@@ -193,80 +193,74 @@
                 <span class="select-none text-sm font-semibold text-slate-800">Gesamtstromerzeugung</span>
                 <div class="flex items-baseline gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-cyan-500 shrink-0 self-center"></span>
-                  <span class="text-[20px] font-semibold text-slate-800 leading-normal">1.983</span>
-                  <span class="text-sm font-normal text-slate-500">MWh</span>
+                  <span class="text-[20px] font-semibold text-slate-800 leading-normal">{{ generation.electricity }}</span>
+                  <span class="text-sm font-normal text-slate-500">kWh</span>
                 </div>
               </div>
 
+              {% if grids %}
               <!-- Location breakdown -->
               <div class="flex flex-col gap-4">
 
                 <!-- Details toggle -->
                 <button @click="details = !details" class="select-none flex items-center justify-end gap-1.5 text-slate-500 hover:text-slate-800 transition-colors duration-150 cursor-pointer w-full">
                   <span class="text-sm">Details</span>
-                  <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-150" :class="details ? '' : 'rotate-180'"></i>
+                  <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-150" :class="details ? '' : 'rotate-180'"></i>
                 </button>
 
                 <div x-show="details" class="flex flex-col gap-3">
 
-                  <!-- Freifläche 3 -->
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-800">Freifläche 3</span>
-                      <span class="text-sm font-semibold text-slate-800">970 <span class="text-sm font-normal text-slate-500">MWh</span></span>
+                  {% for grid in grids %}
+                    <div class="flex flex-col gap-1.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-800">{{ grid.name }} ({{ grid.areas }})</span>
+                        <span class="text-sm font-semibold text-slate-800">{{ grid.generation }} <span class="text-sm font-normal text-slate-500">kWh</span></span>
+                      </div>
+                      <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: {{ grid.percent }}%"></div>
+                      </div>
                     </div>
-                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 100%"></div>
-                    </div>
-                  </div>
-
-                  <!-- Lagerhalle 1 -->
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-800">Lagerhalle 1</span>
-                      <span class="text-sm font-semibold text-slate-800">438 <span class="text-sm font-normal text-slate-500">MWh</span></span>
-                    </div>
-                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 45%"></div>
-                    </div>
-                  </div>
-
-                  <!-- Lagerhalle 2 -->
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-800">Lagerhalle 2</span>
-                      <span class="text-sm font-semibold text-slate-800">389 <span class="text-sm font-normal text-slate-500">MWh</span></span>
-                    </div>
-                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 40%"></div>
-                    </div>
-                  </div>
-
-                  <!-- Lagerhalle 3 -->
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-800">Lagerhalle 3</span>
-                      <span class="text-sm font-semibold text-slate-800">200 <span class="text-sm font-normal text-slate-500">MWh</span></span>
-                    </div>
-                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 21%"></div>
-                    </div>
-                  </div>
-
-                  <!-- Büros -->
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-slate-800">Büros</span>
-                      <span class="text-sm font-semibold text-slate-800">98 <span class="text-sm font-normal text-slate-500">MWh</span></span>
-                    </div>
-                    <div class="relative h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div class="absolute inset-y-0 left-0 bg-cyan-500 rounded-full" style="width: 10%"></div>
-                    </div>
-                  </div>
+                  {% endfor %}
                 </div>
               </div>
+              {% endif %}
             </div>
         </c-flaechen-uebersicht.index>
+
+        <!-- Komponenten -->
+        <div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+          <!-- Card header -->
+          <div class="select-none flex items-center justify-between px-6 py-4">
+            <span class="text-base font-bold text-slate-800 uppercase">Komponenten</span>
+          </div>
+          <div style="margin-left:3rem;">
+          {% for area in areas %}
+            <div>
+              <b>{{ area.name }}</b>
+              <div>
+              {% for component_type, components in area.components.items %}
+                <i>{{ component_type }}</i>
+                <ul>
+                  {% for component in components %}
+                    <li style="list-style:circle; margin-left:1rem;">{{ component.name }}: {{ component.power }} kW</li>
+                  {% endfor %}
+                </ul>
+              {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+          </div>
+        </div>
+
+        <!-- Plot GC power -->
+        <div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
+          <!-- Card header -->
+          <div class="select-none flex items-center justify-between px-6 py-4">
+            <span class="text-base font-bold text-slate-800 uppercase">Netzanschlüsse</span>
+          </div>
+          <div id="chart-gc" style="width:100%; height: 320px;"></div>
+        </div>
+
         <!-- Kostenanalyse -->
         <div class="bg-white rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-slate-200 flex flex-col">
 
@@ -360,7 +354,35 @@
       </nav>
     </footer>
 
+    {{ grids|json_script:"grids" }}
+    {{ time|json_script:"time" }}
+
     <script>
+      // grid charts
+      const grids = JSON.parse(document.getElementById('grids').textContent);
+      const time = JSON.parse(document.getElementById('time').textContent);
+      const gridDiv = document.getElementById('chart-gc');
+      const gridChart = echarts.init(gridDiv);
+      const series = [];
+      for (let grid of grids) {
+        if (grid.is_root) {
+          series.push({
+            name: grid.name,
+            type: 'line',
+            data: grid.gc_ts,
+            smooth: false,
+            symbol: 'none',
+          });
+        }
+      }
+      gridChart.setOption({
+        grid: { containLabel: true },
+        legend: {},
+        xAxis: {data: time},
+        yAxis: {axisLabel: { formatter: v => v + ' kW'}},
+        series: series,
+      });
+
       // Waterfall chart
       const wfChart = echarts.init(document.getElementById('chart-waterfall'));
       const wfCategories = ['Ist-Zustand', 'Strom', 'Wärme', 'CO₂-Kosten', 'Kraftstoffe', 'Ammoniak', 'Wasserstoff', 'Infrastruktur', 'Szenario 1'];

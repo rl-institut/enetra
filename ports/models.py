@@ -1,3 +1,4 @@
+import datetime
 import logging
 import uuid
 from collections.abc import Iterable
@@ -5,11 +6,13 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
+import pandas as pd
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
@@ -104,6 +107,9 @@ class Scenario(models.Model):
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
+
+    # oemof solver task
+    task_id = models.UUIDField(default=None, null=True, blank=True)
 
     # Area of the scenario / Port region
     geom = models.PolygonField(
@@ -637,6 +643,23 @@ class Load(ScenarioItem):
                 )
             )
         return loads
+
+    def resample(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
+        timestep_orig = self.template.timeseries.get("timestep_minutes", 15)
+        values = self.template.timeseries["values"]
+        time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")
+        if len(values) < len(time_index):
+            # not enough values: extend series with empty values, fill later
+            values += [None] * (len(time_index) - len(values))
+        elif len(values) > len(time_index):
+            # too many values: shorten series
+            values = values[: len(time_index)]
+        series = pd.Series(values, index=time_index) * self.factor
+        series.ffill(inplace=True)  # fill up missing values: retain last value
+        if timestep_orig != time_step:
+            # resample if needed (adjust timestep)
+            series = series.resample(f"{time_step}Min").mean()
+        return series
 
 
 class Grid(ScenarioItem):
@@ -1258,7 +1281,7 @@ class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
         verbose_name = _("Speicher")
 
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Setting(ScenarioItem):
     settings = models.JSONField(default=dict)
 
@@ -1309,6 +1332,21 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
         path = Path(instance.file.path)
         if path.exists():
             path.unlink()
+
+
+# Results
+class Result(models.Model):
+    scenario = models.OneToOneField(Scenario, on_delete=models.CASCADE)
+    started_at = models.DateTimeField(default=None)
+    finished_at = models.DateTimeField(default=None)
+
+
+class ResultData(models.Model):
+    result = models.ForeignKey(Result, on_delete=models.CASCADE)
+    from_node = models.UUIDField(default=None, null=True, blank=True)
+    to_node = models.UUIDField(default=None, null=True, blank=True)
+    attribute = models.CharField(max_length=255)
+    value = ArrayField(base_field=models.FloatField())
 
 
 # Custom Exceptions
