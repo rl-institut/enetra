@@ -50,7 +50,7 @@
           </c-dropdown-menu.trigger>
           <c-dropdown-menu.content class='w-56 right-0' data-side="bottom">
             {% for model in models %}
-            <c-dropdown-menu.label>
+            <c-dropdown-menu.item>
               <button
                 hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model=model.model_name  %}"
                 hx-vals='{"area_internal_ids": "{{area_internal_ids}}"}'
@@ -63,7 +63,7 @@
                 class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
                 + {{model.verbose_name}} Hinzufügen
               </button>
-            </c-dropdown-menu.label>
+            </c-dropdown-menu.item>
             {% endfor %}
           </c-dropdown-menu.content>
         </c-dropdown-menu.index>

@@ -1658,11 +1658,20 @@
   .py-0 {
     padding-block: calc(var(--spacing) * 0);
   }
+  .py-0\! {
+    padding-block: calc(var(--spacing) * 0) !important;
+  }
   .py-0\.5 {
     padding-block: calc(var(--spacing) * 0.5);
   }
+  .py-0\.5\! {
+    padding-block: calc(var(--spacing) * 0.5) !important;
+  }
   .py-1 {
     padding-block: calc(var(--spacing) * 1);
+  }
+  .py-1\! {
+    padding-block: calc(var(--spacing) * 1) !important;
   }
   .py-1\.5 {
     padding-block: calc(var(--spacing) * 1.5);
