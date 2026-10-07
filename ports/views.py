@@ -780,9 +780,7 @@ class DetailsView(View):
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
-            "electric_models": [
-                m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
-            ],
+            "electric_models": [m for m in apps.get_models() if issubclass(m, ElectricComponent)],
         }
         if issubclass(self.Model, ElectricComponent):
             template_model = get_template_model(self.Model)
