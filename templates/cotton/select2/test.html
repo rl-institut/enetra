@@ -1,0 +1,15 @@
+<c-select2.index  :name="form.usage.name" :initialValue="form.usage.value"  >
+  <c-select2.trigger>
+    <c-select2.value placeholder='Auswahl treffen'/>
+  </c-select2.trigger>
+  <c-select2.content>
+    <c-select2.item value="" >
+      Keine Auswahl
+    </c-select2.item>
+    {% for value, label in form.fields.usage.choices %}
+    <c-select2.item value="{{value}}" >
+      {{label}}
+    </c-select2.item>
+    {% endfor %}
+  </c-select2.content>
+</c-select2.index>

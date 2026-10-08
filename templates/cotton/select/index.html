@@ -5,9 +5,12 @@
 {% comment %}
 NOTE: and @Bryan
 I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
-The implementation can be fouind inside the custom css tailwind brackets
+The implementation can be found inside the custom css tailwind brackets
+
+
+casting selectedValue=None to str results in None. Generic None/null selects carry ''/empty string as value. this way the element with value '' is found
 {% endcomment %}
-<div x-data=" {show: false, selectedValue: '{{ selectedValue }}', selectedElement: '{{ selectedValue }}', }"
+<div x-data=" {show: false, selectedValue: '{{selectedValue|default:"" }}', selectedElement: '{{ selectedValue }}', }"
    class=" {{containerClass}} w-full [anchor-name:--select-dropdown-{{uid}}] "
    {{attrs}}
 

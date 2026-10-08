@@ -832,12 +832,12 @@ class DetailsView(View):
         self.template = self.get_template()
 
     def adjust_form(self, instance):
-        form_kwargs = {}
+        form_kwargs = {"multi": self.multi}
         if self.Model == Load:
             templates = self.get_loadtemplates_for_user(
                 self.request.user, self.scenario, self.instance
             )
-            form_kwargs = {"templates_queryset": templates}
+            form_kwargs["templates_queryset"] = templates
         return self.Model.adjust_Form(self.Form, instance=instance, **form_kwargs)
 
     @staticmethod
@@ -1163,7 +1163,8 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            form = self.Form(data=request.POST)
+            # form = self.Form(data=request.POST)
+            form = self.adjust_form(self.instances[0])(data=request.POST)
             self.context["form"] = form
             if form.is_valid():
                 self.context["instances"] = form.save()
