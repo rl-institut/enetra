@@ -48,17 +48,15 @@
         <div class="flex shrink-0 text-[#a78bfa] ">
           <c-icon.building />
         </div>
+        <h2 class="font-semibold text-[20px] text-[#1e293b]"
+          title="{% for item in instances %}{{item.name}}{% if not forloop.last %}&#013;{% endif %}{% endfor %}">
           {% if area_type == Model.AreaTypeChoices.BUILDING %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Gebäudeflächen bearbeiten</h2>
+          Ausgewählte Gebäudeflächen bearbeiten
           {% else %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Ausgewählte Freiflächen bearbeiten</h2>
+          Ausgewählte Freiflächen bearbeiten
           {% endif %}
+        </h2>
             <ul>
-         {% for item in instances %}
-          <div class="max-w-10">
-          <li class="font-semibold  text-[#1e293b] text-xs">{{item.name}}</li>
-          </div>
-          {% endfor %}
 
 
         </ul>

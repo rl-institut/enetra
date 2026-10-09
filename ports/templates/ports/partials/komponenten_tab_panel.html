@@ -119,7 +119,7 @@
 
     {% partialdef 'add-template-button' %}
       <button type='button'
-              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              class="w-full text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-sm text-center cursor-pointer hover:text-[#0891b2] transition-colors"
               hx-post="{% url 'ports:template_create' scenario_internal_id=scenario.internal_id model=model_name %}"
               hx-indicator="#detailSidebar"
               hx-target="#detailSidebar"
@@ -127,14 +127,24 @@
               hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
         >+ Vorlage für {{model_name}}</button>
     {% endpartialdef %}
-
-
-        <button class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity">+Vorlage</button>
-        {% for template_model in template_models %}
-        {% with  model_name=template_model.model_name  %}
-        {% partial 'add-template-button' %}
-        {% endwith %}
-        {% endfor %}
+        <div class="flex flex-col items-end">
+          <c-dropdown-menu.index>
+            <c-dropdown-menu.trigger variant='outline'>
+              <button type="button" class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity  w-full"
+              > + Vorlage Hinzufügen
+              </button>
+            </c-dropdown-menu.trigger>
+            <c-dropdown-menu.content class='w-56 right-0' data-side="bottom">
+              {% for template_model in template_models %}
+              <c-dropdown-menu.item class="py-0.5!">
+                {% with  model_name=template_model.model_name  %}
+                {% partial 'add-template-button' %}
+                {% endwith %}
+              </c-dropdown-menu.item>
+              {% endfor %}
+            </c-dropdown-menu.content>
+          </c-dropdown-menu.index>
+        </div>
     </div>
 
     {% partialdef user-template-list  inline %}

@@ -451,7 +451,8 @@ def home(request):
             # fallback for development
             s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
         else:
-            return Http404()
+            # no scenario id --> back to base view (redirect of core:login)
+            return redirect(reverse("core:login"))
     return redirect(
         reverse(
             "ports:enetra_tool",
@@ -783,9 +784,7 @@ class DetailsView(View):
             "internal_ids": ",".join(self.internal_ids),
             "instance": self.instance,
             "instances": self.instances,
-            "electric_models": [
-                m._meta.model_name for m in apps.get_models() if issubclass(m, ElectricComponent)
-            ],
+            "electric_models": [m for m in apps.get_models() if issubclass(m, ElectricComponent)],
         }
         if issubclass(self.Model, ElectricComponent):
             template_model = get_template_model(self.Model)
@@ -837,12 +836,12 @@ class DetailsView(View):
         self.template = self.get_template()
 
     def adjust_form(self, instance):
-        form_kwargs = {}
+        form_kwargs = {"multi": self.multi}
         if self.Model == Load:
             templates = self.get_loadtemplates_for_user(
                 self.request.user, self.scenario, self.instance
             )
-            form_kwargs = {"templates_queryset": templates}
+            form_kwargs["templates_queryset"] = templates
         return self.Model.adjust_Form(self.Form, instance=instance, **form_kwargs)
 
     @staticmethod
@@ -1217,7 +1216,8 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            form = self.Form(data=request.POST)
+            # form = self.Form(data=request.POST)
+            form = self.adjust_form(self.instances[0])(data=request.POST)
             self.context["form"] = form
             if form.is_valid():
                 self.context["instances"] = form.save()
@@ -1378,7 +1378,7 @@ def create_scenario(request, scenario_internal_id: UUID):
         context["form"] = form
         context["success"] = success
 
-    return render(request, "ports/partials/create_scenario.html", context)
+    return render(request, "ports/partials/create_scenario_modal.html", context)
 
 
 @ensure_project_rights

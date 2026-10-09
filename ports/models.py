@@ -487,16 +487,29 @@ class Area(ScenarioItem):
     def adjust_Form(
         cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area", **kwargs
     ) -> type[ModelForm]:
-        FormClass.base_fields["usage"].required = True
+        # Usage is not required for multi area view
+        multi = kwargs.get("multi")
+        if not multi:
+            FormClass.base_fields["usage"].required = True
         area_type = (instance and instance.area_type) or kwargs.get("area_type")
         if not area_type:
             raise MissingFormValueException(
                 "The area form needs an area_type to show the correct choices. The area_type can be provided by the instance or as kwarg"
             )
         if area_type == Area.AreaTypeChoices.BUILDING:
-            FormClass.base_fields["usage"].choices = Area.BuildingUsageChoices
+            choices = Area.BuildingUsageChoices
         else:
-            FormClass.base_fields["usage"].choices = Area.OpenUsageChoices
+            choices = Area.OpenUsageChoices
+        a = (1, 2)
+        {x: x for x in a}
+        if multi:
+            # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
+            # textchoices expects choice_label:choice_value
+            choices = models.TextChoices(
+                "MultiUsageChoices",
+                {**{x[1]: x[0] for x in choices.choices}, "Keine Veränderung": ""},
+            )
+        FormClass.base_fields["usage"].choices = choices
         return FormClass
 
     @classmethod

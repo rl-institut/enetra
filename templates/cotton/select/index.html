@@ -1,19 +1,21 @@
-<c-vars image containerClass="" debugWidget=False selectedValue inputName classButton="" random field ></c-vars>
+<c-vars image containerClass="" debugWidget=False selectedValue inputName classButton="" random field placeholder="Keine Auswahl"></c-vars>
 {% load widget_tweaks %}
 {% load core_extras %}
 {% gen_uuid as uid %}
 {% comment %}
 NOTE: and @Bryan
 I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
-The implementation can be fouind inside the custom css tailwind brackets
+The implementation can be found inside the custom css tailwind brackets
+
+
+casting selectedValue=None to str results in None. Generic None/null selects carry ''/empty string as value. this way the element with value '' is found
 {% endcomment %}
-<div x-data=" {show: false, selectedValue: '{{selectedValue}}', selectedElement: '{{ selectedValue }}', invalid: false, }"
+<div x-data=" {show: false, selectedValue: '{{selectedValue|default:""}}', selectedElement: '{{ selectedValue }}', invalid: false,placeholder: '{{placeholder}}' }"
    class=" {{containerClass}} w-full [anchor-name:--select-dropdown-{{uid}}] "
    @invalid.capture="invalid=true"
    @input="invalid=false"
    {{attrs}}
 >
-
   <div class="relative w-full">
     <button @click="show=!show"
             @click.outside="show=false"
@@ -25,7 +27,7 @@ The implementation can be fouind inside the custom css tailwind brackets
         {{classButton}} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors
         "
      >
-      <p x-html="selectedElement.innerHTML"
+      <p x-html="selectedElement.innerHTML || placeholder "
          class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
       </p>
       <div :class="show && 'rotate-180'"
@@ -42,8 +44,25 @@ The implementation can be fouind inside the custom css tailwind brackets
       <c-field-with-attrs :field="field" class=""
       x-init="$el.value=selectedValue"
       x-effect="$el.value=selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
+      :attrs="{'{{field.field.required|yesno:'required,not-required'}}':''}"
       />
       </div>
+    {% comment %}
+    The desired behaviour is for the select to show that no selection is made, potentially to require the selection, but also not show the "null" value as selectable item.
+    Django by default does not pass "required" to the select item, if the choices do not contain an empty selection. Native selects would simply select the first option, if no option is "selected". To properly require a select without an empty selection choice, but not preselect some choice we need to pass required to the component itself this is kinda tricky, but possible.
+    :attrs="{'foo':'bar'}" expands the attrs, so rendering {{attrs}} would yield foo='bar' as well.
+    this behaviour can be used to pass a dynamic attribute to the component.
+    (NOTE: required='false' would not work, since the rhs is not evaluated. for the "requiredness" of an input/select the only requirement is "required" tag on the input)
+
+    therefore the following works:
+    if the field is required the attrs are expaned with {'required':'true'}
+    if the field is not required the attrs are expanded with {'not-required':'true'}
+    the tag not-required='true' does nothing but
+    :attrs="{'{{field.field.required|yesno:'required,not-required'}}':'true'}"
+    with alpine.js and x-data scope a more verbose
+    x-bind::required="{{field.field.required|yesno:'true,false'}}"
+    is also possible which renders required based on the evaluation of true/false
+    {% endcomment %}
   {% else %}
   <input class="border {% if not debugWidget == True %}sr-only{% endif %}"
     x-init="$el.value=selectedValue"
