@@ -3004,6 +3004,11 @@
       cursor: not-allowed;
     }
   }
+  .disabled\:bg-black {
+    &:disabled {
+      background-color: var(--color-black);
+    }
+  }
   .disabled\:opacity-40 {
     &:disabled {
       opacity: 40%;

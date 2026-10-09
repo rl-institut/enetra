@@ -68,7 +68,7 @@
                 {% endif %}
                   "
               >
-                <button  type="submit" x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer" x-cloak>
+                  <button  type="submit" x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50"  x-cloak>
                     <span x-show="status=='none' && start_value " class="text-sm font-semibold text-white"><span class="loader htmx-indicator-inherited"></span> Speichern</span>
                   <span x-show="status=='success' && start_value " class="text-sm font-semibold text-white">Gespeichert</span>
                   <span x-show="status=='error' && start_value " class="text-sm font-semibold text-white">Fehlgeschlagen</span>
@@ -139,7 +139,7 @@
                 {% endif %}
                   "
               >
-                <button  type='submit' x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer" x-cloak>
+                <button  type='submit' x-init='setTimeout(()=> start_value=false, 1000)' class="select-none px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50" x-cloak>
                   <span x-show="status=='none' && start_value " class="text-sm font-semibold text-white"><span class="loader htmx-indicator-inherited"></span>Passwort Speichern</span>
                   <span x-show="status=='success' && start_value " class="text-sm font-semibold text-white">Passwort Gespeichert</span>
                   <span x-show="status=='error' && start_value " class="text-sm font-semibold text-white">Fehlgeschlagen</span>
