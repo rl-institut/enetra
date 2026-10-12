@@ -7,6 +7,16 @@
     display: none !important;
 }
 
+@layer components {
+    .cotton-list-item {
+        @apply content-stretch flex gap-2 items-center -mb-px px-3 py-2 relative shrink-0 w-full transition-colors first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-br-[8px] has-[input:checked]:bg-[#ECFEFF] select-none;
+    }
+
+    .cotton-list-item-title {
+        @apply font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px] text-[#64748b] group-has-[input:checked]:text-[#0E7490];
+    }
+}
+
 .map-label-icon {
     background: transparent !important;
     border: none !important;

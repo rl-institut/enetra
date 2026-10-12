@@ -19,7 +19,7 @@
   "
   @deselect-all="
     $el.querySelectorAll('input').forEach((i)=>
-    {if (wasChecked) {
+    {if (i.checked) {
       i.checked=false;
       dispatchItemSelection(i.value, false);
     }

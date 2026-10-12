@@ -1,4 +1,4 @@
-<c-vars bulkModeIcon="" singleModeIcon="" indicated selected=None active  class :border=True title :defaultHxDetails=False item ></c-vars>
+<c-vars bulkModeIcon="" singleModeIcon=""  selected=None active  class :border=True title :defaultHxDetails=False item ></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
@@ -6,7 +6,7 @@
   selected is populated by the input
 wrap everyting in a label so everything toggles the radio/checkbox
 {% endcomment %}
-<label class=" cotton-list-item group {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-2 items-center -mb-px px-3 py-2 relative shrink-0 w-full  transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] select-none
+<label class="cotton-list-item group {% if border %}border border-[#cbd5e1] border-solid{% endif %}
   {% if active %}
   bg-white hover:bg-[#f8fafc] cursor-pointer
   {% else %}
@@ -72,12 +72,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
     {% comment %}
      shrink-0 stops the element from wrapping? This is bad behaviour if we allow long names.
     {% endcomment %}
-    <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px] text-[#64748b] group-has-[input:checked]:text-[#0E7490]">{{ title }}</p>
-    {% comment %}
-    NOTE: Smth is supposed to toggle this indicator here? What is it?
-    {item.name === 'Lagerhalle 1' && scenarioState === 'scenario' && (
-    {% endcomment %}
-    {% if indicated %}<div class="w-[6px] h-[6px] rounded-full bg-[#ff9500] flex-shrink-0"></div>{% endif %}
+    <p class="cotton-list-item-title">{{ title }}</p>
   </div>
   <div class="relative shrink-0 size-[12px]">
     <div class="absolute inset-[0.37%_0.1%_-0.27%_0.28%]">
