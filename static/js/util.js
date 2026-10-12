@@ -41,14 +41,14 @@ function searchName(search, parent) {
   const filtered_siblings = findSiblingNodes(filtered, parent);
   [...all_siblings].forEach((n) => { n.style.display = 'none' });
   filtered_siblings.forEach((n) => { n.style.display = '' });
-  console.log( 'searched')
+  console.log('searched')
 };
 
 
 function sortContainer(parent, key) {
   const all_siblings = parent.children;
   var nodes = (getNodes(parent, `[data-${key}]`));
-  if (all_siblings.length != nodes.length){
+  if (all_siblings.length != nodes.length) {
     console.warn(`Not all nodes have data-${key} set. Skipping sort`);
     return;
   }
@@ -60,16 +60,11 @@ function sortContainer(parent, key) {
     return
   }
   parent.replaceChildren(...sorted)
-  console.log( 'sorted')
+  console.log('sorted')
 };
 
 // Swaped html content might need lucide hydration
-document.addEventListener("htmx:oobAfterSwap", (event) => {
-  console.log( "after oobswap lucide creation")
-    lucide.createIcons();
-});
 
-document.addEventListener("htmx:afterSwap", (event) => {
-  console.log( "after swap lucide creation")
-    lucide.createIcons();
+document.addEventListener("htmx:afterRequest", (event) => {
+  lucide.createIcons();
 });
