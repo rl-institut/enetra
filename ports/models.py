@@ -500,8 +500,6 @@ class Area(ScenarioItem):
             choices = Area.BuildingUsageChoices
         else:
             choices = Area.OpenUsageChoices
-        a = (1, 2)
-        {x: x for x in a}
         if multi:
             # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
             # textchoices expects choice_label:choice_value
