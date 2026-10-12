@@ -65,9 +65,11 @@ function sortContainer(parent, key) {
 
 // Swaped html content might need lucide hydration
 document.addEventListener("htmx:oobAfterSwap", (event) => {
+  console.log( "after oobswap lucide creation")
     lucide.createIcons();
 });
 
 document.addEventListener("htmx:afterSwap", (event) => {
+  console.log( "after swap lucide creation")
     lucide.createIcons();
 });
