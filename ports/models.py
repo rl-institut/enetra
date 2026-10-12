@@ -1342,6 +1342,19 @@ class Result(models.Model):
 
 
 class ResultData(models.Model):
+    """Generalized oemof result
+
+    from/to_node: associated ScenarioItem, by internal_id.
+      May be None if not applicable (general scenario info, not part of scenario).
+      For attribute=flow, at least one node is usually a grid.
+    attribute:
+      - timeindex: value contains UNIX-timestamps for every timestep
+      - costs: value contains oemof objective cost
+      - flow: value contains timeseries for a connection between nodes
+      - storage: value contains timeseries for storage content of node
+
+    """
+
     result = models.ForeignKey(Result, on_delete=models.CASCADE)
     from_node = models.UUIDField(default=None, null=True, blank=True)
     to_node = models.UUIDField(default=None, null=True, blank=True)

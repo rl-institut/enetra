@@ -450,7 +450,7 @@ def home(request):
             # fallback for development
             s_internal_id = Scenario.objects.order_by("created_at").last().internal_id
         else:
-            return Http404()
+            raise Http404()
     return redirect(
         reverse(
             "ports:enetra_tool",
@@ -502,7 +502,7 @@ def scenario_results(request, scenario_internal_id: UUID):
     result = scenario.result
     if result is None:
         # scenario not simulated yet
-        return Http404()
+        raise Http404()
     if result.started_at < scenario.items_updated_at:
         return HttpResponse("Outdated simulation", status=500)
     result_data = result.resultdata_set.all()
@@ -529,7 +529,7 @@ def scenario_results(request, scenario_internal_id: UUID):
     # gather electricity generation
     electric_grids = scenario.grid_set.filter(carrier=Grid.CarrierChoices.ELECTRICITY)
     electric_grid_internal_ids = electric_grids.values("internal_id")
-    grids = list()
+    grids = list()  # TODO: add other grids
     for grid in electric_grids:
         # find all sources of electricity (from_node=not grid, to_node=grid)
         sources = result_data.filter(attribute="flow", to_node=grid.internal_id).exclude(
@@ -580,7 +580,7 @@ def scenario_results(request, scenario_internal_id: UUID):
         "time": timeindex,
         "generation": {"electricity": total_generation},
     }
-    return render(request, template_name="core/ergebnisse.html", context=context)
+    return render(request, template_name="ports/ergebnisse.html", context=context)
 
 
 class ObjectTemplatesView(View):

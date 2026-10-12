@@ -8,10 +8,10 @@
 
     {% include "core/imports.html" %}
 
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="{% static 'ports/results.js' %}"></script>
 
   </head>
   <body class="bg-slate-50 font-[Inter,sans-serif] text-slate-800 min-h-screen flex flex-col">
@@ -362,26 +362,7 @@
       const grids = JSON.parse(document.getElementById('grids').textContent);
       const time = JSON.parse(document.getElementById('time').textContent);
       const gridDiv = document.getElementById('chart-gc');
-      const gridChart = echarts.init(gridDiv);
-      const series = [];
-      for (let grid of grids) {
-        if (grid.is_root) {
-          series.push({
-            name: grid.name,
-            type: 'line',
-            data: grid.gc_ts,
-            smooth: false,
-            symbol: 'none',
-          });
-        }
-      }
-      gridChart.setOption({
-        grid: { containLabel: true },
-        legend: {},
-        xAxis: {data: time},
-        yAxis: {axisLabel: { formatter: v => v + ' kW'}},
-        series: series,
-      });
+      createGridChart(grids, time, gridDiv);
 
       // Waterfall chart
       const wfChart = echarts.init(document.getElementById('chart-waterfall'));

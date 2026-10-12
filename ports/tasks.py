@@ -16,22 +16,23 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, ignore_result=True)
-def oemof_task(self, scenario_id):
+def oemof_task(self, scenario_id, **kwargs):
     scenario = Scenario.objects.get(id=scenario_id)
     Scenario.objects.filter(id=scenario_id).update(task_id=self.request.id)
     started_at = timezone.now()
-    es, flows = db_to_energysystem(scenario, started_at)
+    es, flows = db_to_energysystem(scenario, started_at, **kwargs)
     model = solve_energysystem(es)
     if model is not None:
         store_results(scenario, model, flows, started_at)
         # plot_result(scenario_id)
 
 
-def db_to_energysystem(scenario, started_at):
-    EPS = settings.OEMOF_EPS
+def db_to_energysystem(scenario, started_at, **kwargs):
+    EPS = kwargs.get("eps", settings.OEMOF_EPS)
+    days = kwargs.get("days", settings.OEMOF_DAYS)  # how many days to simulate
+    time_step = kwargs.get("ts", settings.OEMOF_TS)  # timestep in minutes
     start = datetime.datetime(started_at.year, started_at.month, started_at.day)
-    end = start + datetime.timedelta(days=settings.OEMOF_DAYS)
-    time_step = settings.OEMOF_TS  # timestep in minutes
+    end = start + datetime.timedelta(days=days)
     time_index = pd.date_range(
         start=start,
         end=end,
@@ -260,18 +261,32 @@ def store_results(scenario, model, flows, started_at):
     )
     # delete old result data
     result.resultdata_set.all().delete()
+    result_data = list()
 
     # time
-    ResultData.objects.create(
-        result=result,
-        from_node=None,
-        to_node=None,
-        attribute="timeindex",
-        value=[t.timestamp() for t in model.es.timeindex],
+    result_data.append(
+        ResultData(
+            result=result,
+            from_node=None,
+            to_node=None,
+            attribute="timeindex",
+            value=[t.timestamp() for t in model.es.timeindex],
+        )
     )
 
-    # flows
-    for bus, flow in results["flow"].items():
+    # invest
+    result_data.append(
+        ResultData(
+            result=result,
+            from_node=None,
+            to_node=None,
+            attribute="costs",
+            value=[float(results["objective"])],
+        )
+    )
+
+    # flows (might not exist for empty scenario)
+    for bus, flow in results.get("flow", dict()).items():
         try:
             from_node, to_node = flows[bus]
         except KeyError:
@@ -279,60 +294,30 @@ def store_results(scenario, model, flows, started_at):
             continue
         from_node = from_node.internal_id if from_node is not None else None
         to_node = to_node.internal_id if to_node is not None else None
-        ResultData.objects.create(
-            result=result,
-            from_node=from_node,
-            to_node=to_node,
-            attribute="flow",
-            value=flow.to_list(),
+        result_data.append(
+            ResultData(
+                result=result,
+                from_node=from_node,
+                to_node=to_node,
+                attribute="flow",
+                value=flow.to_list(),
+            )
         )
-        logger.info(f"{from_node} -> {to_node}: {sum(flow)}")
+        logger.debug(f"{from_node} -> {to_node}: {sum(flow)}")
 
     # storage
     for storage in scenario.storage_set.all():
-        ResultData.objects.create(
-            result=result,
-            from_node=storage.internal_id,
-            to_node=None,
-            attribute="storage",
-            value=results["storage_content"][storage.internal_id].to_list(),
+        result_data.append(
+            ResultData(
+                result=result,
+                from_node=storage.internal_id,
+                to_node=None,
+                attribute="storage",
+                value=results["storage_content"][storage.internal_id].to_list(),
+            )
         )
 
-    # invest
-    ResultData.objects.create(
-        result=result,
-        from_node=None,
-        to_node=None,
-        attribute="costs",
-        value=[float(results["objective"])],
-    )
-
-    """
-    # plot energy system as graph
-    import matplotlib.pyplot as plt
-    import networkx as nx
-    from oemof.network.graph import create_nx_graph
-    plt.figure()
-    graph = create_nx_graph(es)
-    nx.draw(graph, with_labels=True, font_size=8)
-    plt.show()
-    """
-
-    """
-    # plot grid power
-    import matplotlib.pyplot as plt
-    plt.figure()
-    busses = grid_busses.values()
-    for i, bus in enumerate(busses):
-        plt.subplot(len(busses), 1, i+1)
-        k0 = [k for k in results["flow"].keys() if k[0] == bus]
-        k1 = [k for k in results["flow"].keys() if k[1] == bus]
-        plt.plot(results["flow"][k0], label=results["flow"][k0].columns)
-        plt.plot(-results["flow"][k1], label=results["flow"][k1].columns)
-        plt.legend()
-        plt.title(bus)
-    plt.show()
-    """
+    ResultData.objects.bulk_create(result_data)
 
 
 def plot_result(scenario_id):
