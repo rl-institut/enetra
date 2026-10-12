@@ -8,7 +8,7 @@
     </div>
     <div>
     <form>
-      <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+      <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
     >
 
         {% comment %}
@@ -29,13 +29,11 @@
 
       {% partialdef list-item-and-form %}
         {% if item.has_authorization %}
-
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
             :active=True
             :selected=None
-            :indicated=False
             :item=item
             hx-swap-oob='true'
             value='{{ item.internal_id }}'
@@ -58,7 +56,6 @@
             id='button-list-item-{{ item.internal_id }}'
             :active=False
             :selected=None
-            :indicated=False
             :item=item
             hx-swap-oob='true'
             value='{{ item.internal_id }}'
@@ -116,7 +113,7 @@
       </div>
 
     <form>
-      <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+      <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
       >
         {% for item in open_areas %}
           {% comment %}

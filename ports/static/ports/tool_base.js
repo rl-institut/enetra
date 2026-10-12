@@ -39,6 +39,15 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     });
 })
 
+// Cotton list items used to be individual Alpine components (x-data + x-effect per row) just to
+// dispatch these window events when (de)selected. With hundreds of rows that per-row Alpine
+// bookkeeping was the main rendering cost, so the list (c-list.index) now delegates all input
+// handling to a single listener and calls this helper directly instead.
+function dispatchItemSelection(value, isSelected) {
+    if (!value) return;
+    window.dispatchEvent(new CustomEvent((isSelected ? 'item-selected-' : 'item-unselected-') + value, { detail: { value } }));
+}
+
 // The list indicates what is shown in the detailSidebar. Therefore the should only be a single
 // selection active at a time. this function handles deselecting other Lists
 function deselectOtherLists(element) {

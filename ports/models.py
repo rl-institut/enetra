@@ -529,14 +529,20 @@ class Area(ScenarioItem):
         )
         return instance
 
-    def get_all_electric_components(self):
-        electric_component_managers = []
-        for field in self._meta.get_fields():
+    @classmethod
+    def electric_component_accessor_names(cls):
+        accessor_list = []
+        for field in cls._meta.get_fields():
             if field.is_relation and issubclass(field.related_model, ElectricComponent):
-                # RelatedManagers are dynamically created.
-                # Therefore we can check type directly
-                related_set = getattr(self, field.accessor_name)
-                electric_component_managers.append(related_set.all())
+                accessor_list.append(field.accessor_name)
+        return accessor_list
+
+    def get_all_electric_components(self):
+        accessor_names = self.electric_component_accessor_names()
+        electric_component_managers = []
+        for name in accessor_names:
+            related_set = getattr(self, name)
+            electric_component_managers.append(related_set.all())
         return electric_component_managers
 
 
