@@ -26,11 +26,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
         {% else %}
           hx-get="{% url item.rud_url  model=item.model_name %}"
         {% endif %}
-
         hx-trigger='getdetails'
-        hx-target="#detailSidebar"
-        hx-indicator="#detailSidebar"
-        hx-swap="innerHTML scroll:top"
         hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
       {% endif %}
 

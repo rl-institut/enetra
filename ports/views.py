@@ -1,5 +1,5 @@
-import inspect
 import asyncio
+import inspect
 import json
 import logging
 import traceback
@@ -90,21 +90,6 @@ from .util import get_template_model
 from .util import get_template_scenarios
 
 logger = logging.getLogger(__name__)
-
-import functools
-
-
-def mytimer(func):
-    import time
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        t = time.time()
-        result = func(*args, **kwargs)
-        print(f"{time.time() - t}s for {func.__name__}")
-        return result
-
-    return wrapper
 
 
 def debug_switch_user(request, username: str):
@@ -243,27 +228,19 @@ def changes_count(request, scenario_internal_id: UUID):
     return response
 
 
-import time
-
-
 def geometries(request, scenario_internal_id: UUID):
-    t = time.time()
-
     scenario: Scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
-    accessors = Area.electric_component_accessor_names()
     base_query = Area.objects.filter(scenario=scenario)
-    base_query = base_query.prefetch_related(*accessors)
+    base_query = prefetch_all_related(base_query)
     all_areas = list(base_query)
 
-    print(f"after fetch: {time.time() - t}s")
     base_qs = Area.objects.filter(scenario=scenario)
     allowed_details_ids = set(
         get_objects_for_user(request.user, "details", base_qs).values_list("id", flat=True)
     )
-    print(f"after perm: {time.time() - t}s")
     managed_area_ids = set(base_qs.filter(manager=request.user).values_list("id", flat=True))
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
@@ -274,11 +251,9 @@ def geometries(request, scenario_internal_id: UUID):
             a.has_authorization = True
         area_forms.append(form)
 
-    print(f"after form creation: {time.time() - t}s")
     context["area_forms"] = area_forms
     context["scenario"] = scenario
     response = render(request, "ports/partials/geometries.html", context)
-    print(f"after render: {time.time() - t}s")
     return response
 
 
@@ -401,9 +376,7 @@ def prefetch_all_related(qs):
     return qs.prefetch_related(*related_lookups)
 
 
-@mytimer
 def get_home_context(user: User, scenario: Scenario):
-    t = time.time()
     data = {}
     scenario = scenario or Scenario.objects.select_related("project").last()
     data["scenario"] = scenario
@@ -419,7 +392,6 @@ def get_home_context(user: User, scenario: Scenario):
         get_objects_for_user(user, "details", base_qs).values_list("id", flat=True)
     )
 
-    print(f"after perm: {time.time() - t}s")
     managed_area_ids = set(base_qs.filter(manager=user).values_list("id", flat=True))
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
@@ -437,7 +409,6 @@ def get_home_context(user: User, scenario: Scenario):
             data[key] = items
             electric_components[key] = items
 
-    print(f"after electric: {time.time() - t}s")
     # put the queries in a dict to, so we can directly iterate over them
     data["electric_components"] = electric_components
 
@@ -446,7 +417,6 @@ def get_home_context(user: User, scenario: Scenario):
     # areas dont need prefetching anymore since only geometries need the components
     all_areas = list(base_qs)
 
-    print(f"after all related: {time.time() - t}s")
     building_areas = list()
     open_areas = list()
     for area in all_areas:
@@ -460,13 +430,8 @@ def get_home_context(user: User, scenario: Scenario):
             if area.id in allowed_details_ids_union:
                 area.has_authorization = True
 
-    print(f"after areas: {time.time() - t}s")
     data["building_areas"] = building_areas
     data["open_areas"] = open_areas
-    area_forms = []
-    for a in open_areas + building_areas:
-        area_forms.append(AreaItemFormFactory()(instance=a))
-    data["area_forms"] = area_forms
 
     # Get all template Classes automatically. They are subclasses from ItemTemplate but not from ScenarioItem
     # Also Skip abstract classes
@@ -483,7 +448,6 @@ def get_home_context(user: User, scenario: Scenario):
     return data
 
 
-@mytimer
 def gen_message(msg: str | None = None, event: str | None = None) -> str:
     lines = []
     if event:
@@ -529,7 +493,6 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     return response
 
 
->>>>>>> fe8e46a5 (Dispatch change events via sse)
 def home(request):
     """Handle tool requests without scenario id
     Only meant for development
@@ -585,7 +548,7 @@ def enetra_tool(request, scenario_internal_id: UUID):
         elif not has_authorization(scenario.project, request.user, "details"):
             return HttpResponseForbidden()
     context = get_home_context(user=request.user, scenario=scenario)
-    return mytimer(render)(request, "ports/tool_base.html", context)
+    return render(request, "ports/tool_base.html", context)
 
 
 class ObjectTemplatesView(View):
