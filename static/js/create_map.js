@@ -19,6 +19,9 @@ class MyMap {
     this.osm = null;
     this.drawnItems = null;
     this.featureGroups = {};
+    this.labelLayer = null;
+    this.hoverLayer = null;
+    this.labelMinZoom = this.settings.getLabelMinZoom?.() ?? getLabelMinZoom();
     this.isEditing = null;
     this.editingMode = MyMap.Mode.EDIT
     this._vertexHistory = [];
@@ -88,6 +91,21 @@ class MyMap {
       this.featureGroups[lname] = L.featureGroup().addTo(this.map);
       // this.featureGroups[lname].on('click', (e) => console.log(lname + ' clicked. Layer: ' + e.layer));
     });
+
+    this.labelLayer = L.layerGroup();
+    this.hoverLayer = L.layerGroup().addTo(this.map);
+    this._updateLabelVisibility();
+    this.map.on('zoomend', () => this._updateLabelVisibility());
+  }
+
+  // Area name labels clutter the map at low zoom on large scenarios, so only show them
+  // once the user has zoomed in far enough to read them individually.
+  _updateLabelVisibility() {
+    if (!this.labelLayer) return;
+    const show = this.map.getZoom() >= this.labelMinZoom;
+    const onMap = this.map.hasLayer(this.labelLayer);
+    if (show && !onMap) this.labelLayer.addTo(this.map);
+    if (!show && onMap) this.map.removeLayer(this.labelLayer);
   }
 
   disableDraw() {
@@ -220,12 +238,9 @@ class MyMap {
 
 
     this.map.pm.removeControls();
-    // #Remove all markers
-    this.map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
-        this.map.removeLayer(layer);
-      }
-    });
+    // #Remove all labels
+    this.labelLayer.clearLayers();
+    this.hoverLayer.clearLayers();
 
     for (const featureGroup of Object.values(this.featureGroups)) {
       featureGroup.clearLayers();
@@ -297,6 +312,7 @@ class MyMap {
           const span = (lng_max - lng_min) * 0.8;
           const delta = span / this_markers.length;
           var start_lng = latlng_center.lng - span / 2 + delta / 2;
+          const builtMarkers = [];
           this_markers.forEach((label) => {
             const labelIcon = L.divIcon({
               className: "",
@@ -307,13 +323,23 @@ class MyMap {
             // interactive false to ignore clicks
             const marker = L.marker([latlng_center.lat, start_lng],
               { icon: labelIcon, interactive: false }
-            ).addTo(this.map);
+            ).addTo(this.labelLayer);
+            builtMarkers.push(marker);
             start_lng = start_lng + delta;
             // marker.bindTooltip(label, {
             //   permanent: true,
             //   direction: "top",
             //   offset: [0, -10]
             // });
+          });
+
+          // When the zoom-based labels are hidden, reveal this area's label on hover instead
+          layer.on('mouseover', () => {
+            if (this.map.hasLayer(this.labelLayer)) return;
+            builtMarkers.forEach((marker) => marker.addTo(this.hoverLayer));
+          });
+          layer.on('mouseout', () => {
+            this.hoverLayer.clearLayers();
           });
         }
       });

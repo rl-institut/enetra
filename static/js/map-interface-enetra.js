@@ -22,6 +22,11 @@ function getZoom() {
   return 13
 }
 
+// Area name labels are hidden below this zoom level to reduce clutter on large scenarios
+function getLabelMinZoom() {
+  return 18
+}
+
 function getLayerNames() {
   return ['map-layer-editable', 'map-layer-selected', 'map-layer-open-area', 'map-layer-building-area']
 }
