@@ -1,0 +1,140 @@
+<c-vars
+    placeholder="Search..."
+    button_text="Select..."
+    width="w-[200px]"
+    selected_value=""
+    default_open="false"
+    name=""
+/>
+
+<div
+  x-data="{
+    open: {{ default_open|lower }},
+    value: '{{ selected_value }}',
+    buttonText: '{{ button_text }}',
+    search: '',
+    hasResults: true,
+    root: null,
+
+    init() {
+      this.root = this.$el;
+
+      this.$watch('open', (isOpen) => {
+        if (isOpen) {
+          this.$nextTick(() => {
+            this.root.querySelector('[data-combobox-search]').focus();
+            this.refreshResults();
+          });
+        }
+      });
+
+      this.$watch('search', () => {
+        this.$nextTick(() => this.refreshResults());
+      });
+    },
+
+    getVisibleOptions() {
+      return Array.from(this.root.querySelectorAll('[data-value]'));
+    },
+
+    refreshResults() {
+      this.hasResults = this.getVisibleOptions().length > 0;
+    },
+
+    // Direct selection handler
+    selectValue(selectedValue, label) {
+      // Toggle selection if already selected
+      if (this.value === selectedValue) {
+        this.value = '';
+        this.buttonText = '{{ button_text }}';
+      } else {
+        this.value = selectedValue;
+        this.buttonText = label;
+      }
+
+      this.open = false;
+
+      this.$nextTick(() => {
+        const input = this.root.querySelector('[data-combobox-hidden-input]');
+        if (input) {
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    },
+
+    clearSearch() {
+      this.search = '';
+      this.root.querySelector('[data-combobox-search]').focus();
+    }
+  }"
+  class="relative {% if class %}{{ class }}{% endif %}"
+  {{ attrs }}
+>
+    <!-- Hidden input field to store the selected value -->
+    {% if name %}
+    <input type="hidden" name="{{ name }}" x-bind:value="value" data-combobox-hidden-input />
+    {% endif %}
+  <c-popover :open="open" @open-change="open = $event">
+    <c-popover.trigger>
+      <c-button
+        type='button'
+        variant="outline"
+        role="combobox"
+        x-bind:aria-expanded="open"
+        class="{{ width }} justify-between!"
+      >
+        <span x-text="buttonText"></span>
+        <!-- ChevronsUpDown Icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2 h-4 w-4 shrink-0 opacity-50">
+          <path d="m7 15 5 5 5-5"></path>
+          <path d="m7 9 5-5 5 5"></path>
+        </svg>
+      </c-button>
+    </c-popover.trigger>
+    <c-popover.content class="{{ width }} p-0">
+      <!-- Search input -->
+      <div class="flex items-center border-b px-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4 shrink-0 opacity-50">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input
+          x-model="search"
+          data-combobox-search
+          type="text"
+          placeholder="{{ placeholder }}"
+          class="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground"
+          @keydown.escape.prevent="open = false"
+        >
+        <button
+          type="button"
+          x-show="search"
+          x-cloak
+          @click="clearSearch()"
+          class="ml-2 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label="Clear search"
+        >
+          <!-- X Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Options list -->
+      <div class="max-h-[300px] overflow-y-auto p-1" tabindex="-1">
+        <!-- Empty state -->
+        <div
+          x-show="!hasResults"
+          class="py-6 text-center text-sm"
+        >
+          No item found.
+        </div>
+
+        {{ slot }}
+      </div>
+    </c-popover.content>
+  </c-popover>
+</div>

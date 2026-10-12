@@ -117,14 +117,13 @@
         </button>
     {% endif %}
 
-
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
             <div>
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label>
               <c-field-required :field=form.name />
             </div>
-      <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue="form.usage.value" :field=form.usage >
+      <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue="form.usage.value" :field="form.usage"  >
         {% for value, label in form.usage.field.choices %}
           <c-select.button selectValue={{value}}>
             {{ label }}

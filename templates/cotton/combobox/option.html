@@ -1,0 +1,30 @@
+<c-vars value></c-vars>
+
+<template x-if="!search || $el.content.textContent.toLowerCase().includes(search.toLowerCase())">
+  <button
+    type="button"
+    data-value="{{ value }}"
+    @click="selectValue('{{ value|escapejs }}', $el.textContent.trim())"
+    class="relative flex w-full cursor-pointer select-none items-center rounded-xs px-2 py-1.5 text-sm outline-hidden hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 {% if class %}{{ class }}{% endif %}"
+    x-bind:class="{ 'bg-accent text-accent-foreground': value === '{{ value|escapejs }}' }"
+    {{ attrs }}
+  >
+    <!-- Check Icon -->
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="mr-2 h-4 w-4"
+      x-bind:class="value === '{{ value|escapejs }}' ? 'opacity-100' : 'opacity-0'"
+    >
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    {{ slot }}
+  </button>
+</template>

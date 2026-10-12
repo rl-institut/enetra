@@ -1,0 +1,13 @@
+{% comment %}
+ combobox example, which is a select with search
+{% endcomment %}
+<c-combobox
+    placeholder='Search framework...'
+    button_text='Select framework...'
+    width='w-full'
+>
+    <c-combobox.option value="django">Django</c-combobox.option>
+    <c-combobox.option value="tailwind"><c-icon.building class="inline" /><span> Tailwind</span> </c-combobox.option>
+    <c-combobox.option value="alpine.js">Alpine.js</c-combobox.option>
+    <c-combobox.option value="htmx">HTMX</c-combobox.option>
+</c-combobox>

@@ -122,7 +122,7 @@ class ChangeAccountDataForm(forms.ModelForm):
         cleaned_pw = self.cleaned_data["current_password"]
         if not self.instance.check_password(cleaned_pw):
             error = forms.ValidationError(
-                _("Your password was entered incorrectly. Please enter it again."),
+                _("Das Passwort ist falsch. Bitte geben Sie es erneut ein."),
                 code="password_mismatch",
             )
             self.add_error("current_password", error)

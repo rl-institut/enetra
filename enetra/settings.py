@@ -215,6 +215,13 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default=None)
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+SERVER_EMAIL = EMAIL_HOST_USER
+# DJANGO_ADMINS format: "Name:email,Name2:email2" (comma-separated name:email pairs).
+# These addresses receive an email whenever a 500 error is logged (see LOGGING's
+# mail_admins handler below). Empty by default so no mail is sent until configured.
+ADMINS = tuple(
+    tuple(entry.split(":", 1)) for entry in env.list("DJANGO_ADMINS", default=()) if entry
+)
 LOGIN_URL = "core:login"
 LOGIN_REDIRECT_URL = "/landing/"  # redirect to landing page after login
 LOGOUT_REDIRECT_URL = "/landing/"  # redirect to landing page after logout as well
@@ -257,6 +264,11 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+    },
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
@@ -278,6 +290,13 @@ LOGGING = {
             "filename": "./logs/info.log",
             "formatter": "simple",
         },
+        # Emails everyone in ADMINS when an ERROR (e.g. an unhandled 500) is logged.
+        # Only active when DEBUG=False (require_debug_false filter).
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
     },
     "root": {
         "handlers": ["console"],
@@ -285,7 +304,7 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console", "file", "mail_admins"],
             "level": env.str("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
