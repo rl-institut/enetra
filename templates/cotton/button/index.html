@@ -7,7 +7,9 @@ click:console.log("click")'
 {% endcomment %}
 <button
 
-    class="inline-flex
+    class="
+    {% if class %} {{ class }} {% endif %}
+    inline-flex
     items-center
     justify-center
     gap-2
@@ -24,7 +26,7 @@ click:console.log("click")'
     [&_svg]:pointer-events-none
     [&_svg]:size-4
     [&_svg]:shrink-0
-    active:scale-95 active:transition-all active:duration-75
+    active:scale-98 active:transition-all active:duration-75
     {% if variant == 'default' %}bg-primary text-primary-foreground shadow-sm hover:bg-primary/90
     {% elif variant == 'destructive' %}bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90
     {% elif variant == 'outline' %}border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground
@@ -40,7 +42,6 @@ click:console.log("click")'
     {% elif size == 'icon' %}size-9
     {% endif %}
 
-    {% if class %} {{ class }} {% endif %}
     "
     {{ attrs }}
 >

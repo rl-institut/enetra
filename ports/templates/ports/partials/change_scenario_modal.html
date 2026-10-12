@@ -1,9 +1,10 @@
 {% load i18n %}
-<dialog id="rename_{{key}}_{{scenario.internal_id}}"
-        closedby='any'
-        class="fixed inset-0 bg-transparent p-0 m-auto overflow-visible backdrop:bg-black/80">
-  <form>
-  <div class="bg-white flex flex-col gap-5 p-6 rounded-2xl shadow-[0px_8px_32px_rgba(0,0,0,0.18)] w-full max-w-[500px]">
+<c-modal id="rename_{{key}}_{{scenario.internal_id}}"
+        closedby='any'>
+  {% comment %}
+  use class='contents' apply c-modal styling to divs inside
+  {% endcomment %}
+  <form class="contents">
 
     <div class="flex items-center justify-between">
       <h2 class="text-slate-800 text-lg font-semibold">Szenario umbenennen</h2>
@@ -47,6 +48,5 @@
         {% translate 'Abbrechen' %}
       </button>
     </div>
-  </div>
   </form>
-</dialog>
+</c-modal>

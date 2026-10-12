@@ -1,0 +1,58 @@
+<c-vars name="" initialValue="" ></c-vars>
+<div
+  x-data="{
+    open: false,
+    value: '{{initialValue}}',
+    displayText: '',
+
+    toggle() {
+      this.open = !this.open;
+    },
+
+    close() {
+      this.open = false;
+    },
+
+    select(val, label) {
+      this.value = val;
+      this.displayText = label;
+      this.close();
+      this.$nextTick(() => {
+        const input = this.$refs.hiddenInput;
+        if (input) {
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    },
+
+    init() {
+      // Set initial display value if default_value is provided
+      if (this.value) {
+        this.$nextTick(() => {
+          const option = this.$el.querySelector(`[data-value='${this.value}']`);
+          if (option) {
+            this.displayText = option.textContent.trim();
+          }
+        });
+      }
+
+      // Close when clicking outside
+      document.addEventListener('click', event => {
+        if (this.open && !this.$el.contains(event.target)) {
+          this.close();
+        }
+      });
+    }
+  }"
+  class="relative {% if class %}{{ class }}{% endif %}"
+  @keydown.escape="close()"
+  {{ attrs }}
+>
+  <!-- Hidden form input for the value -->
+  {% if name %}
+  <input type="hidden" name="{{name}}" x-bind:value="value" x-ref="hiddenInput">
+  {% endif %}
+
+  {{ slot }}
+</div>
