@@ -133,7 +133,7 @@ urlpatterns = [
         name="grid_modal",
     ),
     path(
-        "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        "api/timeseries/<uuid:scenario_internal_id>/<uuid:internal_id>/",
         views.api_timeseries,
         name="api_timeseries",
     ),

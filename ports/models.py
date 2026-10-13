@@ -637,7 +637,7 @@ class Load(ScenarioItem):
         template = Timeseries.objects.filter(scenario=scenario).first()
 
         if not template:
-            template = LoadTemplate.objects.create(
+            template = Timeseries.objects.create(
                 scenario=scenario,
                 name="Empty template",
                 timeseries={"values": [1], "timestep_minutes": 15},
