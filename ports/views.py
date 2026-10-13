@@ -139,6 +139,7 @@ def changes_count(request, scenario_internal_id: UUID):
             created_items = []
             changed_items = []
             deleted_items = []
+            related_areas = set()
             port_models = apps.get_app_config("ports").get_models()
             for Model in port_models:
                 if Model in [Scenario, ChangedItem]:
@@ -163,13 +164,27 @@ def changes_count(request, scenario_internal_id: UUID):
                     continue
                 filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
                 base_qs = Model.objects.filter(scenario=scenario)
-                created_items.extend(list(base_qs.filter(**filter)))
+                model_has_area = hasattr(Model, "area")
+                if model_has_area:
+                    base_qs = base_qs.prefetch_related("area")
+                new_created_items = list(base_qs.filter(**filter))
+                created_items.extend(new_created_items)
                 filter = {
                     "created_at__lte": last_update,
                     "updated_at__gt": last_update,
                     "updated_at__lte": updated_at,
                 }
-                changed_items.extend(list(base_qs.filter(**filter)))
+                new_changed_items = list(base_qs.filter(**filter))
+                changed_items.extend(new_changed_items)
+                if model_has_area:
+                    for item in new_changed_items + new_created_items:
+                        related_areas.add(item.area)
+
+            # add areas which are not part of the update list
+            updated_set = {i.internal_id for i in created_items + changed_items}
+            for related_area in related_areas:
+                if related_area.internal_id not in updated_set:
+                    changed_items.append(related_area)
 
             base_qs = Area.objects.filter(scenario=scenario)
             allowed_details_ids = set(
