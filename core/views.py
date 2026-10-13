@@ -294,16 +294,6 @@ def user_rights_view(
     return render(request, template_name="core/user-rechte.html", context=context)
 
 
-def scenario_results(request, scenario_internal_id):
-    # TODO: guard results page against unwarranted access
-    context = {}
-    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    context["scenario"] = scenario
-
-    context["project"] = scenario.project
-    return render(request, template_name="core/ergebnisse.html", context=context)
-
-
 @login_required()
 def project_overview_view(request, project_internal_id):
     project = get_object_or_404(Project, internal_id=project_internal_id)

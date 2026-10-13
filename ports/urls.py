@@ -16,11 +16,6 @@ urlpatterns = [
         name="enetra_tool",
     ),
     path(
-        "simulate/",
-        views.testview,
-        name="test",
-    ),
-    path(
         "timeseries_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
         views.timeseries_upload_from_load,
         name="timeseries_upload_from_load",
@@ -131,6 +126,16 @@ urlpatterns = [
         "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
         views.api_timeseries,
         name="api_timeseries",
+    ),
+    path(
+        "solve/<uuid:scenario_internal_id>",
+        views.start_solver,
+        name="start_solver",
+    ),
+    path(
+        "ergebnisse/<uuid:scenario_internal_id>/",
+        views.scenario_results,
+        name="ergebnisse",
     ),
     path(
         "debug/switch-user/<str:username>/",

@@ -29,7 +29,6 @@ urlpatterns = [
     path("__reload__/", include("django_browser_reload.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-    path("oemof/", include("django_oemof.urls")),
 ]
 if settings.DEBUG_TOOLBAR:
     from debug_toolbar.toolbar import debug_toolbar_urls

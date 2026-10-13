@@ -61,7 +61,9 @@
     </div>
     <!-- {/* Buttons */} -->
     <div class=" flex w-full shrink-0 flex-col content-stretch items-start gap-4">
-      <button onClick="{() => setIsSuccessModalOpen(true)}"
+      <button
+              hx-post="{% url 'ports:start_solver' scenario_internal_id=scenario.internal_id %}"
+              hx-swap="none"
               class=" flex w-full shrink-0 cursor-pointer content-stretch items-center justify-center rounded-[100px] border-0 bg-[#0e7490] px-4 py-3 transition-colors hover:bg-[#0c647a]">
         <p class=" shrink-0 font-['Inter:Bold',sans-serif] text-4 leading-normal font-bold text-white not-italic">
           Szenario berechnen
