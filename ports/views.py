@@ -11,6 +11,7 @@ from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
+from asgiref.sync import sync_to_async
 from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -463,9 +464,11 @@ async def scenario_updates(request, scenario_internal_id: UUID):
 
     When finding changes the client is notified via a custom event.
     """
-    scenario: Scenario = await aget_object_or_404(Scenario, internal_id=scenario_internal_id)
-
-    if not has_authorization(scenario.project, request.user, "details"):
+    scenario: Scenario = await aget_object_or_404(
+        Scenario.objects.select_related("project"), internal_id=scenario_internal_id
+    )
+    # cast to async so event loop is not blocked. standard sync orm calls are not allowed inside async
+    if not await sync_to_async(has_authorization)(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
 
     async def event_stream():
