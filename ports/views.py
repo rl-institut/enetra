@@ -1,4 +1,3 @@
-import asyncio
 import inspect
 import json
 import logging
@@ -129,12 +128,12 @@ def changes_count(request, scenario_internal_id: UUID):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
-    updated_at = scenario.updated_at
+    updated_at = scenario.items_updated_at
     context["updated_at"] = updated_at
     context["changed"] = False
     if last_update:
         last_update = datetime.fromisoformat(last_update)
-        if scenario.updated_at > last_update:
+        if scenario.items_updated_at > last_update:
             context["changed"] = True
             created_items = []
             changed_items = []
@@ -478,6 +477,7 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     """Async loop which checks for updates
 
     When finding changes the client is notified via a custom event.
+    Use redis since its considerably lower in load in comparison to database polling
     """
     scenario: Scenario = await aget_object_or_404(
         Scenario.objects.select_related("project"), internal_id=scenario_internal_id
@@ -486,21 +486,21 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     if not await sync_to_async(has_authorization)(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
 
+    import redis.asyncio as redis
+
     async def event_stream():
-        updated_at = scenario.updated_at
-        last_update = updated_at
-        try:
+        async with redis.from_url(settings.REDIS_URL) as r, r.pubsub() as pubsub:
+            await pubsub.subscribe(f"scenario:{scenario.id}")
             while True:
-                await scenario.arefresh_from_db()
-                if scenario.updated_at > last_update:
-                    last_update = scenario.updated_at
+                # force message every N seconds
+                message = await pubsub.get_message(timeout=15)
+                if message is None:
+                    # message so the client does not close the connection
+                    msg = gen_message(event="keep_alive", msg="")
+                    continue
+                if message["type"] == "message":
                     msg = gen_message(event="scenario_changed", msg="changed")
                     yield msg
-                await asyncio.sleep(0.1)
-        except asyncio.CancelledError:
-            # Handle disconnect
-            ...
-            return
 
     response = StreamingHttpResponse(event_stream(), status=200, content_type="text/event-stream")
     # set explicitly that no compression (gzipmiddleware) takes place.
@@ -1450,7 +1450,7 @@ class DetailsView(View):
             self.context["form"] = form
             if form.is_valid():
                 instance = form.save()
-                self.context["item"] = form.save()
+                self.context["item"] = instance
                 group = Group.objects.get(name=self.scenario.project.group_name())
                 if self.Model == Area:
                     if form.cleaned_data.get("is_public"):
