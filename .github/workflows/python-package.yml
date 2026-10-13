@@ -72,6 +72,7 @@ jobs:
           git \
           postgresql-client \
           build-essential \
+          coinor-cbc coinor-libcbc-dev \
           libpq-dev
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
