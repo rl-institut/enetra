@@ -1,3 +1,4 @@
+{% load static %}
 {% comment %}
 NOTE: Should be refactor to use same interface as main map
 {% endcomment %}
@@ -43,14 +44,18 @@ NOTE: Should be refactor to use same interface as main map
     <div id="{{ map_id }}" class="flex-1 rounded-bl-lg" style="height: 480px;"></div>
     {{ slot }}
   </div>
-
+  {{ areas|json_script:"areas" }}
 </div>
 
+<script src="{% static 'ports/results_map.js' %}"></script>
+
 <script>
+  showResultsMap('{{ map_id }}', '{{ carto_api_token }}');
+/*
 (function(mapId, scenarioEvent, initialScenario) {
 
   const map = L.map(mapId, { zoomControl: true }).setView([52.537, 13.335], 17);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key={{ carto_api_token }}', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 20,
@@ -169,4 +174,5 @@ NOTE: Should be refactor to use same interface as main map
   map.on('click', resetStyles);
 
 })('{{ map_id }}', '{{ scenario_event }}', {{ initial_scenario }});
+*/
 </script>
