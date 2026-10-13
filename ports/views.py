@@ -465,8 +465,8 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     """
     scenario: Scenario = await aget_object_or_404(Scenario, internal_id=scenario_internal_id)
 
-    # if not has_authorization(scenario, request.user, "details"):
-    #     return HttpResponseForbidden("No access")
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("No access")
 
     async def event_stream():
         updated_at = scenario.updated_at
@@ -480,7 +480,6 @@ async def scenario_updates(request, scenario_internal_id: UUID):
                     yield msg
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
-            print("canceld")
             # Handle disconnect
             ...
             return

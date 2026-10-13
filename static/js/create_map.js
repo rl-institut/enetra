@@ -26,6 +26,7 @@ class MyMap {
     this.editingMode = MyMap.Mode.EDIT
     this._vertexHistory = [];
     this._lastLayerState = new Map();
+    this.debug = this.settings.debug ?? false;
 
 
 
@@ -42,8 +43,12 @@ class MyMap {
     document.addEventListener('geom-changed', () => debounced_draw());
   }
 
+  _log(...args) {
+    if (this.debug) console.log(...args);
+  }
+
   _initMap() {
-    console.log('_initMap()')
+    this._log('_initMap()')
     const osmUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key='+this.settings.carto_api_token;
     const osmAttrib = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
     // Add CartoDB light tile layer
@@ -227,13 +232,13 @@ class MyMap {
   }
 
   drawElements() {
-    console.log('drawing elements');
+    this._log('drawing elements');
     const _drawStart = performance.now();
     this._vertexHistory = [];
     this._lastLayerState = new Map();
     const geometries = this.settings.getGeoJsons?.() ?? getGeoJsons();
 
-    console.log(`got geo jsons() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
+    this._log(`got geo jsons() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
     const popups = this.settings.getPopUps();
     const markers = this.settings.getMarkers();
 
@@ -249,7 +254,7 @@ class MyMap {
       featureGroup.clearLayers();
     }
 
-    console.log(`cleared layers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
+    this._log(`cleared layers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
     var layers = {}
     this.isEditing = false
     geometries.forEach(({ geojson, layer: layer_name, id, style, key }) => {
@@ -262,7 +267,7 @@ class MyMap {
         bubblingMouseEvents: true,
       });
       layer.on('click', (e) => {
-        console.log('id: ' + id + ' top clicked. Layer: ' + e.layer);
+        this._log('id: ' + id + ' top clicked. Layer: ' + e.layer);
 
       });
 
@@ -291,7 +296,7 @@ class MyMap {
 
     });
 
-    console.log(`added to layer() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
+    this._log(`added to layer() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
 
 
     // turn on markers and hovers, but only if no layer is in editable mode
@@ -351,14 +356,14 @@ class MyMap {
         }
       });
 
-    console.log(`toggled on hovers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
+    this._log(`toggled on hovers() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
       if (this.map.pm.controlsVisible()) this.map.pm.toggleControls();
     } else {
       // # enable draw controls
       if (!this.map.pm.controlsVisible()) this.map.pm.toggleControls();
     }
 
-    console.log(`drawElements() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
+    this._log(`drawElements() took ${(performance.now() - _drawStart).toFixed(1)}ms for ${geometries.length} geometries`);
   }
 
 
