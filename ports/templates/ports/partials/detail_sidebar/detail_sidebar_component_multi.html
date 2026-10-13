@@ -14,7 +14,7 @@
   <div
     x-data="{show:false }"
     class="animate-in fade-in duration-1000"
-    x-on:{{instances.0.changed_event}}.document='if(event.detail.updated_at != "{{instances.0.updated_at|date:"c"}}")show=true;'
+    x-on:{{instances.0.changed_event}}.document="if (new Date(event.detail.updated_at).getTime() !== new Date('{{instances.0.updated_at|date:'c'}}').getTime()) show = true;"
     x-on:{{instances.0.deleted_event}}.document="show=true;"
     x-show="show"
   >

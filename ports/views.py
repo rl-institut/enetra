@@ -220,7 +220,6 @@ def changes_count(request, scenario_internal_id: UUID):
             for area in areas:
                 area.geom_form = AreaItemFormFactory()(instance=area)
 
-            changed_items.extend(areas)
             context["created_items"] = created_items
             context["changed_items"] = changed_items
             context["deleted_items"] = deleted_items

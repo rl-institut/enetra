@@ -24,6 +24,7 @@ from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
 from django.forms import ModelForm
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -309,7 +310,7 @@ class ScenarioItem(ItemTemplate):
         Elements in the client listen for this event and can show a notification.
         Send updated_at time with event, so any item can compare its current state time.
         """
-        date_str = self.updated_at.isoformat()
+        date_str = timezone.localtime(self.updated_at).isoformat()
         return mark_safe(
             f"document.dispatchEvent(new CustomEvent( '{self.changed_event()}', "
             f"{{detail:{{updated_at:'{date_str}'}}}}));"
