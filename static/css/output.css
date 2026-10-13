@@ -2466,13 +2466,13 @@
       display: block;
     }
   }
-  .group-has-\[input\:checked\]\:block {
-    &:is(:where(.group):has(*:is(input:checked)) *) {
+  .group-has-\[input\:checked\]\/listitem\:block {
+    &:is(:where(.group\/listitem):has(*:is(input:checked)) *) {
       display: block;
     }
   }
-  .group-has-\[input\:checked\]\:hidden {
-    &:is(:where(.group):has(*:is(input:checked)) *) {
+  .group-has-\[input\:checked\]\/listitem\:hidden {
+    &:is(:where(.group\/listitem):has(*:is(input:checked)) *) {
       display: none;
     }
   }
@@ -3504,7 +3504,7 @@
     font-weight: var(--font-weight-semibold);
     color: #64748b;
     font-style: normal;
-    &:is(:where(.group):has(*:is(input:checked)) *) {
+    &:is(:where(.group\/listitem):has(*:is(input:checked)) *) {
       color: #0E7490;
     }
   }

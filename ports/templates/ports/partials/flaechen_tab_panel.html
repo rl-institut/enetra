@@ -9,11 +9,9 @@
     <div>
     <form>
       <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
-
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
         hx-swap="innerHTML scroll:top"
-
     >
 
         {% comment %}
@@ -119,6 +117,9 @@
 
     <form>
       <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML scroll:top"
       >
         {% for item in open_areas %}
           {% comment %}

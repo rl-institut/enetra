@@ -22,7 +22,10 @@
         {% partialdef komponenten-list-section %}
           <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
               <form>
-                <c-list.index id={{listId}} count title='{{title}}' @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                  hx-target="#detailSidebar"
+                  hx-indicator="#detailSidebar"
+                  hx-swap="innerHTML scroll:top"
                 >
                   {% for item in items %}
                     {% if item.has_authorization %}
@@ -31,7 +34,7 @@
                         :active=True
                         hx-swap-oob='true'
                         :defaultHxDetails=True
-                        :selected=False
+                        :selected=None
                         :item=item
                         value='{{ item.internal_id }}'
                         title='{{item.name}}'
@@ -153,7 +156,11 @@
         hx-swap-oob="true"
       >
         <form>
-      <c-list.index id="vorlagen-list" :border=False customTitle hiddenInputName="vorlagen_selection" >
+          <c-list.index id="vorlagen-list" :border=False customTitle hiddenInputName="vorlagen_selection"
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML scroll:top"
+          >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Vorlagen</h4>

@@ -13,7 +13,7 @@
     }
 
     .cotton-list-item-title {
-        @apply font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px] text-[#64748b] group-has-[input:checked]:text-[#0E7490];
+        @apply font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px] text-[#64748b] group-has-[input:checked]/listitem:text-[#0E7490];
     }
 }
 
