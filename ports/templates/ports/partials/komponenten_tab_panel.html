@@ -25,7 +25,7 @@
           {% url items.0.rud_url scenario_internal_id=scenario.internal_id model=items.0.model_name as delete_url %}
           <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
               <form>
-                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                <c-list.index id="{{listId}}" count title="{{title}}" :get_url=delete_url @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
                   hx-target="#detailSidebar"
                   hx-indicator="#detailSidebar"
                   hx-swap="innerHTML scroll:top"
@@ -43,12 +43,6 @@
                         title='{{item.name}}'
                         radioName='internal_id'
                     >
-                      <c-slot name="notSelectedIndicator">
-                        <svg class="text-[#0E7490] w-[19px] h-[19px]" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_unselected }}"></use></svg>
-                      </c-slot>
-                      <c-slot name="selectedIndicator">
-                        <svg class="text-[#0E7490] w-[19px] h-[19px]" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
-                      </c-slot>
                       <c-slot name="singleModeIcon">
                         {% include "ports/partials/list_item_ellipsis.html" with delete_url=delete_url %}
                       </c-slot>
@@ -64,12 +58,6 @@
                         title='{{item.name}}'
                         radioName='internal_id'
                     >
-                      <c-slot name="notSelectedIndicator">
-                        <svg class="text-[#0E7490] w-[19px] h-[19px]" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_unselected }}"></use></svg>
-                      </c-slot>
-                      <c-slot name="selectedIndicator">
-                        <svg class="text-[#0E7490] w-[19px] h-[19px]" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
-                      </c-slot>
                     </c-list.item>
                 {% endif %}
                 {% endfor %}
@@ -170,7 +158,11 @@
       </div>
           </c-slot>
           {% for item  in item_templates %}
-          {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as delete_url %}
+          {% if scenario %}
+            {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as delete_url %}
+          {% else %}
+            {% url item.rud_url model=item.model_name as delete_url %}
+          {% endif %}
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :hx-swap-oob="true"
@@ -178,6 +170,7 @@
             :active=True
             :selected=None
             :item=item
+            :get_url=delete_url
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
@@ -185,12 +178,6 @@
 
           <c-slot name="singleModeIcon">
             {% include "ports/partials/list_item_ellipsis.html" with delete_url=delete_url %}
-          </c-slot>
-          <c-slot name="notSelectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-          </c-slot>
-          <c-slot name="selectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
           </c-slot>
           </c-list.item>
           {% endfor %}

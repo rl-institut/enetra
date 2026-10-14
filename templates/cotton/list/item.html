@@ -1,4 +1,4 @@
-<c-vars bulkModeIcon="" singleModeIcon=""  selected=None active  class :border=True title :defaultHxDetails=False item ></c-vars>
+<c-vars bulkModeIcon="" singleModeIcon=""  selected=None active  class :border=True title :defaultHxDetails=False item get_url="" ></c-vars>
 {% comment %}
   Should the selection stay when BulkSelect is deactived
 {% endcomment %}
@@ -20,14 +20,17 @@ wrap everyting in a label so everything toggles the radio/checkbox
         x-data
         @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
         @select-instance-{{item.internal_id}}.window="$el.click()"
-        hx-include="closest form"
-        {% if scenario %}
-          hx-get="{% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name %}"
-        {% else %}
-          hx-get="{% url item.rud_url  model=item.model_name %}"
+        {% comment %}
+        get_url is usually hoisted once onto the enclosing c-list.index (see its get_url prop) which
+        reacts to the getdetails event bubbling up from here. Only pass get_url directly to this
+        component when a single list mixes multiple item types with different detail urls (e.g. the
+        Vorlagen/templates list), so each item needs its own hx-get.
+        {% endcomment %}
+        {% if get_url %}
+          hx-get="{{ get_url }}"
+          hx-trigger='getdetails'
+          hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
         {% endif %}
-        hx-trigger='getdetails'
-        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
       {% endif %}
 
 >
@@ -61,7 +64,7 @@ wrap everyting in a label so everything toggles the radio/checkbox
             <svg class="text-[#0E7490] w-4 h-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_unselected }}"></use></svg>
     </div>
      <div class="hidden group-has-[input:checked]/listitem:block">
-            <svg class="text-[#0E7490] w-4 h-4 viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
+            <svg class="text-[#0E7490] w-4 h-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
     </div>
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">

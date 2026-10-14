@@ -1,6 +1,22 @@
-<c-vars id hiddenInputName="noInputNameGiven" button modeCallback="" :customTitle=False :border=True :bulkMode=False count title description></c-vars>
+<c-vars id hiddenInputName="noInputNameGiven" button modeCallback="" :customTitle=False :border=True :bulkMode=False count title description get_url=""></c-vars>
 <div id='{{id}}' class="cotton-list bg-white content-stretch flex flex-col gap-[12px] items-start relative size-full "
   x-data='{isBulkMode: {{bulkMode|lower}}, count:null, selected:""}' {{attrs}}
+    {% comment %}
+    hx-include is inheritable, so every c-list.item's getdetails request picks this up without
+    repeating it per item ("closest form" is still resolved relative to whichever item triggers it).
+
+    get_url/hx-trigger/hx-on::trigger are hoisted here too when a whole list shares one detail url
+    (same model/scenario for every item): the getdetails event dispatched by an item's own @click
+    bubbles up to this element (Alpine's $dispatch sets bubbles:true), so one hx-get here replaces
+    one per item. Lists that mix item types with different detail urls (e.g. the Vorlagen/templates
+    list) leave get_url unset here and pass it per item to c-list.item instead.
+    {% endcomment %}
+  hx-include="closest form"
+  {% if get_url %}
+  hx-get="{{ get_url }}"
+  hx-trigger='getdetails'
+  hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+  {% endif %}
     {% comment %}
     A single delegated handler for the whole list replaces the per-item Alpine components/watchers
     that used to dispatch item-selected-<value>/item-unselected-<value> (see dispatchItemSelection
