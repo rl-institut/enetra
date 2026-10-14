@@ -222,6 +222,17 @@ class ItemTemplate(models.Model):
     # Generic Icon shown elsewhere, e.g. map
     icon = "icon.circle_full"
 
+    @property
+    def icon_selected(self) -> str:
+        """Symbol id of the filled icon variant in ports/static/ports/icons/sprite.svg"""
+        list_icon = self.list_icon() if callable(self.list_icon) else self.list_icon
+        return list_icon.removeprefix("icon.").replace("-", "_")
+
+    @property
+    def icon_unselected(self) -> str:
+        """Symbol id of the outline icon variant in ports/static/ports/icons/sprite.svg"""
+        return f"{self.icon_selected}-outline"
+
     @classmethod
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs

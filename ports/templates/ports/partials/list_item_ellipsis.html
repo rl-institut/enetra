@@ -1,12 +1,11 @@
-<div x-data="{show: false}"   class="cursor-pointer" >
+<div x-data="{show: false}" delete_url  class="cursor-pointer" >
   <button
     @click.prevent.stop="show = !show;hideOtherDropDown('#list-drop-down-{{item.internal_id}}')"
     @click.outside="show = false"
     class="cursor-pointer"
 
   >
-  <c-icon.three_dots class="h-[12px]  "
-  />
+  <svg class="w-[12px] h-[12px]" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#three_dots"></use></svg>
   </button>
   <div
   x-show='show' x-cloak >
@@ -20,11 +19,7 @@
     {% endcomment %}
     <li><button
       class="hover:bg-slate-300 w-full"
-      {% if scenario %}
-        hx-delete="{% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name %}"
-      {% else %}
-        hx-delete="{% url item.rud_url  model=item.model_name %}"
-      {% endif %}
+      hx-delete="{{delete_url}}"
       hx-confirm="Wollen Sie {{ item.name }} wirklich löschen?"
       hx-vals='{"internal_id": "{{ item.internal_id }}"}'
       @htmx:after-request="const form = htmx.find('#form_{{item.internal_id}}');

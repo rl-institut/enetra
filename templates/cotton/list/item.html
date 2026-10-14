@@ -58,10 +58,10 @@ wrap everyting in a label so everything toggles the radio/checkbox
   {% endcomment %}
   <div class="relative shrink-0 size-[12px]">
    <div class="group-has-[input:checked]/listitem:hidden">
-      {{notSelectedIndicator}}
+            <svg class="text-[#0E7490] w-4 h-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_unselected }}"></use></svg>
     </div>
      <div class="hidden group-has-[input:checked]/listitem:block">
-      {{selectedIndicator}}
+            <svg class="text-[#0E7490] w-4 h-4 viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
     </div>
   </div>
   <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
