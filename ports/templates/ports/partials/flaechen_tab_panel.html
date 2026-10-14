@@ -68,7 +68,6 @@
           </c-list.item>
         {% endif %}
       {% endpartialdef %}
-
         {% for item in building_areas %}
           {% partial list-item-and-form %}
 
@@ -121,11 +120,11 @@
         hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
         hx-get="{{rud_url}}"
       >
-        {% for item in open_areas %}
-          {% comment %}
+        {% comment %}
         hx-get this template with the item injected
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-          {% endcomment %}
+        {% endcomment %}
+        {% for item in open_areas %}
       {% partial list-item-and-form %}
         {% endfor %}
       </c-list>

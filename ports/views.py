@@ -10,6 +10,7 @@ from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
+import redis.asyncio as redis
 from asgiref.sync import sync_to_async
 from django.apps.registry import apps
 from django.conf import settings
@@ -486,8 +487,6 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     # cast to async so event loop is not blocked. standard sync orm calls are not allowed inside async
     if not await sync_to_async(has_authorization)(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
-
-    import redis.asyncio as redis
 
     async def event_stream():
         async with redis.from_url(settings.REDIS_URL) as r, r.pubsub() as pubsub:

@@ -33,9 +33,6 @@
       <div x-data="{show:false }"
            class='animate-in fade-in duration-1000'
       x-on:{{instance.changed_event}}.document="d1= new Date(event.detail.updated_at).getTime();d2 = new Date('{{instance.updated_at|date:'c'}}').getTime(); if (d1 !==d2) show = true;
-      console.log( d1);
-      console.log( d2);
-
       "
            x-on:{{instance.deleted_event}}.document="show = true;"
            x-show="show">

@@ -6,7 +6,7 @@
   bg-gray-200  cursor-not-allowed
   {% endif %}
   {{ class }} "
-       {{ attrs }}
+       {{attrs}}
         {% if get_url %}
           hx-trigger='getdetails'
           hx-get="{{ get_url }}"

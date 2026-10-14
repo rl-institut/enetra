@@ -205,7 +205,6 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 for k, v in self.cleaned_data.items()
                 if k in self.fields and k != "internal_ids" and v not in [None, ""]
             }
-            # also triggers a scenario changed event through signals
             data["updated_at"] = timezone.now()
             if self.instance._meta.model == Area:
                 grids = []
@@ -227,6 +226,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 changed_items.append(changed_item)
             ChangedItem.objects.bulk_create(changed_items)
 
+            # also trigger a scenario changed event through signals
             update_scenario_post_save(qs.model, qs.first())
             return qs
 
