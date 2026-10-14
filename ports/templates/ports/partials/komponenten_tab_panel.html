@@ -22,46 +22,22 @@
       <div class="border-b border-[#cbd5e1] bg-white  ">
 
         {% partialdef komponenten-list-section %}
-          {% url items.0.rud_url scenario_internal_id=scenario.internal_id model=items.0.model_name as delete_url %}
+          {% url items.0.rud_url scenario_internal_id=scenario.internal_id model=items.0.model_name as rud_url %}
           <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
               <form>
-                <c-list.index id="{{listId}}" count title="{{title}}" :get_url=delete_url @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
                   hx-target="#detailSidebar"
                   hx-indicator="#detailSidebar"
                   hx-swap="innerHTML scroll:top"
+                  hx-include="closest form"
+                  hx-trigger='getdetails'
+                  hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+                  hx-get="{{rud_url}}"
                 >
                   {% for item in items %}
-                    {% if item.has_authorization %}
-                      <c-list.item
-                        id='button-list-item-{{ item.internal_id }}'
-                        :active=True
-                        hx-swap-oob='true'
-                        :defaultHxDetails=True
-                        :selected=None
-                        :item=item
-                        value='{{ item.internal_id }}'
-                        title='{{item.name}}'
-                        radioName='internal_id'
-                    >
-                      <c-slot name="singleModeIcon">
-                        {% include "ports/partials/list_item_ellipsis.html" with delete_url=delete_url %}
-                      </c-slot>
-                    </c-list.item>
-                {% else %}
-                      <c-list.item
-                        id='button-list-item-{{ item.internal_id }}'
-                        :active=False
-                        hx-swap-oob='true'
-                        :selected=False
-                        :item=item
-                        value='{{ item.internal_id }}'
-                        title='{{item.name}}'
-                        radioName='internal_id'
-                    >
-                    </c-list.item>
-                {% endif %}
+                {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" %}
                 {% endfor %}
-              </c-list>
+              </c-list.index>
               </form>
           </div>
         {% endpartialdef %}
@@ -151,6 +127,9 @@
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
         hx-swap="innerHTML scroll:top"
+        hx-include="closest form"
+        hx-trigger='getdetails'
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
           >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
@@ -158,11 +137,7 @@
       </div>
           </c-slot>
           {% for item  in item_templates %}
-          {% if scenario %}
-            {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as delete_url %}
-          {% else %}
-            {% url item.rud_url model=item.model_name as delete_url %}
-          {% endif %}
+            {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as rud_url %}
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :hx-swap-oob="true"
@@ -170,14 +145,14 @@
             :active=True
             :selected=None
             :item=item
-            :get_url=delete_url
+            :get_url=rud_url
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
         >
 
           <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" with delete_url=delete_url %}
+            {% include "ports/partials/list_item_ellipsis.html" with delete_url=rud_url %}
           </c-slot>
           </c-list.item>
           {% endfor %}

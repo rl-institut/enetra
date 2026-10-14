@@ -31,7 +31,6 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     if (!uniqueid) return;
     // If the unique id already exists in the dom prevent the swap, else return early
     if (document.getElementById(uniqueid)) {
-        console.log("prevented swap for " + uniqueid);
         event.detail.shouldSwap = false;
     }
 })
@@ -98,3 +97,49 @@ document.addEventListener("htmx:afterSettle", (event) => {
     });
 }
 );
+
+
+// give some functionality to c-list.items. since there might be hundreds, beeing efficient here improves render times
+// this makes list items disptach the appropriate getdetails event as well as listen to select events
+document.addEventListener("DOMContentLoaded", () => {
+    const list_items = document.querySelectorAll(".cotton-list-item ")
+    list_items.forEach((el) => addListItemFunctionality(el))
+}
+)
+
+document.addEventListener("htmx:afterRequest", (event) => {
+    const el = event.target;
+    var list_items;
+    if (el.classList.contains("cotton-list-item")) {
+        list_items = [el]
+    }
+    else {
+        list_items = el.querySelectorAll(".cotton-list-item ")
+    }
+    list_items.forEach((el) => addListItemFunctionality(el))
+})
+
+document.addEventListener("htmx:oobAfterSwap", (event) => {
+    const el = event.target;
+    var list_items;
+    if (el.classList.contains("cotton-list-item")) {
+        list_items = [el]
+    }
+    else {
+        list_items = el.querySelectorAll(".cotton-list-item ")
+    }
+    list_items.forEach((el) => addListItemFunctionality(el))
+})
+
+function addListItemFunctionality(el) {
+    if (el._added_list_item_func) return;
+
+    function onclick() {
+        if (event.target instanceof HTMLInputElement) el.dispatchEvent(new CustomEvent('getdetails', { bubbles: true }));
+    }
+    el.onclick = onclick;
+    const internal_id = el.querySelector('input').value;
+    console.assert(internal_id);
+    window.addEventListener("select-instance-" + internal_id, () => { el.click(); })
+    el._added_list_item_func = true
+}

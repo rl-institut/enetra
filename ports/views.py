@@ -209,6 +209,8 @@ def changes_count(request, scenario_internal_id: UUID):
 
             areas = [x.area for x in changed_items if vars(x).get("area_id")]
             areas.extend([x for x in changed_items if isinstance(x, Area)])
+            areas.extend([x for x in created_items if isinstance(x, Area)])
+            areas.extend([x for x in created_items if vars(x).get("area_id")])
             areas = list(set(areas))
             # Add authorization
             for area in areas:

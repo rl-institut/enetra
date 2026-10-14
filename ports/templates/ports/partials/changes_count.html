@@ -21,7 +21,7 @@
 
 
 {% for item in created_items %}
-{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True  %}
+{% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='created' sendEvents=True geom_form=item.geom_form  %}
   {% endfor %}
 {% for item in deleted_items %}
 {% include 'ports/partials/update_delete_create_scenario_item.html' with instance=item status='deleted' sendEvents=True %}
