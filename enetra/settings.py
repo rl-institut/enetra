@@ -243,6 +243,24 @@ REDIS_URL = env("REDIS_URL", default=None)
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
+# Redis is optional: without it, scenario live updates (SSE) are unavailable but the
+# rest of the app works normally. Checked once here so the warning surfaces at startup.
+REDIS_AVAILABLE = False
+if REDIS_URL:
+    try:
+        import redis
+
+        redis.from_url(REDIS_URL).ping()
+        REDIS_AVAILABLE = True
+    except Exception:
+        REDIS_AVAILABLE = False
+
+if not REDIS_AVAILABLE:
+    print(
+        "WARNING: Redis is not reachable. Live scenario updates will not work. "
+        "For the best experience, configure REDIS_URL and make sure Redis is reachable."
+    )
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

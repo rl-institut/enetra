@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import pandas as pd
-import redis
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -363,13 +362,16 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created
-    Publish the change to redis
+    Publish the change to redis, if available
     """
-    r = redis.from_url(settings.REDIS_URL)
     scenario_id = instance.scenario_id
     if sender == ChangedItem:
         return
-    r.publish(f"scenario:{scenario_id}", "changed")
+    if settings.REDIS_AVAILABLE:
+        import redis
+
+        r = redis.from_url(settings.REDIS_URL)
+        r.publish(f"scenario:{scenario_id}", "changed")
     # note that this does not call scenario save --> scenario.updated_at
     # does not change
     Scenario.objects.filter(pk=scenario_id).update(items_updated_at=instance.updated_at)

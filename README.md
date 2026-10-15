@@ -40,8 +40,9 @@ This site make use of the django package ecosystem and uses the following packag
 
 ### Backend
  - celery as asynchronous worker of heavy tasks
- - redis as backend for caches, celery and possibly pubsub
- - gunicorn as wsgi
+ - **redis is optional**: scenario item saves publish to a redis pubsub channel (`scenario:<id>`) (`ports/models.py`'s `update_scenario_post_save`), and the `scenario_updates` SSE endpoint subscribes to it to push live updates instead of DB polling. Availability is checked once at startup (`settings.REDIS_AVAILABLE`) and a warning is printed if redis isn't reachable; without it, scenario item saves still work and the SSE endpoint returns `503` instead of streaming live updates. For the best experience, redis should be reachable via `REDIS_URL`.
+   - without redis a helper functionality should make the single user experience work still, with a little bit more delay. - changes from other users will not be flushed live in this case
+ - the app is served over **ASGI via daphne** (not gunicorn/WSGI anymore) to support the async SSE view. `manage.py runserver`/`make runserver` are unaffected (Django's dev server picks up `ASGI_APPLICATION` automatically), but production (`start` script) now runs `daphne enetra.asgi:application`.
  - docker and docker-compose for easy setup of local development or local hosting
 
 ### Formatting and Linting
@@ -72,11 +73,10 @@ uvx ruff check filepath [--fix]
     2. The software requires a PostgreSQL database with the PostGIS package.
          - The software is found [here](https://www.postgresql.org/download/) and [here](https://postgis.net/documentation/getting_started/) or via your system's (or server's) package manager (e.g. `apt install postgis`)
          - The credentials for the database are set in `enetra/settings.py` in the `DATABASES`variable. **SECURITY WARNING: Do not commit your passwords to GitHub!**
-    3. The software can uses celery. A [backend for Celery](https://docs.celeryq.dev/en/stable/getting-started/backends-and-brokers/index.html) needs to be available. Its address is set in the `CELERY_BROKER_URL` in the `.env` file.
-         - [rabbitmq](https://www.rabbitmq.com/) can be installed on ubuntu using `apt install rabbitmq-server`
-         - A user can be added using the following commands (or the guest user can be used):
-             1. `rabbitmqctl add_user $user $password`
-             2. `rabbitmqctl set_permissions -p / $user ".*" ".*" ".*"`
+    3. **Redis is optional, but recommended** - it's used for live scenario-update pubsub (`ports/models.py`/`scenario_updates` view). Its address is set via `REDIS_URL` in `.env`.
+         - on ubuntu: `apt install redis-server`
+         - without a reachable redis, a startup warning is printed and live scenario updates (SSE) won't work, but the rest of the app (including saving scenario items) works normally
+         - celery (if used) also reads its broker/result backend from the same `REDIS_URL`
     4. install [uv](https://docs.astral.sh/uv/getting-started/installation/)
     5. The dependencies can be installed via
         ```bash
@@ -141,6 +141,7 @@ uvx ruff check filepath [--fix]
     DJANGO_LOCAL_DEVELOPMENT=True
     DJANGO_DEBUG=True
     DJANGO_ADMIN_PASSWORD=SecretAdminPassword
+    REDIS_URL=redis://localhost:6379/0
 
 
     DATA_USER=data
@@ -180,6 +181,9 @@ uvx ruff check filepath [--fix]
        > directory will create duplicate Scenarios and Areas. Check the database before re-running.
 
 
+## Recent breaking changes
+ - the `api_timeseries` URL moved from `api/loadtemplate/...` to `api/timeseries/...` (same view, name unchanged - only the path changed)
+
 ## Permissions
 Enetra uses django-guardian for instance based permissions.
 Permissions can be given only on a group base right now.
@@ -191,9 +195,10 @@ The <i>manager</i> can toggle the authorization level to public, so every Projec
 
 
 ## Running
-1. Only if `.env`has a celery broker listed, start a celery worker (in another terminal): `celery -A ebusdjango worker -l info`
+1. For the best experience (live scenario updates), make sure redis is running and reachable at `REDIS_URL` (optional, see Installation step 2.3) - e.g. `redis-server` or `sudo service redis-server start`
+2. Only if `.env`has a celery broker listed, start a celery worker (in another terminal): `celery -A ebusdjango worker -l info`
     - on macOS `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` before the command may be necessary
-2. Run the server: `uv run manage.py runserver`
+3. Run the server: `uv run manage.py runserver`
 
 ## Development
 To run tests your PostgreSQL user needs SUPERUSER rights to be able to create test databases and delete them.

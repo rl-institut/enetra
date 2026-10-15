@@ -10,7 +10,6 @@ from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
-import redis.asyncio as redis
 from asgiref.sync import sync_to_async
 from django.apps.registry import apps
 from django.conf import settings
@@ -481,6 +480,11 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     When finding changes the client is notified via a custom event.
     Use redis since its considerably lower in load in comparison to database polling
     """
+    if not settings.REDIS_AVAILABLE:
+        return HttpResponse("Live updates unavailable: Redis is not reachable.", status=503)
+
+    import redis.asyncio as redis
+
     scenario: Scenario = await aget_object_or_404(
         Scenario.objects.select_related("project"), internal_id=scenario_internal_id
     )
