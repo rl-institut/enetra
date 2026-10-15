@@ -200,6 +200,8 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         def save(self):
             # UUIDMultipleChoiceField returns queryset
             qs = self.cleaned_data["internal_ids"]
+            if not qs:
+                return
             data = {
                 k: v
                 for k, v in self.cleaned_data.items()

@@ -41,7 +41,6 @@ function searchName(search, parent) {
   const filtered_siblings = findSiblingNodes(filtered, parent);
   [...all_siblings].forEach((n) => { n.style.display = 'none' });
   filtered_siblings.forEach((n) => { n.style.display = '' });
-  console.log('searched')
 };
 
 

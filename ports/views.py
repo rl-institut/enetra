@@ -55,6 +55,7 @@ from guardian.utils import clean_orphan_obj_perms
 from core.models import Invite
 from core.views import ensure_project_rights
 from ports.forms import GridFormFactory
+from ports.models import update_scenario_post_save
 
 from . import models  # needed to get all component classes
 from . import tasks
@@ -207,24 +208,34 @@ def changes_count(request, scenario_internal_id: UUID):
                     if area_id in allowed_details_ids_union:
                         item.has_authorization = True
 
-            areas = [x.area for x in changed_items if vars(x).get("area_id")]
-            areas.extend([x for x in changed_items if isinstance(x, Area)])
-            areas.extend([x for x in created_items if isinstance(x, Area)])
-            areas.extend([x for x in created_items if vars(x).get("area_id")])
-            areas = list(set(areas))
-            # Add authorization
-            for area in areas:
-                if area.id in allowed_details_ids_union:
-                    area.has_authorization = True
-                area.checked_authorization = True
+            # fetch areas again with added related_sets. this might be not performant for large queries
+            # but since changes are emitted regularly, id count is expected to be small
+            area_ids = []
+            for item in changed_items + created_items:
+                if isinstance(item, Area):
+                    area_ids.append(item.id)
+            areas_w_prefetch = {
+                x.id: x for x in prefetch_all_related(Area.objects.filter(id__in=area_ids))
+            }
 
-            # Add geom from to instances so they are updated
-            for area in areas:
-                area.geom_form = AreaItemFormFactory()(instance=area)
+            AreaForm = AreaItemFormFactory()
+            # use a area instance with all the related objects already fetched for the geom form
+            # which displays components
+            for item in changed_items + created_items:
+                if isinstance(item, Area):
+                    area = areas_w_prefetch[item.id]
+                    # pass authorization to the geom form
+                    area.has_authorization = item.has_authorization
+                    item.geom_form = AreaForm(instance=area)
 
             context["created_items"] = created_items
             context["changed_items"] = changed_items
             context["deleted_items"] = deleted_items
+
+            # add callback so created_items from user are clicked
+            for item in created_items:
+                if item.manager == request.user:
+                    item.callback = "this.click();"
 
     # Reuse the calculated changes
     count = request.GET.get("all_changes_count", None)
@@ -260,8 +271,9 @@ def geometries(request, scenario_internal_id: UUID):
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
     area_forms = []
+    AreaForm = AreaItemFormFactory()
     for a in all_areas:
-        form = AreaItemFormFactory()(instance=a)
+        form = AreaForm(instance=a)
         if a.id in allowed_details_ids_union:
             a.has_authorization = True
         area_forms.append(form)
@@ -1256,7 +1268,8 @@ class DetailsView(View):
             )
             self.instances = self.Model.objects.bulk_create(new_items)
             # Trigger the change event for the scenario
-            self.instances[0].save()
+            assert self.instances[0]
+            update_scenario_post_save(self.Model, self.instances[0])
             if not self.multi:
                 self.instance = self.instances[0]
                 self.Form = self.adjust_form(self.instance)

@@ -15,7 +15,6 @@ function rerouteServerEventsToElement(url) {
     // which trigger events the dom can listen too
     const event_source = htmx.createEventSource(url);
     event_source.addEventListener("scenario_changed", e => {
-        console.log('changed in event source')
         document.body.dispatchEvent(
             new CustomEvent("scenario_changed", {
                 detail: e.data
@@ -107,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 }
 )
 
-document.addEventListener("htmx:afterRequest", (event) => {
+document.addEventListener("htmx:afterSwap", (event) => {
     const el = event.target;
     var list_items;
     if (el.classList.contains("cotton-list-item")) {
@@ -119,7 +118,8 @@ document.addEventListener("htmx:afterRequest", (event) => {
     list_items.forEach((el) => addListItemFunctionality(el))
 })
 
-document.addEventListener("htmx:oobAfterSwap", (event) => {
+document.addEventListener("htmx:oobBeforeSwap", (event) => {
+    console.log( 'added func')
     const el = event.target;
     var list_items;
     if (el.classList.contains("cotton-list-item")) {

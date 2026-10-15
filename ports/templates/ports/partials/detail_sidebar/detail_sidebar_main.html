@@ -3,8 +3,7 @@
 
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-{% if not created %}
-  {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <form hx-indicator="this"
   id="form_{{internal_id}}"
   hx-select="#form_{{internal_id}}"
@@ -215,7 +214,6 @@ hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
 >
 </div>
 
-{% endif %}
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
 In case of a created element the list is appended through 'beforeend'

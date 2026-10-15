@@ -14,6 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
@@ -368,13 +369,27 @@ def update_scenario_post_save(sender, instance, **kwargs):
     if sender == ChangedItem:
         return
     if settings.REDIS_AVAILABLE:
-        import redis
+        try:
+            import redis
+            from redis.exceptions import RedisError
 
-        r = redis.from_url(settings.REDIS_URL)
-        r.publish(f"scenario:{scenario_id}", "changed")
-    # note that this does not call scenario save --> scenario.updated_at
-    # does not change
-    Scenario.objects.filter(pk=scenario_id).update(items_updated_at=instance.updated_at)
+            r = redis.from_url(settings.REDIS_URL)
+            r.publish(f"scenario:{scenario_id}", "changed")
+        except RedisError as e:
+            # should redis fail, the scenario is updated still
+
+            # lazy import to avoid circular import
+            from ports.util import throttle
+
+            msg = repr(e)
+            throttle(
+                lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
+                24 * 60 * 60,
+                "redis_failure_admin_mail",
+            )
+    Scenario.objects.filter(pk=scenario_id).update(
+        items_updated_at=instance.updated_at, updated_at=instance.updated_at
+    )
 
 
 @receiver(ScenarioItem.scenarioitem_post_save)

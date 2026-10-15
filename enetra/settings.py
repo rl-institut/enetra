@@ -250,7 +250,8 @@ if REDIS_URL:
     try:
         import redis
 
-        redis.from_url(REDIS_URL).ping()
+        # wait 2 seconds for redis, should be running before starting the server. no retry logic should be ok
+        redis.from_url(REDIS_URL, socket_connect_timeout=2).ping()
         REDIS_AVAILABLE = True
     except Exception:
         REDIS_AVAILABLE = False
