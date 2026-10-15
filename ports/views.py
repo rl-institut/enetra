@@ -501,10 +501,11 @@ async def scenario_updates(request, scenario_internal_id: UUID):
                 if message is None:
                     # message so the client does not close the connection
                     msg = gen_message(event="keep_alive", msg="")
-                    continue
-                if message["type"] == "message":
+                elif message["type"] == "message":
                     msg = gen_message(event="scenario_changed", msg="changed")
-                    yield msg
+                else:
+                    continue
+                yield msg
 
     response = StreamingHttpResponse(event_stream(), status=200, content_type="text/event-stream")
     # set explicitly that no compression (gzipmiddleware) takes place.
