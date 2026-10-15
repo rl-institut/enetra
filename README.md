@@ -196,7 +196,7 @@ The <i>manager</i> can toggle the authorization level to public, so every Projec
 
 ## Running
 1. For the best experience (live scenario updates), make sure redis is running and reachable at `REDIS_URL` (optional, see Installation step 2.3) - e.g. `redis-server` or `sudo service redis-server start`
-2. Only if `.env`has a celery broker listed, start a celery worker (in another terminal): `celery -A ebusdjango worker -l info`
+2. Only if `.env`has a celery broker listed, start a celery worker (in another terminal): `celery -A enetra worker -l info`
     - on macOS `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` before the command may be necessary
 3. Run the server: `uv run manage.py runserver`
 
