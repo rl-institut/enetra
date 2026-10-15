@@ -224,13 +224,16 @@ class ItemTemplate(models.Model):
 
     @property
     def icon_selected(self) -> str:
-        """Symbol id of the filled icon variant in ports/static/ports/icons/sprite.svg"""
+        """Symbol id of the filled icon variant in ports/static/ports/icons/sprite.svg
+        This is used for more efficient rendering on large loops
+        """
         list_icon = self.list_icon() if callable(self.list_icon) else self.list_icon
         return list_icon.removeprefix("icon.").replace("-", "_")
 
     @property
     def icon_unselected(self) -> str:
-        """Symbol id of the outline icon variant in ports/static/ports/icons/sprite.svg"""
+        """Symbol id of the outline icon variant in ports/static/ports/icons/sprite.svg
+        This is used for more efficient rendering on large loops"""
         return f"{self.icon_selected}-outline"
 
     @classmethod
