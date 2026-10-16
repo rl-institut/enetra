@@ -14,6 +14,7 @@ from django.utils import timezone
 from ports.models import update_scenario_post_save
 
 from .authorization import has_authorization
+from .models import UNITS
 from .models import Area
 from .models import ChangedItem
 from .models import ElectricComponent
@@ -50,28 +51,10 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-UNITS = {
-    "power_kw": "kW",
-    "efficiency": "[-]",
-    "efficiency_thermal": "[-]",
-    "power_installed": "kW",
-    "power_min": "kW",
-    "power_max": "kW",
-    "capex": "€",
-    "opex": "€/a",
-    "azimut": "°",
-    "angle": "°",
-    "spec_power": "kW/m²",
-    "surface_area_installed": "m²",
-    "surface_area_min": "m²",
-    "surface_area_max": "m²",
-}
-
-
 def GridFormFactory():
     return modelform_factory(
         Grid,
-        fields=["name", "carrier", "feed_in"],
+        fields=["name", "carrier", "feed_in", "power_max", "timeseries"],
         widgets={
             "name": forms.TextInput(),
         },

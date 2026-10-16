@@ -1,9 +1,11 @@
 import datetime
 import logging
 import uuid
+from collections.abc import Callable
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 from typing import ClassVar
 
 import pandas as pd
@@ -29,6 +31,25 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
+
+# Unit suffix shown next to a field's value, both on forms (ports/forms.py) and on
+# the {{ instance|display:"field" }} template filter (ports/templatetags/display.py).
+UNITS = {
+    "power_kw": "kW",
+    "efficiency": "[-]",
+    "efficiency_thermal": "[-]",
+    "power_installed": "kW",
+    "power_min": "kW",
+    "power_max": "kW",
+    "capex": "€",
+    "opex": "€/a",
+    "azimut": "°",
+    "angle": "°",
+    "spec_power": "kW/m²",
+    "surface_area_installed": "m²",
+    "surface_area_min": "m²",
+    "surface_area_max": "m²",
+}
 
 
 # Each set of scenario is bundled via its project
@@ -193,6 +214,28 @@ class ItemTemplate(models.Model):
 
     class Meta:
         abstract = True  # Important: makes this a base, not a table
+
+    # Per-field display formatters, keyed by field name, used by the {{ instance|display:"field" }}
+    # template filter (ports/templatetags/display.py). Subclasses override/extend this to
+    # customize how a field's value is shown, e.g. unit conversion (efficiency as a
+    # fraction -> "42.00 %"). Fields without an entry fall back to UNITS.get(field_name)
+    # as a suffix.
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {}
+
+    def display_value(self, field_name: str) -> str:
+        """Format field_name's current value for display, e.g. in a template via
+        {% load display %}{{ instance|display:"power_kw" }}.
+        Checks display_formatters first (e.g. unit conversion), then falls back to
+        a UNITS suffix, then the plain value. None/"" renders as "Keine Angabe".
+        """
+        value = getattr(self, field_name)
+        if value is None or value == "":
+            return "Keine Angabe"
+        formatter = self.display_formatters.get(field_name)
+        if formatter:
+            return formatter(value)
+        unit = UNITS.get(field_name)
+        return f"{value} {unit}" if unit else str(value)
 
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
@@ -761,6 +804,21 @@ class Grid(ScenarioItem):
         "Area", help_text=_("Flächen, die an dieses Netz angeschlossen sind.")
     )
 
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
+        "timeseries": lambda v: v.name,
+    }
+
+    power_max = models.FloatField(
+        verbose_name=_("Kapazität"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Maximale Leistung des Netzanschlusspunkts in kW. Muss größer oder gleich 0 sein."
+        ),
+    )
+
 
 class ElectricComponentTemplate(ItemTemplate):
     """Abstract template for electric components, defines shared characteristics"""
@@ -827,40 +885,12 @@ class ElectricComponentTemplate(ItemTemplate):
     class Meta:
         abstract = True  # abstract table
 
-    def power_kw_verbose(self):
-        if not self.power_kw:
-            return "Keine Angabe"
-        return f"{self.power_kw} kW"
-
-    def efficiency_verbose(self):
-        if not self.efficiency:
-            return "Keine Angabe"
-        return f"{(self.efficiency * 100):.2f} %"
-
-    def power_installed_verbose(self):
-        if not self.power_installed:
-            return "Keine Angabe"
-        return f"{self.power_installed} kW"
-
-    def power_min_verbose(self):
-        if not self.power_min:
-            return "Keine Angabe"
-        return f"{self.power_min} kW"
-
-    def power_max_verbose(self):
-        if not self.power_max:
-            return "Keine Angabe"
-        return f"{self.power_max} kW"
-
-    def capex_verbose(self):
-        if not self.capex:
-            return "Keine Angabe"
-        return f"{self.capex} €"
-
-    def opex_verbose(self):
-        if not self.opex:
-            return "Keine Angabe"
-        return f"{self.opex} €/a"
+    # power_kw, power_installed, power_min, power_max, capex, opex all use the
+    # UNITS-based default from ItemTemplate.get_<field>_display(). efficiency needs
+    # the fraction -> percentage conversion, so it gets an explicit formatter.
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
+        "efficiency": lambda v: f"{(v * 100):.2f} %",
+    }
 
     def custom_fields(self):
         generic_field_names = {f.name for f in ElectricComponentTemplate._meta.get_fields()}

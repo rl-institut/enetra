@@ -3,10 +3,8 @@
   own <dialog> (same pattern as create_scenario_modal.html / scenario_calculation_modal.html)
   instead of being nested inside the Area <form>.
   {% endcomment %}
-  <dialog id="create-grid-modal"
-          closedby="any"
-          class="fixed inset-0 m-auto overflow-visible bg-transparent p-0 backdrop:bg-black/80">
-    <div class="relative w-full max-w-[500px] content-stretch items-start rounded-[16px] bg-white p-[24px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.95)]">
+
+<c-modal closedby='any' id="create-grid-modal" >
       <div class="relative flex w-full shrink-0 content-stretch items-center justify-between mb-[16px]">
         <p class="relative shrink-0 font-['Inter:Regular',sans-serif] text-[20px] leading-[normal] font-normal text-[#1e293b] not-italic">
           Netzanschluss erstellen
@@ -20,13 +18,9 @@
       </div>
       <form id="create-grid-form"
             class="flex flex-col gap-[16px]">
-        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.name %}
-        {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" with field=form.carrier %}
-        <label class="flex items-center gap-[8px] cursor-pointer">
-          <c-input :field="form.feed_in"
-              class="w-[14px] h-[14px] accent-[#0e7490] cursor-pointer" />
-          <span class="text-[14px] text-[#1e293b]">{{ form.feed_in.label }}</span>
-        </label>
+         {% for field in form.visible_fields %}
+         <c-form-field :field="field" />
+         {% endfor %}
         <div class="htmx-indicator bg-red-500 loader" id="create-grid-indicator"></div>
         <c-api-button
           type='submit'
@@ -49,5 +43,4 @@
           </p>
         </button>
       </form>
-    </div>
-  </dialog>
+</c-modal>

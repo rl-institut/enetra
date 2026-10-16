@@ -1767,6 +1767,21 @@
   .pr-6 {
     padding-right: calc(var(--spacing) * 6);
   }
+  .pr-17 {
+    padding-right: calc(var(--spacing) * 17);
+  }
+  .pr-17\.5 {
+    padding-right: calc(var(--spacing) * 17.5);
+  }
+  .pr-20 {
+    padding-right: calc(var(--spacing) * 20);
+  }
+  .pr-22 {
+    padding-right: calc(var(--spacing) * 22);
+  }
+  .pr-22\.5 {
+    padding-right: calc(var(--spacing) * 22.5);
+  }
   .pr-\[60px\] {
     padding-right: 60px;
   }

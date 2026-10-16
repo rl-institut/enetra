@@ -425,6 +425,13 @@ def get_home_context(user: User, scenario: Scenario):
 
     electric_components = dict()
 
+    grids = (
+        Grid.objects.filter(scenario=scenario)
+        .prefetch_related("areas")
+        .select_related("connected_to", "timeseries")
+    )
+    data["grids"] = grids
+
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
             # create queries for all electriccomponenent models like

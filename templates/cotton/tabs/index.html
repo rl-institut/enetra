@@ -1,4 +1,4 @@
-<c-vars variant debugWidget=False></c-vars>
+<c-vars variant debugWidget=False activeTabSelector=None ></c-vars>
 <div x-data=' {
   activeTab: $el.querySelector("{{ activeTabSelector|default:".tab-panel" }}"),
   tabs: $el.querySelectorAll(":scope > .tab-panel"),
