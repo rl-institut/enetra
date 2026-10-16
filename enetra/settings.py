@@ -71,6 +71,7 @@ INTERNAL_IPS = [
 ]
 
 INSTALLED_APPS = [
+    "daphne",
     "unfold",  # before django.contrib.admin
     "unfold.contrib.guardian",  # optional, if django-guardian package is used
     "django.contrib.admin",
@@ -197,6 +198,7 @@ UNFOLD = {
 
 
 WSGI_APPLICATION = "enetra.wsgi.application"
+ASGI_APPLICATION = "enetra.asgi.application"
 
 
 # Database
@@ -237,8 +239,28 @@ if CELERY_TASK_ALWAYS_EAGER:
     CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=True)
     # if set, eager tasks will save results in backend
     CELERY_TASK_STORE_EAGER_RESULT = env.bool("CELERY_TASK_STORE_EAGER_RESULT", default=True)
-CELERY_BROKER_URL = env("REDIS_URL", default=None)
-CELERY_RESULT_BACKEND = env("REDIS_URL", default=None)
+REDIS_URL = env("REDIS_URL", default=None)
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
+# Redis is optional: without it, scenario live updates (SSE) are unavailable but the
+# rest of the app works normally. Checked once here so the warning surfaces at startup.
+REDIS_AVAILABLE = False
+if REDIS_URL:
+    try:
+        import redis
+
+        # wait 2 seconds for redis, should be running before starting the server. no retry logic should be ok
+        redis.from_url(REDIS_URL, socket_connect_timeout=2).ping()
+        REDIS_AVAILABLE = True
+    except Exception:
+        REDIS_AVAILABLE = False
+
+if not REDIS_AVAILABLE:
+    print(
+        "WARNING: Redis is not reachable. Live scenario updates will not work. "
+        "For the best experience, configure REDIS_URL and make sure Redis is reachable."
+    )
 
 
 # Password validation

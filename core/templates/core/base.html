@@ -66,5 +66,16 @@
         </div>
       </div>
     </div>
+    {% if not REDIS_AVAILABLE %}
+    <script>
+      // Helper to keep the site usable for single users when no redis is installed:
+      // without redis there is no SSE pubsub, so dispatch "scenario_changed" event after every htmx change request.
+      const CHANGE_VERBS = ["post", "put", "patch", "delete"];
+      document.body.addEventListener("htmx:afterRequest", (event) => {
+        if (!CHANGE_VERBS.includes(event.detail.requestConfig.verb)) return;
+        document.body.dispatchEvent(new CustomEvent("scenario_changed"));
+      });
+    </script>
+    {% endif %}
   </body>
 </html>

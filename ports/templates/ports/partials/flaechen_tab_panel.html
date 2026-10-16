@@ -1,4 +1,5 @@
-{% load constants %}
+{% load constants static %}
+{% static 'ports/icons/sprite.svg' as sprite_url %}
 
 <div class="flex flex-col gap-[16px]">
   <div class="flex items-center gap-[8px] mb-[8px]">
@@ -8,7 +9,15 @@
     </div>
     <div>
     <form>
-      <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+      {% url building_areas.0.rud_url scenario_internal_id=scenario.internal_id model=building_areas.0.model_name as rud_url %}
+      <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML scroll:top"
+        hx-include="closest form"
+        hx-trigger='getdetails'
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+        hx-get="{{rud_url}}"
     >
 
         {% comment %}
@@ -29,13 +38,11 @@
 
       {% partialdef list-item-and-form %}
         {% if item.has_authorization %}
-
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :defaultHxDetails=True
             :active=True
             :selected=None
-            :indicated=False
             :item=item
             hx-swap-oob='true'
             value='{{ item.internal_id }}'
@@ -44,13 +51,7 @@
             hx-on::load="{{ createItemCallback }}"
         >
           <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" %}
-          </c-slot>
-          <c-slot name="notSelectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-          </c-slot>
-          <c-slot name="selectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
+            {% include "ports/partials/list_item_ellipsis.html" with delete_url=rud_url %}
           </c-slot>
           </c-list.item>
         {% else %}
@@ -58,19 +59,12 @@
             id='button-list-item-{{ item.internal_id }}'
             :active=False
             :selected=None
-            :indicated=False
             :item=item
             hx-swap-oob='true'
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
         >
-          <c-slot name="notSelectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-          </c-slot>
-          <c-slot name="selectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
-          </c-slot>
           </c-list.item>
         {% endif %}
       {% endpartialdef %}
@@ -90,7 +84,7 @@
       hx-get="{% url 'ports:geometries' scenario.internal_id %}"
       hx-trigger="load"
       hx-swap='innerHTML'
-      hx-on::after-settle=" htmx.trigger('body' ,'map-redraw-sync');
+      hx-on::after-settle="if (event.target!=this) return; htmx.trigger('body' ,'map-redraw-sync');
       myMap.fitToElements();
       "
     >
@@ -116,13 +110,21 @@
       </div>
 
     <form>
-      <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+      {% url open_areas.0.rud_url scenario_internal_id=scenario.internal_id model=open_areas.0.model_name as rud_url %}
+      <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML scroll:top"
+        hx-include="closest form"
+        hx-trigger='getdetails'
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+        hx-get="{{rud_url}}"
       >
-        {% for item in open_areas %}
-          {% comment %}
+        {% comment %}
         hx-get this template with the item injected
         ports/templates/ports/partials/detail_sidebar/detail_sidebar_main.html
-          {% endcomment %}
+        {% endcomment %}
+        {% for item in open_areas %}
       {% partial list-item-and-form %}
         {% endfor %}
       </c-list>
@@ -142,8 +144,3 @@
     <div>{% include "ports/partials/andere_beteiligte.html" %}</div>
     </div>
   </div>
-  {% comment %}
-    <List variant="list" items={lagerhalleItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
-      <AndereBeteiligte />
-    <List variant="list" items={freiflacheItems} selectedId={selectedItemId} onItemSelect={handleItemSelect} scenarioState={scenarioState}/>
-  {% endcomment %}

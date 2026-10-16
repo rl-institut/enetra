@@ -10,6 +10,7 @@ from uuid import UUID
 from uuid import uuid4
 
 import numpy as np
+from asgiref.sync import sync_to_async
 from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -33,6 +34,7 @@ from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseNotAllowed
 from django.http import JsonResponse
+from django.http import StreamingHttpResponse
 from django.http.response import HttpResponse
 from django.shortcuts import aget_object_or_404  # noqa
 from django.shortcuts import get_object_or_404  # noqa
@@ -53,6 +55,7 @@ from guardian.utils import clean_orphan_obj_perms
 from core.models import Invite
 from core.views import ensure_project_rights
 from ports.forms import GridFormFactory
+from ports.models import update_scenario_post_save
 
 from . import models  # needed to get all component classes
 from . import tasks
@@ -126,16 +129,17 @@ def changes_count(request, scenario_internal_id: UUID):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
-    updated_at = scenario.updated_at
+    updated_at = scenario.items_updated_at
     context["updated_at"] = updated_at
     context["changed"] = False
     if last_update:
         last_update = datetime.fromisoformat(last_update)
-        if scenario.updated_at > last_update:
+        if scenario.items_updated_at > last_update:
             context["changed"] = True
             created_items = []
             changed_items = []
             deleted_items = []
+            related_areas = set()
             port_models = apps.get_app_config("ports").get_models()
             for Model in port_models:
                 if Model in [Scenario, ChangedItem]:
@@ -160,13 +164,27 @@ def changes_count(request, scenario_internal_id: UUID):
                     continue
                 filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
                 base_qs = Model.objects.filter(scenario=scenario)
-                created_items.extend(list(base_qs.filter(**filter)))
+                model_has_area = hasattr(Model, "area")
+                if model_has_area:
+                    base_qs = base_qs.prefetch_related("area")
+                new_created_items = list(base_qs.filter(**filter))
+                created_items.extend(new_created_items)
                 filter = {
                     "created_at__lte": last_update,
                     "updated_at__gt": last_update,
                     "updated_at__lte": updated_at,
                 }
-                changed_items.extend(list(base_qs.filter(**filter)))
+                new_changed_items = list(base_qs.filter(**filter))
+                changed_items.extend(new_changed_items)
+                if model_has_area:
+                    for item in new_changed_items + new_created_items:
+                        related_areas.add(item.area)
+
+            # add areas which are not part of the update list
+            updated_set = {i.internal_id for i in created_items + changed_items}
+            for related_area in related_areas:
+                if related_area.internal_id not in updated_set:
+                    changed_items.append(related_area)
 
             base_qs = Area.objects.filter(scenario=scenario)
             allowed_details_ids = set(
@@ -190,9 +208,34 @@ def changes_count(request, scenario_internal_id: UUID):
                     if area_id in allowed_details_ids_union:
                         item.has_authorization = True
 
+            # fetch areas again with added related_sets. this might be not performant for large queries
+            # but since changes are emitted regularly, id count is expected to be small
+            area_ids = []
+            for item in changed_items + created_items:
+                if isinstance(item, Area):
+                    area_ids.append(item.id)
+            areas_w_prefetch = {
+                x.id: x for x in prefetch_all_related(Area.objects.filter(id__in=area_ids))
+            }
+
+            AreaForm = AreaItemFormFactory()
+            # use a area instance with all the related objects already fetched for the geom form
+            # which displays components
+            for item in changed_items + created_items:
+                if isinstance(item, Area):
+                    area = areas_w_prefetch[item.id]
+                    # pass authorization to the geom form
+                    area.has_authorization = item.has_authorization
+                    item.geom_form = AreaForm(instance=area)
+
             context["created_items"] = created_items
             context["changed_items"] = changed_items
             context["deleted_items"] = deleted_items
+
+            # add callback so created_items from user are clicked
+            for item in created_items:
+                if item.manager == request.user:
+                    item.callback = "this.click();"
 
     # Reuse the calculated changes
     count = request.GET.get("all_changes_count", None)
@@ -206,7 +249,9 @@ def changes_count(request, scenario_internal_id: UUID):
 
     context["all_changes_count"] = count
     context["scenario"] = scenario
-    return render(request, "ports/partials/changes_count.html", context)
+    response = render(request, "ports/partials/changes_count.html", context)
+    response["HX-Trigger"] = "map-redraw"
+    return response
 
 
 def geometries(request, scenario_internal_id: UUID):
@@ -214,7 +259,9 @@ def geometries(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("No access")
     context = {}
-    all_areas = list(Area.objects.filter(scenario=scenario).prefetch_related("generator_set"))
+    base_query = Area.objects.filter(scenario=scenario)
+    base_query = prefetch_all_related(base_query)
+    all_areas = list(base_query)
 
     base_qs = Area.objects.filter(scenario=scenario)
     allowed_details_ids = set(
@@ -224,14 +271,17 @@ def geometries(request, scenario_internal_id: UUID):
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
     area_forms = []
+    AreaForm = AreaItemFormFactory()
     for a in all_areas:
-        form = AreaItemFormFactory()(instance=a)
+        form = AreaForm(instance=a)
         if a.id in allowed_details_ids_union:
             a.has_authorization = True
         area_forms.append(form)
+
     context["area_forms"] = area_forms
     context["scenario"] = scenario
-    return render(request, "ports/partials/geometries.html", context)
+    response = render(request, "ports/partials/geometries.html", context)
+    return response
 
 
 def changes(request, scenario_internal_id: UUID):
@@ -368,6 +418,7 @@ def get_home_context(user: User, scenario: Scenario):
     allowed_details_ids = set(
         get_objects_for_user(user, "details", base_qs).values_list("id", flat=True)
     )
+
     managed_area_ids = set(base_qs.filter(manager=user).values_list("id", flat=True))
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
@@ -389,7 +440,9 @@ def get_home_context(user: User, scenario: Scenario):
     data["electric_components"] = electric_components
 
     # important:  prefetch all related models to avoid n+1 queries
-    all_areas = list(prefetch_all_related(base_qs))
+    # all_areas = list(prefetch_all_related(base_qs))
+    # areas dont need prefetching anymore since only geometries need the components
+    all_areas = list(base_qs)
 
     building_areas = list()
     open_areas = list()
@@ -406,10 +459,6 @@ def get_home_context(user: User, scenario: Scenario):
 
     data["building_areas"] = building_areas
     data["open_areas"] = open_areas
-    area_forms = []
-    for a in open_areas + building_areas:
-        area_forms.append(AreaItemFormFactory()(instance=a))
-    data["area_forms"] = area_forms
 
     # Get all template Classes automatically. They are subclasses from ItemTemplate but not from ScenarioItem
     # Also Skip abstract classes
@@ -424,6 +473,57 @@ def get_home_context(user: User, scenario: Scenario):
     data["item_templates"] = get_user_templates(user)
 
     return data
+
+
+def gen_message(msg: str | None = None, event: str | None = None) -> str:
+    lines = []
+    if event:
+        lines.append(f"event: {event}")
+    if msg:
+        for line in msg.splitlines():
+            lines.append(f"data: {line}")
+
+    return "\n".join(lines) + "\n\n"
+
+
+async def scenario_updates(request, scenario_internal_id: UUID):
+    """Async loop which checks for updates
+
+    When finding changes the client is notified via a custom event.
+    Use redis since its considerably lower in load in comparison to database polling
+    """
+    if not settings.REDIS_AVAILABLE:
+        return HttpResponse("Live updates unavailable: Redis is not reachable.", status=503)
+
+    import redis.asyncio as redis
+
+    scenario: Scenario = await aget_object_or_404(
+        Scenario.objects.select_related("project"), internal_id=scenario_internal_id
+    )
+    # cast to async so event loop is not blocked. standard sync orm calls are not allowed inside async
+    if not await sync_to_async(has_authorization)(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("No access")
+
+    async def event_stream():
+        async with redis.from_url(settings.REDIS_URL) as r, r.pubsub() as pubsub:
+            await pubsub.subscribe(f"scenario:{scenario.id}")
+            while True:
+                # force message every N seconds
+                message = await pubsub.get_message(timeout=15)
+                if message is None:
+                    # message so the client does not close the connection
+                    msg = gen_message(event="keep_alive", msg="")
+                elif message["type"] == "message":
+                    msg = gen_message(event="scenario_changed", msg="changed")
+                else:
+                    continue
+                yield msg
+
+    response = StreamingHttpResponse(event_stream(), status=200, content_type="text/event-stream")
+    # set explicitly that no compression (gzipmiddleware) takes place.
+    # gzip gathers the streaming response into chunks to be large enough for efficient compression. we dont want that but the stream to be flushed on each yield
+    response["Content-Encoding"] = "Identity"
+    return response
 
 
 def home(request):
@@ -1167,6 +1267,9 @@ class DetailsView(View):
                 self.Model, multi=self.multi, scenario=self.scenario
             )
             self.instances = self.Model.objects.bulk_create(new_items)
+            # Trigger the change event for the scenario
+            assert self.instances[0]
+            update_scenario_post_save(self.Model, self.instances[0])
             if not self.multi:
                 self.instance = self.instances[0]
                 self.Form = self.adjust_form(self.instance)
@@ -1195,7 +1298,6 @@ class DetailsView(View):
         else:
             raise NotImplementedError(f"Implement the creation of this Model{self.Model.__name__}")
 
-        self.context |= get_home_context(request.user, self.scenario)
         self.context["created"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"
@@ -1339,8 +1441,6 @@ class DetailsView(View):
                     ).values_list("internal_id", flat=True)
                 )
             )
-
-        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
 
         response = self.details_render(self.request, self.template, self.context)
@@ -1368,7 +1468,7 @@ class DetailsView(View):
             self.context["form"] = form
             if form.is_valid():
                 instance = form.save()
-                self.context["item"] = form.save()
+                self.context["item"] = instance
                 group = Group.objects.get(name=self.scenario.project.group_name())
                 if self.Model == Area:
                     if form.cleaned_data.get("is_public"):
@@ -1402,7 +1502,6 @@ class DetailsView(View):
             logger.error(traceback.format_exc())
             self.context["errors"] = ["An unexpected error occured"]
 
-        self.context |= get_home_context(user=request.user, scenario=self.scenario)
         self.context["update"] = True
         response = self.details_render(self.request, self.template, self.context)
         response["HX-Trigger"] = "map-redraw"

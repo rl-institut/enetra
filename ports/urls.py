@@ -11,6 +11,11 @@ urlpatterns = [
         name="home",
     ),
     path(
+        "scenario_updates/<uuid:scenario_internal_id>/",
+        views.scenario_updates,
+        name="scenario_updates",
+    ),
+    path(
         "<uuid:scenario_internal_id>/",
         views.enetra_tool,
         name="enetra_tool",
@@ -123,7 +128,7 @@ urlpatterns = [
         name="grid_modal",
     ),
     path(
-        "api/loadtemplate/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        "api/timeseries/<uuid:scenario_internal_id>/<uuid:internal_id>/",
         views.api_timeseries,
         name="api_timeseries",
     ),

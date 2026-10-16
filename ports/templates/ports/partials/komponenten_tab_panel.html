@@ -1,3 +1,5 @@
+{% load static %}
+{% static 'ports/icons/sprite.svg' as sprite_url %}
 <div class="bg-white content-stretch flex flex-col gap-[24px] items-start relative size-full">
   <!-- {/* Flächenbezogene Komponenten Section */} -->
   <c-expand.index expanded>
@@ -20,56 +22,22 @@
       <div class="border-b border-[#cbd5e1] bg-white  ">
 
         {% partialdef komponenten-list-section %}
+          {% url items.0.rud_url scenario_internal_id=scenario.internal_id model=items.0.model_name as rud_url %}
           <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
               <form>
-                <c-list.index id={{listId}} count title='{{title}}' @detail-sidebar-closed.document="selected = null; $el.querySelectorAll('input:checked').forEach(el=>el.checked=false)" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                  hx-target="#detailSidebar"
+                  hx-indicator="#detailSidebar"
+                  hx-swap="innerHTML scroll:top"
+                  hx-include="closest form"
+                  hx-trigger='getdetails'
+                  hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+                  hx-get="{{rud_url}}"
                 >
                   {% for item in items %}
-                    {% if item.has_authorization %}
-                      <c-list.item
-                        id='button-list-item-{{ item.internal_id }}'
-                        :active=True
-                        hx-swap-oob='true'
-                        :defaultHxDetails=True
-                        :selected=False
-                        :indicated=False
-                        :item=item
-                        value='{{ item.internal_id }}'
-                        title='{{item.name}}'
-                        radioName='internal_id'
-                    >
-                      <c-slot name="notSelectedIndicator">
-                        <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-                      </c-slot>
-                      <c-slot name="selectedIndicator">
-                        <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
-                      </c-slot>
-                      <c-slot name="singleModeIcon">
-                        {% include "ports/partials/list_item_ellipsis.html" %}
-                      </c-slot>
-                    </c-list.item>
-                {% else %}
-                      <c-list.item
-                        id='button-list-item-{{ item.internal_id }}'
-                        :active=False
-                        hx-swap-oob='true'
-                        :selected=False
-                        :indicated=False
-                        :item=item
-                        value='{{ item.internal_id }}'
-                        title='{{item.name}}'
-                        radioName='internal_id'
-                    >
-                      <c-slot name="notSelectedIndicator">
-                        <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-                      </c-slot>
-                      <c-slot name="selectedIndicator">
-                        <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
-                      </c-slot>
-                    </c-list.item>
-                {% endif %}
+                {% include "ports/partials/flaechen_tab_panel.html#list-item-and-form" %}
                 {% endfor %}
-              </c-list>
+              </c-list.index>
               </form>
           </div>
         {% endpartialdef %}
@@ -155,35 +123,36 @@
         hx-swap-oob="true"
       >
         <form>
-      <c-list.index id="vorlagen-list" :border=False customTitle hiddenInputName="vorlagen_selection" >
+          <c-list.index id="vorlagen-list" :border=False customTitle hiddenInputName="vorlagen_selection"
+        hx-target="#detailSidebar"
+        hx-indicator="#detailSidebar"
+        hx-swap="innerHTML scroll:top"
+        hx-include="closest form"
+        hx-trigger='getdetails'
+        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+          >
         <c-slot name="title">
       <div class="flex justify-between bg-[#f8fafc] p-[12px] border-b border-[#cbd5e1] size-full">
         <h4 class="font-semibold text-[14px] text-[#1e293b]">Vorlagen</h4>
       </div>
           </c-slot>
           {% for item  in item_templates %}
+            {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as rud_url %}
           <c-list.item
             id='button-list-item-{{ item.internal_id }}'
             :hx-swap-oob="true"
             :defaultHxDetails=True
             :active=True
             :selected=None
-            :indicated=False
             :item=item
+            :get_url=rud_url
             value='{{ item.internal_id }}'
             title='{{item.name}}'
             radioName='internal_id'
-            :hx-on::after-settle="console.log( 'bar')"
         >
 
           <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" %}
-          </c-slot>
-          <c-slot name="notSelectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=True />
-          </c-slot>
-          <c-slot name="selectedIndicator">
-            <c-component is="{{item.list_icon}}" class="text-[#0E7490]" :outline=False />
+            {% include "ports/partials/list_item_ellipsis.html" with delete_url=rud_url %}
           </c-slot>
           </c-list.item>
           {% endfor %}

@@ -9,6 +9,9 @@ from django.db.models import QuerySet
 from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
+from django.utils import timezone
+
+from ports.models import update_scenario_post_save
 
 from .authorization import has_authorization
 from .models import Area
@@ -195,12 +198,16 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 field.required = False
 
         def save(self):
+            # UUIDMultipleChoiceField returns queryset
             qs = self.cleaned_data["internal_ids"]
+            if not qs:
+                return
             data = {
                 k: v
                 for k, v in self.cleaned_data.items()
                 if k in self.fields and k != "internal_ids" and v not in [None, ""]
             }
+            data["updated_at"] = timezone.now()
             if self.instance._meta.model == Area:
                 grids = []
                 for key in data.copy():
@@ -220,6 +227,9 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 changed_item = ChangedItem.from_scenario_item(instance)
                 changed_items.append(changed_item)
             ChangedItem.objects.bulk_create(changed_items)
+
+            # also trigger a scenario changed event through signals
+            update_scenario_post_save(qs.model, qs.first())
             return qs
 
     # Add units

@@ -14,6 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
@@ -23,6 +24,7 @@ from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
 from django.forms import ModelForm
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -220,6 +222,20 @@ class ItemTemplate(models.Model):
     # Generic Icon shown elsewhere, e.g. map
     icon = "icon.circle_full"
 
+    @property
+    def icon_selected(self) -> str:
+        """Symbol id of the filled icon variant in ports/static/ports/icons/sprite.svg
+        This is used for more efficient rendering on large loops
+        """
+        list_icon = self.list_icon() if callable(self.list_icon) else self.list_icon
+        return list_icon.removeprefix("icon.").replace("-", "_")
+
+    @property
+    def icon_unselected(self) -> str:
+        """Symbol id of the outline icon variant in ports/static/ports/icons/sprite.svg
+        This is used for more efficient rendering on large loops"""
+        return f"{self.icon_selected}-outline"
+
     @classmethod
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
@@ -308,7 +324,7 @@ class ScenarioItem(ItemTemplate):
         Elements in the client listen for this event and can show a notification.
         Send updated_at time with event, so any item can compare its current state time.
         """
-        date_str = self.updated_at.isoformat()
+        date_str = timezone.localtime(self.updated_at).isoformat()
         return mark_safe(
             f"document.dispatchEvent(new CustomEvent( '{self.changed_event()}', "
             f"{{detail:{{updated_at:'{date_str}'}}}}));"
@@ -349,11 +365,34 @@ def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioIt
 
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
-    """Update the scenario if a ScenarioItem was created"""
-    # TODO: add project?
-    scenario = instance.scenario
-    scenario.items_updated_at = instance.updated_at
-    scenario.save()
+    """Update the scenario if a ScenarioItem was created
+    Publish the change to redis, if available
+    """
+    scenario_id = instance.scenario_id
+    if sender == ChangedItem:
+        return
+    if settings.REDIS_AVAILABLE:
+        try:
+            import redis
+            from redis.exceptions import RedisError
+
+            r = redis.from_url(settings.REDIS_URL)
+            r.publish(f"scenario:{scenario_id}", "changed")
+        except RedisError as e:
+            # should redis fail, the scenario is updated still
+
+            # lazy import to avoid circular import
+            from ports.util import throttle
+
+            msg = repr(e)
+            throttle(
+                lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
+                24 * 60 * 60,
+                "redis_failure_admin_mail",
+            )
+    Scenario.objects.filter(pk=scenario_id).update(
+        items_updated_at=instance.updated_at, updated_at=instance.updated_at
+    )
 
 
 @receiver(ScenarioItem.scenarioitem_post_save)
@@ -535,14 +574,20 @@ class Area(ScenarioItem):
         )
         return instance
 
-    def get_all_electric_components(self):
-        electric_component_managers = []
-        for field in self._meta.get_fields():
+    @classmethod
+    def electric_component_accessor_names(cls):
+        accessor_list = []
+        for field in cls._meta.get_fields():
             if field.is_relation and issubclass(field.related_model, ElectricComponent):
-                # RelatedManagers are dynamically created.
-                # Therefore we can check type directly
-                related_set = getattr(self, field.accessor_name)
-                electric_component_managers.append(related_set.all())
+                accessor_list.append(field.accessor_name)
+        return accessor_list
+
+    def get_all_electric_components(self):
+        accessor_names = self.electric_component_accessor_names()
+        electric_component_managers = []
+        for name in accessor_names:
+            related_set = getattr(self, name)
+            electric_component_managers.append(related_set.all())
         return electric_component_managers
 
 
@@ -638,7 +683,10 @@ class Load(ScenarioItem):
 
         if not template:
             template = Timeseries.objects.create(
-                scenario=scenario, name="Empty template", timeseries={}, spec_load=0
+                scenario=scenario,
+                name="Empty template",
+                timeseries={"values": [1], "timestep_minutes": 15},
+                spec_load=0,
             )
         loads = []
         for area in areas:
