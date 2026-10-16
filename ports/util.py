@@ -215,16 +215,14 @@ def get_template_model(model):
 _cache = {}
 
 
-def throttle(func, cooldown, unique_id, cleanup_cache_size=100):
+def throttle(func, cooldown, unique_id) -> None:
+    """Call func if the cooldown since the last throttled call with the same unique_id passed.
+
+    Is supposed to be used sparingly, with no dynamic unique_id generation, since memory is never
+    cleaned
+    """
     last_call = _cache.get(unique_id)
     now = time.time()
     if last_call is None or now - last_call > cooldown:
         func()
         _cache[unique_id] = time.time()
-    # simple cleanup for stale cooldowns. Does not hard enforce limit of cache
-    # growing cache is better than unthrottled functions imo, especially if the function emails
-    # admins
-    if len(_cache) > cleanup_cache_size:
-        for key, value in _cache.copy().items():
-            if value - last_call > cooldown:
-                del _cache[key]
