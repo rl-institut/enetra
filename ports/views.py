@@ -234,7 +234,7 @@ def changes_count(request, scenario_internal_id: UUID):
 
             # add callback so created_items from user are clicked
             for item in created_items:
-                if item.manager == request.user:
+                if item.updated_user == request.user:
                     item.callback = "this.click();"
 
     # Reuse the calculated changes
@@ -250,7 +250,8 @@ def changes_count(request, scenario_internal_id: UUID):
     context["all_changes_count"] = count
     context["scenario"] = scenario
     response = render(request, "ports/partials/changes_count.html", context)
-    response["HX-Trigger"] = "map-redraw"
+    if context["changed"]:
+        response["HX-Trigger"] = "map-redraw"
     return response
 
 
@@ -1028,9 +1029,10 @@ class DetailsView(View):
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
         self.Form = ScenarioItemFormFactory(self.Model, multi=self.multi, scenario=self.scenario)
+
         # Adjust the form
-        if not self.created:
-            instance = self.instances[0] if self.multi else self.instance
+        instance = self.instances[0] if self.multi else self.instance
+        if not self.created and instance:
             self.Form = self.adjust_form(instance)
         self.template = self.get_template()
 
@@ -1121,11 +1123,14 @@ class DetailsView(View):
             scenario=self.scenario, internal_id=self.internal_id
         ).first()
         if deleted_item:
-            return self.details_render(
+            response = self.details_render(
                 self.request,
                 "ports/partials/detail_sidebar/detail_deleted.html",
                 self.context,
             )
+            response["HX-Reselect"] = "unset"
+            return response
+
         raise Http404("This instance does not exist")
 
     def _get_initial_grids(self, area: Area | None = None, areas=None):

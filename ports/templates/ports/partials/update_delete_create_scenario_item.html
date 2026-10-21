@@ -9,6 +9,10 @@ For focused elements which are not rendered all the time, a event can be sent
 
 
 {% endcomment %}
+{% comment %}
+NOTE: list items need their rud_url, so they can trigger things like hx-delete
+{% endcomment %}
+{% url instance.rud_url scenario_internal_id=scenario.internal_id model=instance.model_name as rud_url %}
 {% if status == 'created' %}
     {% comment %}
     When inserting a newly created area, the content depends on the state of the list.
