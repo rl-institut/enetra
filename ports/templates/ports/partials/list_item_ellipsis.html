@@ -1,4 +1,4 @@
-<div x-data="{show: false}" delete_url  class="cursor-pointer" >
+<div x-data="{show: false}" class="cursor-pointer" >
   <button
     @click.prevent.stop="show = !show;hideOtherDropDown('#list-drop-down-{{item.internal_id}}')"
     @click.outside="show = false"
