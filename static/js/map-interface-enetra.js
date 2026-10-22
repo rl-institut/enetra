@@ -22,6 +22,11 @@ function getZoom() {
   return 13
 }
 
+// Area name labels are hidden below this zoom level to reduce clutter on large scenarios
+function getLabelMinZoom() {
+  return 18
+}
+
 function getLayerNames() {
   return ['map-layer-editable', 'map-layer-selected', 'map-layer-open-area', 'map-layer-building-area']
 }
@@ -63,7 +68,8 @@ function getStyle(name, id) {
 }
 
 function getPopUps() {
-  const mapDrawElements = document.querySelectorAll('.map-draw-element');
+  const container = document.getElementById("geom_forms_container");
+  const mapDrawElements = container.querySelectorAll('.map-draw-element');
   var popups = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
@@ -79,7 +85,8 @@ function getPopUps() {
 }
 
 function getMarkers() {
-  const mapDrawElements = document.querySelectorAll('.map-draw-element');
+  const container = document.getElementById("geom_forms_container");
+  const mapDrawElements = container.querySelectorAll('.map-draw-element');
   var markers = {};
   mapDrawElements.forEach((el) => {
     // look inside a possible template first, query map element if no template exits
@@ -96,11 +103,12 @@ function getMarkers() {
 
 function getGeoJsons() {
   geojsons = []
+  const container = document.getElementById("geom_forms_container");
   getLayerNames().forEach((name) => {
     // Get the values as GeoJSON from the inputs
     // input mus be inside a container with a class of draw-map-element layername as class.
     // Can be anything with a value of geosjon
-    const inputs = document.querySelectorAll('.map-draw-element.' + name + ' textarea[name=geom], .map-draw-element.' + name + '  input[name=geom]');
+    const inputs = container.querySelectorAll('.map-draw-element.' + name + ' textarea[name=geom], .map-draw-element.' + name + '  input[name=geom]');
     // const inputs = document.querySelectorAll('.map-draw-element.' + name + '> textarea, .map-draw-element.' + name + ' > input');
     if (inputs.length == 0) {
       console.log(`No inputs found for layer ${name}`)

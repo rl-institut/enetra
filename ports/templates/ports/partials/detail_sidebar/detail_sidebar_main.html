@@ -3,10 +3,7 @@
 
 <!-- Sidebar in the mainContent block -->
 <!-- {/* Header */} TODO: make component-->
-{% if created %}
-  {% include 'ports/partials/update_delete_create_scenario_item.html' with sendEvents=False instance=instance status='created' selected=True %}
-{% else %}
-  {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
+{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <form hx-indicator="this"
   id="form_{{internal_id}}"
   hx-select="#form_{{internal_id}}"
@@ -34,8 +31,9 @@
     {% endcomment %}
       <div x-data="{show:false }"
            class='animate-in fade-in duration-1000'
-          x-on:{{instance.changed_event}}.document='if(event.detail.updated_at != "{{instance.updated_at|date:"c"}}")show=true;'
-          x-on:{{instance.deleted_event}}.document='show=true;'
+      x-on:{{instance.changed_event}}.document="d1= new Date(event.detail.updated_at).getTime();d2 = new Date('{{instance.updated_at|date:'c'}}').getTime(); if (d1 !==d2) show = true;
+      "
+           x-on:{{instance.deleted_event}}.document="show = true;"
            x-show="show">
         <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
         Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht, um die Änderungen sehen zu können.
@@ -216,7 +214,6 @@ hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
 >
 </div>
 
-{% endif %}
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
 In case of a created element the list is appended through 'beforeend'
@@ -224,10 +221,6 @@ In case of an update the list element is swapped
 
 {% endcomment %}
 
-{% if update %}
-  {% include 'ports/partials/flaechen_tab_panel.html' %}
-  {% include 'ports/partials/komponenten_tab_panel.html' %}
-{% endif %}
 
 
 {% comment %}

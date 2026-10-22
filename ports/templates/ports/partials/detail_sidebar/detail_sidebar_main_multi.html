@@ -30,7 +30,7 @@
     {% endcomment %}
       <div x-data="{show:false }"
            class='animate-in fade-in duration-1000'
-          x-on:{{instances.0.changed_event}}.document='if(event.detail.updated_at != "{{instances.0.updated_at|date:"c"}}")show=true;'
+          x-on:{{instances.0.changed_event}}.document="if (new Date(event.detail.updated_at).getTime() !== new Date('{{instances.0.updated_at|date:'c'}}').getTime()) show = true;"
           x-on:{{instances.0.deleted_event}}.document='show=true;'
            x-show="show">
         <c-alert class="" variant="warning" title='Änderungsbenachrichtigung'>
@@ -50,7 +50,7 @@
         </div>
         <h2 class="font-semibold text-[20px] text-[#1e293b]"
           title="{% for item in instances %}{{item.name}}{% if not forloop.last %}&#013;{% endif %}{% endfor %}">
-          {% if area_type == Model.AreaTypeChoices.BUILDING %}
+          {% if instances.0.area_type == Model.AreaTypeChoices.BUILDING %}
           Ausgewählte Gebäudeflächen bearbeiten
           {% else %}
           Ausgewählte Freiflächen bearbeiten
@@ -199,11 +199,6 @@ In case of an update the list element is swapped
 {% endwith %}
 
 
-{% if update %}
-  {% include 'ports/partials/flaechen_tab_panel.html' %}
-  {% include 'ports/partials/komponenten_tab_panel.html' %}
-{% endif %}
-
 {% comment %}
-<c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }} :indicated=False />
+<c-list.item hx-swap-oob='true' hx-swap='innerHTML' id='area-button-list{{ item.internal_id }}' :selected=False title={{ item.name }}  />
 {% endcomment %}

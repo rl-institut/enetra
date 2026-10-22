@@ -1,67 +1,19 @@
-<c-vars bulkModeIcon="" singleModeIcon="" indicated selected=None active  class :border=True title :defaultHxDetails=False item ></c-vars>
-{% comment %}
-  Should the selection stay when BulkSelect is deactived
-{% endcomment %}
-{% comment %}
-  selected is populated by the input
-wrap everyting in a label so everything toggles the radio/checkbox
-{% endcomment %}
-<label class=" cotton-list-item {% if border %}border border-[#cbd5e1] border-solid{% endif %} content-stretch flex gap-2 items-center -mb-px px-3 py-2 relative shrink-0 w-full  transition-colors  first:rounded-tl-[8px] first:rounded-tr-[8px] last:rounded-bl-[8px] last:rounded-tb-[8px] has-[input:checked]:bg-[#ECFEFF] select-none
+<c-vars value bulkModeIcon="" singleModeIcon=""  selected=None active  class :border=True title :defaultHxDetails=False item get_url="" ></c-vars>
+<label class="cotton-list-item group/listitem {% if border %}border border-[#cbd5e1] border-solid{% endif %}
   {% if active %}
   bg-white hover:bg-[#f8fafc] cursor-pointer
   {% else %}
   bg-gray-200  cursor-not-allowed
   {% endif %}
   {{ class }} "
-       x-data="{isSelected: $el.querySelector('input').checked }"
-       x-on:htmx:load="
-        isSelected=$el.querySelector('input').checked;
-        if (!isBulkMode){
-          if(isSelected)selected=$el.querySelector('input').value
-        }
-        "
-        @checked="isSelected=true;
-                  event.preventDefault();
-                  $dispatch('item-selected',{ value:'{{value}}'} );
-                  $dispatch('item-selected-{{value}}',{ value:'{{value}}'} );"
-        @unchecked="isSelected=false;
-        event.preventDefault();
-        $dispatch('item-unselected',{ value:'{{value}}'} );
-        $dispatch('item-unselected-{{value}}',{ value:'{{value}}'} );
-        "
-
-
-       {{ attrs }}
-
-       {% if defaultHxDetails %}
-        x-data
-        @detail-sidebar-closed.document="isSelected=false"
-        @click="if (event.target instanceof HTMLInputElement) $nextTick(()=>$dispatch('getdetails'))"
-        @select-instance-{{item.internal_id}}.window="$el.click()"
-        hx-include="closest form"
-        {% if scenario %}
-          hx-get="{% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name %}"
-        {% else %}
-          hx-get="{% url item.rud_url  model=item.model_name %}"
-        {% endif %}
-
-        hx-trigger='getdetails'
-        hx-target="#detailSidebar"
-        hx-indicator="#detailSidebar"
-        hx-swap="innerHTML scroll:top"
-        hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));"
+       {{attrs}}
+        {% if get_url %}
+          hx-trigger='getdetails'
+          hx-get="{{ get_url }}"
       {% endif %}
-
 >
-  <div class="relative shrink-0 size-[16px] flex items-center justify-center">
+  <div class="relative shrink-0 size-4 flex items-center justify-center">
     <input :type="isBulkMode ? 'checkbox' : 'radio'"
-            {% comment %}
-             With hx-preserve we ignore swapped in content but keep the preswaped input. this is
-             handy to keep checked and select status.
-            This raises some issues with alpine state managment. using x-effect to toggle isSelected
-            directly did not work in combination with hx-preserve
-            Instead we dispatch an event to toggle the alpine state a level above.
-            {% endcomment %}
            id="input_{{ value }}_{{ radioName }}"
           {% if selected is None %}
             preserve-val
@@ -69,50 +21,26 @@ wrap everyting in a label so everything toggles the radio/checkbox
           {% if selected %}
             checked
           {% endif %}
-          {% comment %}
-          onClick handles the dispatch when the element is interacted with directly
-          x-effect handles when the selection is changed from the outside, e.g. radiobutton is switched.
-          {% endcomment %}
-          {% if active %}
-            x-on:change="if ($el.checked){$dispatch('checked')} else{$dispatch('unchecked')}
-            "
-            x-effect="ischecked = $el.value==selected;
-            if (!isBulkMode) {
-            if (ischecked) {$dispatch('checked')}
-            else {$dispatch('unchecked')}
-            } "
-          {% else %}
+          {% if not active %}
           disabled
           {% endif %}
 
            :name="isBulkMode ?'{{value }}' : '{{ radioName }}'"
            value="{{ value }}"
-           class="cotton-list-item-input size-[14px]  accent-[#0E7490]" />
+           class="cotton-list-item-input size-3.5  accent-[#0E7490]" />
   </div>
-  {% comment %}
-    Should the image be shown even without bulkselection?
-  {% endcomment %}
-  <div class="relative shrink-0 size-[12px]">
-   <div x-show="!isSelected">
-      {{notSelectedIndicator}}
+  <div class="relative shrink-0 size-4 ">
+   <div class="group-has-[input:checked]/listitem:hidden">
+            <svg class="text-[#0E7490] w-4 h-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_unselected }}"></use></svg>
     </div>
-     <div x-show="isSelected">
-      {{selectedIndicator}}
+     <div class="hidden group-has-[input:checked]/listitem:block">
+            <svg class="text-[#0E7490] w-4 h-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><use href="{{ sprite_url }}#{{ item.icon_selected }}"></use></svg>
     </div>
   </div>
-  <div class="content-stretch flex flex-[1_0_0] items-center gap-[4px] min-h-px min-w-px relative">
-    {% comment %}
-     shrink-0 stops the element from wrapping? This is bad behaviour if we allow long names.
-    {% endcomment %}
-    <p class="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[14px]"
-       :class="isSelected ? 'text-[#0E7490]' : 'text-[#64748b]'">{{ title }}</p>
-    {% comment %}
-    NOTE: Smth is supposed to toggle this indicator here? What is it?
-    {item.name === 'Lagerhalle 1' && scenarioState === 'scenario' && (
-    {% endcomment %}
-    {% if indicated %}<div class="w-[6px] h-[6px] rounded-full bg-[#ff9500] flex-shrink-0"></div>{% endif %}
+  <div class="content-stretch flex flex-[1_0_0] items-center gap-1 min-h-px min-w-px relative">
+    <p class="cotton-list-item-title">{{ title }}</p>
   </div>
-  <div class="relative shrink-0 size-[12px]">
+  <div class="relative shrink-0 size-3">
     <div class="absolute inset-[0.37%_0.1%_-0.27%_0.28%]">
       <div x-show="isBulkMode" x-cloak>
         {{bulkModeIcon}}

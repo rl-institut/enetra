@@ -1,4 +1,5 @@
 import logging
+import time
 from collections import defaultdict
 from collections.abc import Iterable
 
@@ -209,3 +210,19 @@ def get_template_scenarios(user: User):
 def get_template_model(model):
     template_model_name = model.__qualname__ + "Template"
     return apps.get_app_config("ports").get_model(template_model_name)
+
+
+_cache = {}
+
+
+def throttle(func, cooldown, unique_id) -> None:
+    """Call func if the cooldown since the last throttled call with the same unique_id passed.
+
+    Is supposed to be used sparingly, with no dynamic unique_id generation, since memory is never
+    cleaned
+    """
+    last_call = _cache.get(unique_id)
+    now = time.time()
+    if last_call is None or now - last_call > cooldown:
+        func()
+        _cache[unique_id] = time.time()
