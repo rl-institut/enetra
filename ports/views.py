@@ -526,18 +526,22 @@ def scenario_results(request, scenario_internal_id: UUID):
             },
         }
         for area in scenario.area_set.filter(geom__isnull=False)
+        if has_authorization(area, request.user, "view")
     ]
     # gather electricity generation
     electric_grids = scenario.grid_set.filter(carrier=Grid.CarrierChoices.ELECTRICITY)
     electric_grid_internal_ids = electric_grids.values("internal_id")
     grids = list()  # TODO: add other grids
     for grid in electric_grids:
+        if not has_authorization(grid, request.user, "view"):
+            continue
         # find all sources of electricity (from_node=not grid, to_node=grid)
         sources = result_data.filter(attribute="flow", to_node=grid.internal_id).exclude(
             from_node__in=electric_grid_internal_ids
         )
         is_root = grid.connected_to is None
         gc_timeseries = None
+        gc_peak_power = None
         if is_root:
             from_gc = (
                 result_data.filter(attribute="flow", from_node=None, to_node=grid.internal_id)
@@ -552,10 +556,12 @@ def scenario_results(request, scenario_internal_id: UUID):
                 gc_timeseries = [a - b for a, b in zip(to_gc, from_gc, strict=False)]
             else:
                 gc_timeseries = from_gc
+            gc_peak_power = max(gc_timeseries)
         grids.append(
             {
                 "name": grid.name,
                 "generation": round(sum([sum(s.value) for s in sources])),
+                "peak_power": gc_peak_power,
                 "areas": ", ".join([a.name for a in grid.areas.all()]),
                 "is_root": is_root,
                 "gc_ts": gc_timeseries,
@@ -567,6 +573,14 @@ def scenario_results(request, scenario_internal_id: UUID):
             v["percent"] = round(v["generation"] * 100 / total_generation)
         else:
             v["percent"] = 0
+    # total peak power: max of aggregated GC power
+    gc_all_ts = [grid["gc_ts"] for grid in grids if grid["is_root"]]
+    gc_sum_ts = map(sum, zip(*gc_all_ts, strict=True))
+    try:
+        total_peak_power = max(gc_sum_ts)
+    except ValueError:
+        # there may be no timeseries (no permission to view any)
+        total_peak_power = 0
 
     timeindex = result_data.get(attribute="timeindex").value
     timeindex = [timezone.datetime.fromtimestamp(t).isoformat() for t in timeindex]
@@ -580,6 +594,7 @@ def scenario_results(request, scenario_internal_id: UUID):
         "grids": grids,
         "time": timeindex,
         "generation": {"electricity": total_generation},
+        "total_peak_power": total_peak_power,
     }
     return render(request, template_name="ports/ergebnisse.html", context=context)
 
