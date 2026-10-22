@@ -98,6 +98,11 @@ urlpatterns = [
         name="api",
     ),
     path(
+        "api/<uuid:scenario_internal_id>/<str:model>/<uuid:internal_id>/",
+        views.ApiView.as_view(),
+        name="api",
+    ),
+    path(
         "api/<uuid:project_internal_id>/<str:email>/remove_project_user/",
         views.remove_project_user,
         name="api_remove_project_user",
@@ -113,19 +118,9 @@ urlpatterns = [
         name="api_duplicate",
     ),
     path(
-        "api/<str:model>/<uuid:scenario_internal_id>/create/",
-        views.ApiView.as_view(action="create"),
-        name="api_create",
-    ),
-    path(
         "api/<str:model>/<uuid:scenario_internal_id>/remove_carrier/",
         views.ApiView.as_view(action="remove_carrier"),
         name="api_remove_carrier",
-    ),
-    path(
-        "show_grid_modal/<uuid:scenario_internal_id>/<str:areas_internal_ids>/",
-        views.grid_modal_view,
-        name="grid_modal",
     ),
     path(
         "api/timeseries/<uuid:scenario_internal_id>/<uuid:internal_id>/",

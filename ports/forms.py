@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import ForeignKey
+from django.db.models import Q
 from django.db.models import QuerySet
 from django.forms import CharField
 from django.forms import ValidationError
@@ -51,16 +52,6 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-def GridFormFactory():
-    return modelform_factory(
-        Grid,
-        fields=["name", "carrier", "feed_in", "power_max", "timeseries"],
-        widgets={
-            "name": forms.TextInput(),
-        },
-    )
-
-
 def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
@@ -96,7 +87,37 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     return BaseForm
 
 
-def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
+def get_timeseries_for_user(user: User, scenario: Scenario, instance: Load | Grid | None = None):
+    # TODO: should the timeseries stay bound to the scenario OR
+    # be a TimeseriesTemplate without being bound to the scenario instead?
+    # When a LoadTemplate is used in a different scenario it needs to be handled!
+    # E.g. by copying timeseries to new scenario
+    templates = Timeseries.objects.filter(manager=user, scenario=scenario)
+
+    # add the current value. on grids its called timeseries and on Load its called template
+    current = getattr(instance, "template", None)
+    if instance and current:
+        templates = Timeseries.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
+    return templates
+
+
+def get_loads_for_grid(user: User, scenario: Scenario, instance: "Grid | None" = None):
+    loads = Load.objects.filter(manager=user, scenario=scenario)
+
+    current = getattr(instance, "timeseries", None)
+    if instance and current:
+        loads = Load.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
+    return loads
+
+
+def ScenarioItemFormFactory(
+    ItemModel: type[ScenarioItem],
+    scenario: Scenario,
+    user: User,
+    multi: bool = False,
+    instance: ScenarioItem | None = None,
+    **kwargs,
+):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
     exclude = ["manager", "scenario", "updated_user", "description"]
@@ -128,7 +149,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         for gtype in Grid.CarrierChoices:
             BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
                 queryset=Grid.objects.filter(
-                    scenario=kwargs["scenario"],
+                    scenario=scenario,
                     carrier=gtype,
                 ),
                 label=gtype.label + "-Netz",
@@ -151,6 +172,27 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
                 "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
+
+        if ItemModel == Load:
+            BaseForm.base_fields["template"].queryset = get_timeseries_for_user(
+                user, scenario, instance
+            )
+    elif ItemModel == Grid:
+        fields = ["internal_id", "name", "feed_in", "power_max", "timeseries"]
+        if not instance:
+            # only allow a carrier when there is no instance yet
+            fields.append("carrier")
+
+        BaseForm = modelform_factory(
+            Grid,
+            fields=fields,
+            field_classes={"timeseries": InternalIDModelChoiceField},
+            widgets={
+                "name": forms.TextInput(),
+                "internal_id": forms.HiddenInput(),
+            },
+        )
+        BaseForm.base_fields["timeseries"].queryset = get_loads_for_grid(user, scenario, instance)
     else:
         raise NotImplementedError()
 
@@ -163,7 +205,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
 
     class BulkForm(BaseForm):
         internal_ids = UUIDMultipleChoiceField(
-            queryset=ItemModel.objects.filter(scenario=kwargs["scenario"]),
+            queryset=ItemModel.objects.filter(scenario=scenario),
             # widget=MultipleHiddenInput
         )
 
@@ -224,7 +266,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
     for gtype in Grid.CarrierChoices:
         BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
             queryset=Grid.objects.filter(
-                scenario=kwargs["scenario"],
+                scenario=scenario,
                 carrier=gtype,
             ),
             label=gtype.label + "-Netz",
