@@ -21,9 +21,20 @@ urlpatterns = [
         name="enetra_tool",
     ),
     path(
-        "timeseries_upload_from_load/<uuid:scenario_internal_id>/<str:model>/",
-        views.timeseries_upload_from_load,
-        name="timeseries_upload_from_load",
+        "timeseries_upload/<uuid:scenario_internal_id>/<str:from_model>/",
+        views.timeseries_upload,
+        name="timeseries_upload",
+    ),
+    # timeseries without a from model (load). in this case the load does not have the timeseries auto added
+    path(
+        "timeseries_upload/<uuid:scenario_internal_id>/",
+        views.timeseries_upload,
+        name="timeseries_upload",
+    ),
+    path(
+        "timeseries_rename/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        views.timeseries_rename,
+        name="timeseries_rename",
     ),
     # two paths each for the templates, so the scenario can be inside the context.
     # For normal swaps the scenario might not be necessary, since templates dont belong to scenarios

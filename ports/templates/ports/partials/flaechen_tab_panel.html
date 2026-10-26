@@ -92,10 +92,11 @@
 
     {% partialdef add-gebaeudeflaeche-button inline %}
       <button type='button'
-              class="w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
+              class="disabled:bg-red-200 w-full mt-[12px] text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors"
               hx-post="{% url 'ports:details_create' scenario_internal_id=scenario.internal_id model='area' %}"
               hx-vals='{"area_type": "{{ Area.AreaTypeChoices.BUILDING|assertValue }}" }'
               hx-indicator="#detailSidebar"
+              hx-disabled-elt="this"
               hx-swap="none"
               hx-on::trigger="dispatchEvent(new CustomEvent('show-detail-sidebar'));  "
     >+ Gebäudefläche</button>

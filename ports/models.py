@@ -691,7 +691,7 @@ class Load(ScenarioItem):
     area = models.ForeignKey(
         Area, on_delete=models.CASCADE, help_text=_("Fläche, der diese Last zugeordnet ist.")
     )
-    template = models.ForeignKey(
+    timeseries = models.ForeignKey(
         Timeseries, on_delete=models.CASCADE, help_text=_("Zeitreihenvorlage dieser Last.")
     )
     # We could allow negative factors, but maybe its confusing
@@ -707,7 +707,7 @@ class Load(ScenarioItem):
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
     ) -> type[ModelForm]:
-        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
+        FormClass.base_fields["timeseries"].queryset = kwargs["timeseries_queryset"]
         return FormClass
 
     @classmethod
@@ -722,12 +722,12 @@ class Load(ScenarioItem):
             area_internal_ids = []
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
         count = cls.objects.filter(scenario=scenario).count()
-        template = Timeseries.objects.filter(scenario=scenario).first()
+        timeseries = Timeseries.objects.filter(scenario=scenario).first()
 
-        if not template:
-            template = Timeseries.objects.create(
+        if not timeseries:
+            timeseries = Timeseries.objects.create(
                 scenario=scenario,
-                name="Empty template",
+                name="Empty timeseries",
                 timeseries={"values": [1], "timestep_minutes": 15},
                 spec_load=0,
             )
@@ -735,7 +735,7 @@ class Load(ScenarioItem):
         for area in areas:
             count += 1
             new_name = f"Neue Last {count}"
-            extra_args = {"template": template, "area": area}
+            extra_args = {"timeseries": timeseries, "area": area}
             loads.append(
                 Load(
                     scenario=scenario,
@@ -747,8 +747,8 @@ class Load(ScenarioItem):
         return loads
 
     def resample(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
-        timestep_orig = self.template.timeseries.get("timestep_minutes", 15)
-        values = self.template.timeseries["values"]
+        timestep_orig = self.timeseries.timeseries.get("timestep_minutes", 15)
+        values = self.timeseries.timeseries["values"]
         time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")
         if len(values) < len(time_index):
             # not enough values: extend series with empty values, fill later

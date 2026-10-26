@@ -33,7 +33,25 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
         </button>
       </div>
     {% endif %}
-
+{% elif instance.model_name == "timeseries" %}
+    {% if status == 'created' %}
+      <div
+        hx-swap-oob='beforeend:#profil-list'
+        data-uniqueid='button-list-item-{{instance.internal_id}}'
+      >
+        {% include "ports/partials/randbed_profil_list.html" with ts=instance %}
+      </div>
+    {% elif status == 'changed' %}
+      {% include "ports/partials/randbed_profil_list.html" with ts=instance %}
+    {% elif status == 'deleted' %}
+      <div hx-swap-oob='outerHTML'
+           id='button-list-item-{{instance.internal_id}}'>
+        This item was deleted
+        <button x-data type="button" @click="$el.parentElement.remove()">
+          <c-icon.close />
+        </button>
+      </div>
+    {% endif %}
 
 
 {% else %}

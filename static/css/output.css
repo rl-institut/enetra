@@ -583,10 +583,6 @@
     width: 12px;
     height: 12px;
   }
-  .size-\[14px\] {
-    width: 14px;
-    height: 14px;
-  }
   .size-\[16px\] {
     width: 16px;
     height: 16px;
@@ -649,6 +645,9 @@
   }
   .h-30 {
     height: calc(var(--spacing) * 30);
+  }
+  .h-48 {
+    height: calc(var(--spacing) * 48);
   }
   .h-64 {
     height: calc(var(--spacing) * 64);
@@ -1121,9 +1120,6 @@
   }
   .gap-\[4px\] {
     gap: 4px;
-  }
-  .gap-\[6px\] {
-    gap: 6px;
   }
   .gap-\[8px\] {
     gap: 8px;
@@ -1767,17 +1763,11 @@
   .pr-6 {
     padding-right: calc(var(--spacing) * 6);
   }
-  .pr-17 {
-    padding-right: calc(var(--spacing) * 17);
-  }
   .pr-17\.5 {
     padding-right: calc(var(--spacing) * 17.5);
   }
   .pr-20 {
     padding-right: calc(var(--spacing) * 20);
-  }
-  .pr-22 {
-    padding-right: calc(var(--spacing) * 22);
   }
   .pr-22\.5 {
     padding-right: calc(var(--spacing) * 22.5);
@@ -1787,12 +1777,6 @@
   }
   .pr-\[70px\] {
     padding-right: 70px;
-  }
-  .pr-\[80px\] {
-    padding-right: 80px;
-  }
-  .pr-\[90px\] {
-    padding-right: 90px;
   }
   .pb-0 {
     padding-bottom: calc(var(--spacing) * 0);
@@ -2562,6 +2546,12 @@
     &:last-child {
       border-bottom-style: var(--tw-border-style);
       border-bottom-width: 1px;
+    }
+  }
+  .last\:border-b-0 {
+    &:last-child {
+      border-bottom-style: var(--tw-border-style);
+      border-bottom-width: 0px;
     }
   }
   .hover\:bg-\[\#0c647a\] {
@@ -3346,6 +3336,11 @@
     &+div {
       font-size: var(--text-xs);
       line-height: var(--tw-leading, var(--text-xs--line-height));
+    }
+  }
+  .\[\&\:\:-webkit-details-marker\]\:hidden {
+    &::-webkit-details-marker {
+      display: none;
     }
   }
   .\[\&\:has\(\[data-template-value\]\)\]\:border-2 {

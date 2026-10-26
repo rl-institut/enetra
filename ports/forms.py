@@ -87,18 +87,20 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     return BaseForm
 
 
-def get_timeseries_for_user(user: User, scenario: Scenario, instance: Load | Grid | None = None):
+def get_timeseries_for_user(user: User, scenario: Scenario, instance: Load | None = None):
     # TODO: should the timeseries stay bound to the scenario OR
     # be a TimeseriesTemplate without being bound to the scenario instead?
     # When a LoadTemplate is used in a different scenario it needs to be handled!
     # E.g. by copying timeseries to new scenario
-    templates = Timeseries.objects.filter(manager=user, scenario=scenario)
+    timeseries = Timeseries.objects.filter(manager=user, scenario=scenario)
 
-    # add the current value. on grids its called timeseries and on Load its called template
-    current = getattr(instance, "template", None)
+    # add the current value
+    current = getattr(instance, "timeseries", None)
     if instance and current:
-        templates = Timeseries.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
-    return templates
+        timeseries = Timeseries.objects.filter(
+            Q(manager=user, scenario=scenario) | Q(id=current.id)
+        )
+    return timeseries
 
 
 def get_loads_for_grid(user: User, scenario: Scenario, instance: "Grid | None" = None):
@@ -174,7 +176,7 @@ def ScenarioItemFormFactory(
         )
 
         if ItemModel == Load:
-            BaseForm.base_fields["template"].queryset = get_timeseries_for_user(
+            BaseForm.base_fields["timeseries"].queryset = get_timeseries_for_user(
                 user, scenario, instance
             )
     elif ItemModel == Grid:
@@ -206,7 +208,7 @@ def ScenarioItemFormFactory(
     class BulkForm(BaseForm):
         internal_ids = UUIDMultipleChoiceField(
             queryset=ItemModel.objects.filter(scenario=scenario),
-            # widget=MultipleHiddenInput
+            widget=forms.HiddenInput(),
         )
 
         def __init__(self, *args, **kwargs):
@@ -261,18 +263,24 @@ def ScenarioItemFormFactory(
     for field_name, field in BulkForm.base_fields.items():
         field.unit = UNITS.get(field_name, "")
 
-    # dynamic creation of grid selects
-    # get gridtypes. Each Area can be connected to one grid of each type
-    for gtype in Grid.CarrierChoices:
-        BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
-            queryset=Grid.objects.filter(
-                scenario=scenario,
-                carrier=gtype,
-            ),
-            label=gtype.label + "-Netz",
-            required=False,
-            empty_label="Keine Anpassung vornehmen",
+    if ItemModel == Load:
+        BulkForm.base_fields["timeseries"].queryset = get_timeseries_for_user(
+            user, scenario, instance
         )
+
+    elif ItemModel == Area:
+        # dynamic creation of grid selects
+        # get gridtypes. Each Area can be connected to one grid of each type
+        for gtype in Grid.CarrierChoices:
+            BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
+                queryset=Grid.objects.filter(
+                    scenario=scenario,
+                    carrier=gtype,
+                ),
+                label=gtype.label + "-Netz",
+                required=False,
+                empty_label="Keine Anpassung vornehmen",
+            )
 
     return BulkForm
 
@@ -353,7 +361,7 @@ class TimeseriesUploadForm(forms.Form):
         self._parsed_values = values
         return file
 
-    def save(self, scenario, load, user):
+    def save(self, scenario, user):
         values = self._parsed_values
         timestep_minutes = self.cleaned_data["timestep_minutes"]
         file = self.cleaned_data["template_file"]
@@ -365,8 +373,6 @@ class TimeseriesUploadForm(forms.Form):
             manager=user,
         )
 
-        load.template = template_load
-        load.save()
         return template_load
 
 
@@ -417,6 +423,15 @@ class ChangeScenarioForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(),
             "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ChangeTimeseriesForm(forms.ModelForm):
+    class Meta:
+        model = Timeseries
+        fields = ("name",)
+        widgets = {
+            "name": forms.TextInput(),
         }
 
 

@@ -1,0 +1,62 @@
+  <div id="button-list-item-{{ ts.internal_id }}" x-data @success="$el.remove()"
+    hx-swap-oob="true"
+    class="flex flex-col border-b border-[#cbd5e1] last:border-b-0 first:rounded-t-2 last:rounded-b-2 bg-white hover:bg-[#f8fafc] transition-colors">
+    <c-expand.index variant="custom"
+      summaryClass="list-none [&::-webkit-details-marker]:hidden"
+      x-data="{fetched: false}"
+      @toggle="if ($event.target.open && !fetched) { loadPlot('{% url 'ports:api_timeseries' scenario.internal_id ts.internal_id %}', $refs.plot); fetched = true }"
+    >
+      <c-slot name="title">
+        <div class="flex items-center justify-between p-4 py-2 cursor-pointer">
+          <div class="flex items-center gap-3">
+            <c-expand.icon class="w-4 h-4 text-[#64748b] shrink-0" />
+            <svg class="w-5 h-5 text-[#64748b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            <span class="text-[#64748b] text-sm">{{ ts.name }}</span>
+          </div>
+          <div x-data="{show: false}" class="relative" @click.stop>
+            <button type="button"
+              @click.prevent.stop="show = !show; hideOtherDropDown('#profil-drop-down-{{ ts.internal_id }}');"
+              @click.outside="show = false"
+              class="hover:opacity-60 transition-opacity">
+              <c-icon.three_dots class="w-5 h-5 text-[#64748b]" />
+            </button>
+            <div x-show="show" x-cloak>
+            <ul id="profil-drop-down-{{ ts.internal_id }}" @hide="show=false"
+              class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50">
+              <li>
+                <button type="button"
+                  hx-get="{% url 'ports:timeseries_rename' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id %}"
+                  hx-target="#rename-timeseries-modal-container"
+                  hx-swap="innerHTML"
+                  @click="show=false"
+                  class="select-none w-full p-2 text-left text-[14px] font-semibold text-[#1e293b] hover:bg-slate-50 transition-colors rounded">
+                  Umbenennen
+                </button>
+              </li>
+              <hr class="border-slate-200 my-1" />
+              <li>
+                {% url 'ports:api' scenario_internal_id=scenario.internal_id model='timeseries' internal_id=ts.internal_id as delete_url %}
+                <c-api-button
+                  :hx-delete=delete_url
+                  hx-confirm="Wollen Sie {{ ts.name }} wirklich löschen?"
+                  class="select-none w-full p-2 text-left text-[14px] font-semibold text-red-500 hover:bg-red-50 transition-colors rounded"
+                  x-cloak
+                >
+                  <div x-show="status=='default'">Löschen<span class='htmx-indicator loader align-middle'></span></div>
+                  <div x-show="status=='success'">Gelöscht</div>
+                  <div x-show="status=='error'">Fehlgeschlagen</div>
+                </c-api-button>
+              </li>
+            </ul>
+
+            </div>
+          </div>
+        </div>
+      </c-slot>
+      <div class="px-4 pb-4 w-full">
+        <div x-ref="plot" class="h-48 w-full"></div>
+      </div>
+    </c-expand.index>
+  </div>

@@ -63,14 +63,14 @@ class DetailsViewBase(TestCase):
             scenario=cls.scenario,
             name="Load 1",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
             factor=1.0,
         )
         cls.load2 = Load.objects.create(
             scenario=cls.scenario,
             name="Load 2",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
             factor=1.0,
         )
 
@@ -168,7 +168,7 @@ class DetailsViewGetTest(DetailsViewBase):
             scenario=self.scenario,
             name="Temp Load",
             area=self.area,
-            template=self.load_template,
+            timeseries=self.load_template,
             factor=1.0,
         )
         deleted_internal_id = temp_load.internal_id
@@ -197,7 +197,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_id": str(self.load.internal_id),
             "name": "Updated Load",
             "factor": "2.0",
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -276,7 +276,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": str(self.load.internal_id),
             "internal_id": str(self.load.internal_id),
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
             "factor": "not-a-float",
         }
         response = self.client.post(url, data)
@@ -296,7 +296,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": internal_ids,
             "factor": "3.5",
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -362,7 +362,7 @@ class DetailsViewDeleteTest(DetailsViewBase):
             scenario=self.scenario,
             name="Delete Me",
             area=self.area,
-            template=self.load_template,
+            timeseries=self.load_template,
             factor=1.0,
         )
         internal_id = load_to_delete.internal_id
@@ -518,7 +518,7 @@ class DetailsViewPermissionsTest(TestCase):
             scenario=cls.scenario,
             name="SENTINEL_LOAD_XYZ_9f3a",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
             factor=1.0,
             manager=cls.user_a,
         )
@@ -622,7 +622,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_id": str(self.load.internal_id),
                 "name": "TAMPERED_BY_USER_B",
                 "factor": "9.9",
-                "template": self.load_template.internal_id,
+                "timeseries": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())
@@ -644,7 +644,7 @@ class DetailsViewPermissionsTest(TestCase):
                 "internal_id": str(self.load.internal_id),
                 "name": self.load.name,
                 "factor": "2.5",
-                "template": self.load_template.internal_id,
+                "timeseries": self.load_template.internal_id,
             },
         )
         self.assertNotIn(b"not allowed", response.content.lower())
@@ -665,7 +665,7 @@ class DetailsViewPermissionsTest(TestCase):
             {
                 "internal_ids": str(self.load.internal_id),
                 "factor": "9.9",
-                "template": self.load_template.internal_id,
+                "timeseries": self.load_template.internal_id,
             },
         )
         self.assertIn(b"not allowed", response.content.lower())

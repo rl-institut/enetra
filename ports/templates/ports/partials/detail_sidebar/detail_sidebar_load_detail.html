@@ -1,9 +1,12 @@
 {% load l10n widget_tweaks %}
+{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
 <form hx-indicator='this'
   id="form_{{instance.internal_id}}"
   hx-encoding="multipart/form-data"
 >
-  {{ form.internal_id }}
+     {% for field in form.hidden_fields %}
+        {{field}}
+     {% endfor %}
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
     <button
@@ -29,54 +32,75 @@
 
 <details-sidebar-content>
   <div class="px-[24px] py-[24px]"
-      x-data="{selectedTemplate:'{{form.template.value}}',
+      x-data="{selectedTemplate:'{{form.timeseries.value}}',
                multiplicator: null,
       }"
     >
     <div class="flex items-center justify-between mb-[24px]">
         <h2 class="font-bold text-[20px] text-[#1e293b]">LASTEN</h2>
       {% with hx_target="#form_"|add:internal_id %}
-        {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
         {% include "ports/partials/detail_item_ellipsis.html" with instance=instance scenario=scenario hx_target=hx_target template_url=template_url form_url=form_url %}
       {% endwith %}
     </div>
     <div class="flex flex-col gap-[16px]">
 
+        {% if form.name %}
+        <div class="flex flex-col gap-[8px]">
+          <label class="inline font-semibold text-[14px] text-[#1e293b]">Name</label>
+          <c-field-required :field="form.name" />
+
+        <c-input :field=form.name x-data=""
+            class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
+          </c-input>
+
+        </div>
+        {% endif %}
+
       <div class="flex flex-col gap-[8px]">
-        <label class="inline font-semibold text-[14px] text-[#1e293b]">Name</label>
-        <c-field-required :field="form.name" />
+          <div class="template-selection"
+                hx-trigger="refresh-template-{{instance.internal_id}} from:body"
+                hx-include="#form_{{instance.internal_id}}"
+                hx-get="{{ form_url }}"
+                hx-select=".template-selection"
+                hx-target="this"
+            {% comment %}
+            init the store by mutating the object, so other references still wok
 
-      <c-input :field=form.name x-data=""
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Name eingeben">
-        </c-input>
-
-      </div>
-
-      <div class="flex flex-col gap-[8px]">
-          <div>
-            <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
-            <c-field-required :field="form.template" />
-          </div>
-          {% comment %}
-          select2 does not dispatch dom events but jquery events. therefore we need to create a
-          listener scoped to jquery land
-          {% endcomment %}
-          <div
-            class='make-select2'
-            x-data
-            x-init="
-            $('select', $el).on('change', (e)=>{
-            selectedTemplate=e.target.value
-            });
-            "
+            {% endcomment %}
+          x-init='
+            {% for timeseries in form.timeseries.field.queryset %}
+              $store.templates.values["{{timeseries.internal_id}}"]  =  {
+              1: {{timeseries.get_yearly_average|unlocalize}},
+              2: {{timeseries.get_daily_average|unlocalize}},
+              3: {{timeseries.get_hourly_average|unlocalize}},
+            };{% endfor %}
+            {% for timeseries in form.timeseries.field.queryset %}
+            $store.templates.urls["{{timeseries.internal_id}}"] ="{% url "ports:api_timeseries" scenario.internal_id timeseries.internal_id %}";
+           {% endfor %}'
           >
-            {{form.template}}
-          </div>
+            <div>
+              <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+              <c-field-required :field="form.timeseries" />
+            </div>
+            {% comment %}
+            select2 does not dispatch dom events but jquery events. therefore we need to create a
+            listener scoped to jquery land
+            {% endcomment %}
+            <div
+              class='make-select2'
+              x-data
+              x-init="
+              selectedTemplate = $('select', $el).val();
+              $('select', $el).on('change', (e)=>{
+              selectedTemplate=e.target.value
+              });
+              "
+            >
+              {{form.timeseries}}
+            </div>
 
-        <c-field-errors :field="form.template" />
-        <c-input type='file' x-data=""
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" placeholder="Datei Hochladen">
-        </c-input>
+            <c-field-errors :field="form.timeseries" />
+          </div>
         <c-expand.index >
           <c-slot name='title'>
             Plot der ausgewählten Zeitreihe
@@ -84,9 +108,7 @@
           <div id="load_template_container"
             x-data='{
               data_url :null,
-              template_url : {
-            {% for template in form.template.field.queryset %}
-            "{{template.internal_id}}": "{% url "ports:api_timeseries" scenario.internal_id template.internal_id %}",{% endfor %} } } '
+              template_url : $store.templates.urls } '
               class="w-full" x-effect="loadPlot(template_url[selectedTemplate], $refs.plot)"
           >
               <div x-ref="plot" class="h-64 w-full"></div>
@@ -98,29 +120,7 @@
           <span>oder</span>
           <div class="flex-1 h-px bg-[#e2e8f0]"></div>
         </div>
-
-        <div class="flex items-center gap-[8px]">
-          <label class="relative shrink-0 flex items-center justify-center w-[36px] h-[36px] bg-white border border-[#cbd5e1] rounded cursor-pointer hover:bg-[#f1f5f9] transition-colors">
-            <c-icon.upload class="w-[16px] h-[16px] text-[#64748b] pointer-events-none" aria-hidden="true" />
-            {{ upload_form.template_file|add_class:"absolute inset-0 opacity-0 w-full h-full cursor-pointer" }}
-          </label>
-          {{ upload_form.timestep_minutes|add_class:"w-[64px] shrink-0 bg-white border border-[#cbd5e1] rounded px-[10px] text-[14px] text-[#1e293b] py-2" }}
-          <span class="shrink-0 text-[12px] text-[#64748b]">min</span>
-          <button type="button"
-              class="w-full rounded-full border-[0] bg-[#0e7490] py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0c647a] cursor-pointer"
-              hx-post="{% url 'ports:timeseries_upload_from_load' scenario_internal_id=scenario.internal_id model=instance.model_name %}?internal_id={{instance.internal_id}}"
-              {% with hx_target="#form_"|add:internal_id %}
-              hx-target='{{hx_target}}'
-              hx-select='{{hx_target}}'
-              hx-indicator='find span'
-              {% endwith %}
-            >
-          <span class="w-[1em]! h-[1em]! loader htmx-indicator"></span>
-            Hochladen
-          </button>
-        </div>
-        <p class="text-[11px] text-[#94a3b8]">Unterstützte Dateitypen: {{ upload_form.allowed_suffixes|join:", "|upper }}</p>
-          <div id="templateError"></div>
+          {% include "ports/partials/timeseries_upload.html" with upload_form=upload_form scenario=scenario instance=instance %}
       </div>
 
     <div class="flex flex-col gap-[8px]">
@@ -156,17 +156,10 @@
       </div>
 
       <div
-          x-data='{templates : {
-          {% for template in form.template.field.queryset %}
-          "{{template.internal_id}}": {
-          1: {{template.get_yearly_average|unlocalize}},
-          2: {{template.get_daily_average|unlocalize}},
-          3: {{template.get_hourly_average|unlocalize}},
-          },
-          {% endfor %}
-          },
-          selectedDuration: null
-          }'
+          {% comment %}
+            use the store so template wide state can be refresh from scoped refresh
+          {% endcomment %}
+          x-data='{ selectedDuration: null, templates: $store.templates.values }'
         >
 
         <div class="flex flex-col gap-[8px]"

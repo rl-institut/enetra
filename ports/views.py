@@ -31,7 +31,6 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
-from django.http import HttpResponseNotAllowed
 from django.http import JsonResponse
 from django.http import StreamingHttpResponse
 from django.http.response import HttpResponse
@@ -44,6 +43,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.http import urlsplit
+from django.views.decorators.http import require_http_methods
 from django.views.generic import View
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
@@ -63,11 +63,13 @@ from .create_placeholder_scenario import create_scenario as create_placeholder_s
 from .forms import AreaItemFormFactory
 from .forms import ChangeProjectForm
 from .forms import ChangeScenarioForm
+from .forms import ChangeTimeseriesForm
 from .forms import CreateProjectForm
 from .forms import CreateScenarioForm
 from .forms import ScenarioItemFormFactory
 from .forms import TemplateFormFactory
 from .forms import TimeseriesUploadForm
+from .forms import get_timeseries_for_user
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
@@ -477,6 +479,9 @@ def get_home_context(user: User, scenario: Scenario):
     ]
     data["template_models"] = template_models
     data["item_templates"] = get_user_templates(user)
+
+    data["profile_timeseries"] = get_timeseries_for_user(user, scenario)
+    data["profile_upload_form"] = TimeseriesUploadForm()
 
     return data
 
@@ -1042,9 +1047,16 @@ class DetailsView(View):
         )
 
         # Adjust the form
-        instance = self.instances[0] if self.multi else self.instance
-        if not self.created and instance:
-            self.Form = self.Model.adjust_Form(self.Form, instance)
+        if not self.created:
+            instance = self.instances[0] if self.multi else self.instance
+            if instance:
+                form_kwargs = {"multi": self.multi}
+                if self.Model == Load:
+                    templates = get_timeseries_for_user(
+                        self.request.user, self.scenario, self.instance
+                    )
+                    form_kwargs["timeseries_queryset"] = templates
+                self.Form = self.Model.adjust_Form(self.Form, instance, **form_kwargs)
         self.template = self.get_template()
 
     def get_template(self) -> str:
@@ -1278,12 +1290,11 @@ class DetailsView(View):
         if self.Model == Area:
             new_instance = Area.create_new(self.scenario, request.user, **data)
             new_instance.save()
-            new_instance.has_authorization = True
-            self.context["instance"] = new_instance
-
-            # Created areas are selected immediately
-            self.context["createItemCallback"] = "this.click()"
-            self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
+            # empty response. The update is triggered through the change_event
+            # this streamlines the list updates, without having to consolidate two sources
+            # of updates. All updates of the lists are done via
+            # ports/partials/update_delete_create_scenario_item.html and changes_count
+            return HttpResponse()
         elif self.Model == Grid:
             # validate the form if posted and create context for grid_modal
             # self.Form = ScenarioItemFormFactory(self.Model, self.scenario, request.user)
@@ -1365,9 +1376,10 @@ class DetailsView(View):
             # Trigger the change event for the scenario
             assert self.instances[0]
             update_scenario_post_save(self.Model, self.instances[0])
+            data = {}
             if not self.multi:
                 self.instance = self.instances[0]
-                self.Form = self.Model.adjust_Form(self.Form, self.instance)
+                # self.Form = self.Model.adjust_Form(self.Form, self.instance)
                 self.instances = []
                 self.instance.has_authorization = True
                 self.context["instance"] = self.instance
@@ -1377,7 +1389,7 @@ class DetailsView(View):
                 # For creation this is decided here, since self.multi might have been overwritten
                 self.template = self.get_template()
                 self.context["instances"] = self.instances
-                self.Form = self.Model.adjust_Form(self.Form, self.instances[0])
+                # self.Form = self.Model.adjust_Form(self.Form, self.instances[0])
                 for item in self.instances:
                     item.has_authorization = True
 
@@ -1385,9 +1397,11 @@ class DetailsView(View):
                 self.context["internal_ids"] = ",".join(
                     [str(x.internal_id) for x in self.instances]
                 )
+                data = {"internal_ids": self.context["internal_ids"]}
                 self.context["area_internal_ids"] = ",".join(area_internal_ids)
 
             self.context["form"] = self.Form(
+                initial=data,
                 instance=self.instance,
             )
         else:
@@ -1472,6 +1486,7 @@ class DetailsView(View):
                             )
 
             merged_data.update(template_data)
+            merged_data["internal_ids"] = ",".join(self.internal_ids)
 
             form = self.Form(data=merged_data)
             self.context["form"] = form
@@ -1493,6 +1508,7 @@ class DetailsView(View):
                 )
             )
 
+            merged_data["internal_ids"] = ",".join(self.internal_ids)
             form = self.Form(initial=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
@@ -1515,7 +1531,8 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            form = self.Model.adjust_Form(self.Form, self.instances[0])(data=request.POST)
+            # form = self.Model.adjust_Form(self.Form, self.instances[0])(data=request.POST)
+            form = self.Form(data=request.POST)
             self.context["form"] = form
             if form.is_valid():
                 self.context["instances"] = form.save()
@@ -1596,9 +1613,7 @@ class DetailsView(View):
                 self.Form = ScenarioItemFormFactory(
                     self.Model, self.scenario, request.user, instance=instance
                 )
-                form = self.Model.adjust_Form(self.Form, instance)(
-                    data=request.POST, instance=instance
-                )
+                form = self.Form(data=request.POST, instance=instance)
                 self.context["form"] = form
 
                 self.context["success"] = "Erfolgreich gespeichert"
@@ -1740,7 +1755,7 @@ class ApiView(View):
     """
 
     action = None
-    ALLOWED_MODELS = (Project, Scenario, Grid)
+    ALLOWED_MODELS = (Project, Scenario, Grid, Timeseries)
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -1846,6 +1861,15 @@ class ApiView(View):
                         },
                         status=400,
                     )
+            case Timeseries():
+                if Load.objects.filter(timeseries=self.instance).exists():
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "Zeitreihe wird noch von einer Last verwendet",
+                        },
+                        status=400,
+                    )
         try:
             with atomic():
                 if getattr(self.instance, "safe_delete", None):
@@ -1892,36 +1916,11 @@ class ApiView(View):
 
 
 @login_required()
-def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(b"This method only allows POST requests")
+@require_http_methods(["POST"])
+def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | None = None):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    Model = apps.get_model("ports", model)
-    assert Model in (Load,)
-
-    loads = None
-    # check if single or multi upload
-    if internal_load_id := request.GET.get("internal_id"):
-        multi = False
-        # single upload
-        load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
-        authorized_load = has_authorization(load, request.user, "details")
-    elif internal_load_ids_str := request.POST.get("internal_ids"):
-        internal_load_ids = internal_load_ids_str.split(",")
-        multi = True
-        # multi upload
-        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids)
-        # Check authorization for all requested loads
-        authorized_load = True
-        for load in loads:
-            authorized_load = authorized_load and has_authorization(load, request.user, "details")
-        # Raise 404 if a single load is missing
-        if len(loads) != len(internal_load_ids):
-            raise Http404("Item does not exist")
-        load = loads[0]
-    else:
-        #  missing internal_id
-        return HttpResponseBadRequest("Missing load internal_id")
+    if not has_authorization(scenario.project, request.user, "view"):
+        return HttpResponseForbidden(b"You are not authorized for this project")
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -1929,65 +1928,91 @@ def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str)
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    authorized_project = has_authorization(scenario.project, request.user, "view")
-    if not (authorized_load and authorized_project):
-        response = HttpResponseForbidden(b"You are not authorized for this function")
-        return retargetForFailure(response)
+    loads = []
+    if from_model:
+        Model = apps.get_model("ports", from_model)
+        assert Model in (Load,)
+
+        # check if single or multi upload
+        if internal_load_id := request.POST.get("internal_id"):
+            # single upload
+            loads = [get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)]
+            authorized_load = has_authorization(loads[0], request.user, "details")
+        elif internal_load_ids_str := request.POST.get("internal_ids"):
+            internal_load_ids = internal_load_ids_str.split(",")
+            # multi upload
+            loads = list(Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids))
+            # Check authorization for all requested loads
+            authorized_load = True
+            for load in loads:
+                authorized_load = authorized_load and has_authorization(
+                    load, request.user, "details"
+                )
+            # Raise 404 if a single load is missing
+            if len(loads) != len(internal_load_ids):
+                raise Http404("Item does not exist")
+            load = loads[0]
+        else:
+            #  missing internal_id
+            return HttpResponseBadRequest("Missing load internal_id")
+
+        if not authorized_load:
+            response = HttpResponseForbidden(b"You are not authorized for this function")
+            return retargetForFailure(response)
 
     # Early return if file form is invalid
     file_form = TimeseriesUploadForm(request.POST, request.FILES)
-    if not file_form.is_valid():
-        errors = [e for field_errors in file_form.errors.values() for e in field_errors]
-        response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
-        return retargetForFailure(response)
-
-    # Save Loads so the current user input persists. Authorization is checked already
-    timeseries = DetailsView.get_loadtemplates_for_user(
-        request.user, scenario=scenario, instance=load
-    ).select_related("scenario")
-    Form = ScenarioItemFormFactory(Load, scenario, request.user, multi=multi)
-    Form = Load.adjust_Form(Form, load, templates_queryset=timeseries)
-    Form.base_fields.pop("template")
-    # template is not required and will be set to the just uploaded file
-    load_form = Form(request.POST, instance=load) if not multi else Form(request.POST)
-    if load_form.is_valid():
-        load_form.save()
-
-    file_form = TimeseriesUploadForm(request.POST, request.FILES)
+    updated = []
+    now = timezone.now()
     if file_form.is_valid():
-        load.refresh_from_db()
-        timeseries = file_form.save(scenario, load, request.user)
-        if loads:
-            updated = []
-            for load in loads:
-                load.template = timeseries
-                updated.append(load)
-            Load.objects.bulk_update(updated, fields=["template"])
-            return redirect(
-                reverse(
-                    "ports:details",
-                    kwargs={
-                        "scenario_internal_id": scenario_internal_id,
-                        "model": model,
-                    },
-                )
-                + f"?internal_ids={request.POST.get('internal_ids')}"
-            )
+        timeseries = file_form.save(scenario, request.user)
+        for load in loads:
+            load.timeseries = timeseries
+            load.updated_at = now
+            updated.append(load)
+        if updated:
+            Load.objects.bulk_update(updated, fields=["timeseries", "updated_at"])
+            update_scenario_post_save(Load, updated[0])
 
-        return redirect(
-            reverse(
-                "ports:details",
-                kwargs={
-                    "scenario_internal_id": scenario_internal_id,
-                    "model": model,
-                },
-            )
-            + f"?internal_id={internal_load_id}"
-        )
+        # return retargetForFailure(response)
+    response = render(
+        request,
+        "ports/partials/timeseries_upload.html",
+        {
+            "upload_form": file_form,
+            "scenario": scenario,
+            "instance": loads[0] if loads else None,
+        },
+    )
+
+    if updated:
+        response["HX-Trigger"] = f"refresh-template-{loads[0].internal_id}"
+    return response
+
+
+@login_required()
+def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    timeseries = get_object_or_404(Timeseries, scenario=scenario, internal_id=internal_id)
+    is_authorized = has_authorization(
+        scenario.project, request.user, "details"
+    ) and has_authorization(timeseries, request.user, "details")
+    if not is_authorized:
+        return HttpResponseForbidden(b"You are not authorized for this function")
+
+    if request.method == "POST":
+        form = ChangeTimeseriesForm(request.POST, instance=timeseries)
+        if form.is_valid():
+            form.save()
+    else:
+        form = ChangeTimeseriesForm(instance=timeseries)
+
+    context = {"scenario": scenario, "ts": timeseries, "form": form}
+    return render(request, "ports/partials/timeseries_rename_modal.html", context)
 
 
 def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
-    """Return a Timeseries as JSON. Only accessible to the template's manager."""
+    """Return a Timeseries as JSON. Only accessible to the timeseries's manager."""
     if not request.user.is_authenticated:
         return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)

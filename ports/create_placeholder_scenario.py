@@ -143,7 +143,7 @@ def create_scenario() -> Scenario:
         timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
     )
-    load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template2)
+    load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, timeseries=template2)
     grid_el = Grid.objects.create(
         scenario=s,
         name="electric grid",
