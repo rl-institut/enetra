@@ -151,9 +151,6 @@ class Scenario(models.Model):
             ("change", "change scenario"),
         )
 
-    def group_name(self):
-        return f"Scenario_{self.id}_group"
-
     @staticmethod
     @contextmanager
     def true_delete(scenario_ids: Iterable[int]):
