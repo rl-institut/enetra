@@ -1,13 +1,9 @@
-from functools import partial
-from functools import reduce
 from typing import Any
-from typing import Protocol
 
 import django.forms as forms
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
-from django.db.models import Field
 from django.db.models import ForeignKey
 from django.db.models import Q
 from django.db.models import QuerySet
@@ -40,82 +36,6 @@ class ScenarioChoiceField(forms.ModelChoiceField):
         return obj.name
 
 
-class FormfieldModifier(Protocol):
-    # db_field, scenario, user and instance are bound as keywords by formfield_callback_factory
-    def __call__(
-        self,
-        field: forms.Field | None,
-        /,
-        *,
-        db_field: Field,
-        scenario: Scenario,
-        user: User,
-        instance: ScenarioItem | None,
-    ) -> forms.Field | None: ...
-
-
-def formfield_callback_factory(
-    funcs: list[FormfieldModifier],
-    scenario: Scenario,
-    user: User,
-    instance: ScenarioItem | None,
-):
-    """Reduces functions, sets safe defaults, and binds queryset
-
-    All querysets which are of type ModelChoiceField are autoset to none.
-    Later callbacks can explicitly overwrite
-    """
-
-    def formfield_callback(db_field, **kwargs):
-        # insert the dynamic attribues so correct filtering can happen
-        bound_funcs = [
-            partial(func, db_field=db_field, scenario=scenario, user=user, instance=instance)
-            for func in funcs
-        ]
-        field = db_field.formfield(**kwargs)
-        field = reduce(lambda x, y: y(x), [empty_queryset_formfield, *bound_funcs], field)
-        if field is not None:
-            field.unit = UNITS.get(db_field.name, "")
-        return field
-
-    return formfield_callback
-
-
-def set_timeseries_for_user(field, db_field, user, scenario, instance):
-    if db_field.name == "timeseries":
-        # TODO: should the timeseries stay bound to the scenario OR
-        # be a TimeseriesTemplate without being bound to the scenario instead?
-        # When a LoadTemplate is used in a different scenario it needs to be handled!
-        # E.g. by copying timeseries to new scenario
-        timeseries = Timeseries.objects.filter(manager=user, scenario=scenario)
-        # add the current value
-        current = getattr(instance, db_field.name, None)
-        if instance and current:
-            timeseries = Timeseries.objects.filter(
-                Q(manager=user, scenario=scenario) | Q(id=current.id)
-            )
-        field.queryset = timeseries
-    return field
-
-
-def set_loads_for_user(field, db_field, user, scenario, instance):
-    if db_field.related_model == Load:
-        loads = Load.objects.filter(manager=user, scenario=scenario)
-        current = getattr(instance, db_field.name, None)
-        if instance and current:
-            loads = Load.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
-        field.queryset = loads
-    return field
-
-
-def empty_queryset_formfield(field):
-    # Relation fields default to an empty queryset, so no items leak into a form
-    # unless the queryset is explicitly set afterwards
-    if isinstance(field, forms.ModelChoiceField):
-        field.queryset = field.queryset.none()
-    return field
-
-
 def AreaItemFormFactory():
     return modelform_factory(
         Area,
@@ -134,20 +54,18 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User):
-    # TODO:
-    # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
+def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User | None = None):
     exclude = ["manager", "updated_user"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
-    formfield_callback = (formfield_callback_factory([], None, user, None),)
     if issubclass(ItemModel, ItemTemplate):
         # exclude all foreign key fields.
         # Templates should be atomic so they can be easily applied without side effects
         # manager
         exclude = set(exclude + fk_fields)
+        # Templates are not bound to a scenario, so all relation querysets stay empty
         BaseForm = modelform_factory(
             ItemModel,
-            formfield_callback=formfield_callback,
+            form=ScopedModelForm,
             exclude=exclude,
             widgets={
                 "internal_id": forms.HiddenInput(),
@@ -159,39 +77,16 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User):
     else:
         raise NotImplementedError()
 
+    # NOTE: if subclassing this Baseform this loop should be moved into a own baseforms __init__
+    # or else the adjustments below would go missing
+
     # All fields are optional for a Template except name
     # and internal_id
     for field_name, field in BaseForm.base_fields.items():
         if field_name not in ("name", "internal_id"):
             field.required = False
 
-    # Add units
-    for field_name, field in BaseForm.base_fields.items():
-        field.unit = UNITS.get(field_name, "")
     return BaseForm
-
-
-def AreaBaseFormFactory(scenario: Scenario, multi=False) -> type[forms.ModelForm]:
-    fields = dict(
-        is_public=forms.BooleanField(
-            required=False,
-            widget=forms.CheckboxInput(),
-            label="Für andere im Projekt sichtbar machen",
-        )
-    )
-    # dynamic creation of grid selects
-    # get gridtypes. Each Area can be connected to one grid of each type
-    for gtype in Grid.CarrierChoices:
-        fields[GRID_FIELD_PREFIX + gtype] = InternalIDModelChoiceField(
-            queryset=Grid.objects.filter(
-                scenario=scenario,
-                carrier=gtype,
-            ),
-            label=gtype.label + "-Netz",
-            required=False,
-            empty_label="Kein Netz dieses Typs" if not multi else "Keine Anpassung vornehmen",
-        )
-    return type("AreaGridFieldsForm", (forms.ModelForm,), fields)
 
 
 def ScenarioItemFormFactory(
@@ -202,12 +97,9 @@ def ScenarioItemFormFactory(
     instance: ScenarioItem | None = None,
     **kwargs,
 ):
-    # TODO:
-    # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
     exclude = ["manager", "scenario", "updated_user", "description"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
-        formfield_callback = formfield_callback_factory([], scenario, user, instance)
         exclude = exclude + ["area_type", "geom"]
         field_classes = {"geom": GeoJSONPolygonField}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
@@ -215,9 +107,8 @@ def ScenarioItemFormFactory(
         BaseForm = modelform_factory(
             ItemModel,
             exclude=exclude,
-            form=AreaBaseFormFactory(scenario),
+            form=AreaForm,
             field_classes=field_classes,
-            formfield_callback=formfield_callback,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
@@ -228,15 +119,11 @@ def ScenarioItemFormFactory(
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         if ItemModel == Load:
-            formfield_callback = formfield_callback_factory(
-                [set_timeseries_for_user], scenario, user, instance
-            )
+            form = LoadForm
         elif ItemModel == Solar:
-            formfield_callback = formfield_callback_factory(
-                [set_loads_for_user], scenario, user, instance
-            )
+            form = SolarForm
         else:
-            formfield_callback = formfield_callback_factory([], scenario, user, instance)
+            form = ScopedModelForm
 
         exclude = exclude + ["area"]
         field_classes = {}
@@ -245,8 +132,8 @@ def ScenarioItemFormFactory(
         BaseForm = modelform_factory(
             ItemModel,
             exclude=exclude,
+            form=form,
             field_classes=field_classes,
-            formfield_callback=formfield_callback,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 "name": forms.TextInput(),
@@ -255,9 +142,6 @@ def ScenarioItemFormFactory(
         )
 
     elif ItemModel == Grid:
-        formfield_callback = formfield_callback_factory(
-            [set_loads_for_user], scenario, user, instance
-        )
         fields = ["internal_id", "name", "feed_in", "power_max", "load"]
         if not instance:
             # only allow a carrier when there is no instance yet
@@ -266,8 +150,8 @@ def ScenarioItemFormFactory(
         BaseForm = modelform_factory(
             Grid,
             fields=fields,
+            form=GridForm,
             field_classes={"load": InternalIDModelChoiceField},
-            formfield_callback=formfield_callback,
             widgets={
                 "name": forms.TextInput(),
                 "internal_id": forms.HiddenInput(),
@@ -276,14 +160,26 @@ def ScenarioItemFormFactory(
     else:
         raise NotImplementedError()
 
+    # bind the request context used by ScopedModelForm.scope_querysets
+    BaseForm.scope_user = user
+    BaseForm.scope_scenario = scenario
+
     if not multi:
         return BaseForm
 
     class BulkForm(BaseForm):
         internal_ids = UUIDMultipleChoiceField(
-            queryset=ItemModel.objects.filter(scenario=scenario),
+            queryset=ItemModel.objects.none(),
             widget=forms.HiddenInput(),
         )
+        # only used by area forms
+        grid_empty_label = "Keine Anpassung vornehmen"
+
+        def scope_querysets(self) -> None:
+            super().scope_querysets()
+            self.fields["internal_ids"].queryset = ItemModel.objects.filter(
+                scenario=self.scope_scenario
+            )
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -456,6 +352,99 @@ class UUIDMultipleChoiceField(CharField):
         if not isinstance(value, QuerySet):
             raise ValidationError(self.error_messages["required"], code="required")
         return value
+
+
+class ScopedModelForm(forms.ModelForm):
+    """ModelForm with safe defaults for relation fields
+
+    All relation querysets are emptied on init, so no items can leak into the form.
+    Subclasses explicitly allow items in scope_querysets(), which only runs
+    when the form is bound to a user and scenario (see ScenarioItemFormFactory).
+    """
+
+    scope_user: User | None = None
+    scope_scenario: Scenario | None = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            field.unit = UNITS.get(field_name, "")
+            if isinstance(field, forms.ModelChoiceField | UUIDMultipleChoiceField):
+                field.queryset = field.queryset.none()
+        if self.scope_user is not None and self.scope_scenario is not None:
+            self.scope_querysets()
+
+    def scope_querysets(self) -> None:
+        """Set the querysets of the relation fields the user may select from"""
+        pass
+
+    def own_or_current(self, field_name: str, model: type[ScenarioItem]) -> QuerySet:
+        """Items of the user in the scenario, plus the currently selected one"""
+        allowed = Q(manager=self.scope_user, scenario=self.scope_scenario)
+        current_id = getattr(self.instance, field_name + "_id", None)
+        if current_id:
+            allowed |= Q(id=current_id)
+        return model.objects.filter(allowed)
+
+
+def get_timeseries_for_user(user: User, scenario: Scenario) -> QuerySet[Timeseries]:
+    return Timeseries.objects.filter(manager=user, scenario=scenario)
+
+
+class LoadForm(ScopedModelForm):
+    def scope_querysets(self) -> None:
+        # TODO: should the timeseries stay bound to the scenario OR
+        # be a TimeseriesTemplate without being bound to the scenario instead?
+        # When a LoadTemplate is used in a different scenario it needs to be handled!
+        # E.g. by copying timeseries to new scenario
+        self.fields["timeseries"].queryset = self.own_or_current("timeseries", Timeseries)
+
+
+class SolarForm(ScopedModelForm):
+    def scope_querysets(self) -> None:
+        self.fields["profile"].queryset = self.own_or_current("profile", Load)
+
+
+class GridForm(ScopedModelForm):
+    def scope_querysets(self) -> None:
+        self.fields["load"].queryset = self.own_or_current("load", Load)
+
+
+class AreaFormBase(ScopedModelForm):
+    is_public = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(),
+        label="Für andere im Projekt sichtbar machen",
+    )
+    grid_empty_label = "Kein Netz dieses Typs"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for carrier in Grid.CarrierChoices:
+            if field := self.fields.get(GRID_FIELD_PREFIX + carrier):
+                field.empty_label = self.grid_empty_label
+
+    def scope_querysets(self) -> None:
+        for carrier in Grid.CarrierChoices:
+            self.fields[GRID_FIELD_PREFIX + carrier].queryset = Grid.objects.filter(
+                scenario=self.scope_scenario, carrier=carrier
+            )
+
+
+# Each Area can be connected to one grid of each carrier.
+# The grid selects are declared fields, so they are inherited by the bulk form
+AreaForm = type(
+    "AreaForm",
+    (AreaFormBase,),
+    {
+        GRID_FIELD_PREFIX + carrier: InternalIDModelChoiceField(
+            queryset=Grid.objects.none(),
+            label=carrier.label + "-Netz",
+            required=False,
+        )
+        for carrier in Grid.CarrierChoices
+    },
+)
 
 
 class ChangeProjectForm(forms.ModelForm):

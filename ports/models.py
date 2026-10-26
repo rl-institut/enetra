@@ -757,12 +757,6 @@ class Load(ScenarioItem):
     )  # scale template values
 
     @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        return FormClass
-
-    @classmethod
     def create_new(
         cls,
         scenario: Scenario,
@@ -857,7 +851,7 @@ class Grid(ScenarioItem):
     )
 
     display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
-        "timeseries": lambda v: v.name,
+        "load": lambda v: v.name,
     }
 
     power_max = models.FloatField(

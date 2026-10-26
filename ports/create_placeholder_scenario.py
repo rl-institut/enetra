@@ -148,7 +148,7 @@ def create_scenario() -> Scenario:
         scenario=s,
         name="electric grid",
         carrier=Grid.CarrierChoices.ELECTRICITY,
-        timeseries=load1,
+        load=load1,
     )
     grid_pv = Grid.objects.create(
         scenario=s,
