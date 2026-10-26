@@ -22,8 +22,6 @@ from django.db.models import BooleanField
 from django.db.models import ForeignObjectRel
 from django.db.models import ManyToManyRel
 from django.db.models import ObjectDoesNotExist
-from django.db.models import OuterRef
-from django.db.models import Subquery
 from django.db.models import Value
 from django.db.transaction import atomic
 from django.forms import model_to_dict
@@ -47,8 +45,6 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import View
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
-from guardian.shortcuts import get_perms
-from guardian.shortcuts import remove_perm
 from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
@@ -93,6 +89,42 @@ from .util import get_template_model
 from .util import get_template_scenarios
 
 logger = logging.getLogger(__name__)
+
+
+def merge_instances_data(instances) -> dict:
+    """Cast instances to dict and only keep key/value pairs for keys which share a single value
+
+    Foreign keys are cast to internal_ids
+    """
+    merged_data = model_to_dict_w_internal_id(instances[0])
+    for x in instances[1:]:
+        data = model_to_dict(x)
+        for key, value in data.items():
+            if merged_data.get(key) != value and key in merged_data:
+                del merged_data[key]
+    return merged_data
+
+
+def generate_template_data(template_internal_id, Model, user, Form):
+    template_data = {}
+    template_model = get_template_model(Model)
+    if template := template_model.objects.filter(
+        manager=user, internal_id=template_internal_id
+    ).first():
+        for field in Form.base_fields:
+            if field in (
+                "manager",
+                "updated_user",
+                "internal_id",
+                "id",
+                "created_at",
+                "updated_at",
+            ):
+                continue
+            template_value = vars(template).get(field)
+            if template_value is not None:
+                template_data[field] = template_value
+    return template_data
 
 
 def debug_switch_user(request, username: str):
@@ -757,6 +789,7 @@ class ObjectTemplatesView(View):
         )
 
     def get_basic_context(self, request, *args, **kwargs) -> dict:
+        """Get context data which is used across request verbs"""
         context = {
             "Model": self.Model,
             "model_name": self.Model._meta.model_name,
@@ -990,6 +1023,7 @@ class DetailsView(View):
         )
 
     def get_basic_context(self, request, *args, **kwargs) -> dict:
+        """Get context data which is used across request verbs"""
         context = {
             "scenario": self.scenario,
             "Model": self.Model,
@@ -1000,6 +1034,9 @@ class DetailsView(View):
             "instances": self.instances,
             "electric_models": [m for m in apps.get_models() if issubclass(m, ElectricComponent)],
         }
+        if self.Model == Load:
+            context["upload_form"] = TimeseriesUploadForm()
+
         if issubclass(self.Model, ElectricComponent):
             template_model = get_template_model(self.Model)
             context["templates"] = template_model.objects.filter(manager=request.user)
@@ -1106,7 +1143,11 @@ class DetailsView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_area_context(self) -> dict:
-        # pass queryset to Frontend to create links to loads and energy components
+        """Get the context for a single area detail view.
+
+        Multi area views do not show their components
+        """
+        # pass queryset to frontend to create links to loads and energy components
         context = {}
         context["loads"] = Load.objects.filter(area=self.instance)
         models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
@@ -1132,38 +1173,6 @@ class DetailsView(View):
 
         raise Http404("This instance does not exist")
 
-    def _get_initial_grids(self, area: Area | None = None, areas=None) -> dict[str, Grid]:
-        """Get a dictionary of grids with key of grid_{grid_type}"""
-        assert area or areas
-        initial = {}
-        for gtype in Grid.CarrierChoices:
-            if area:
-                if grids := Grid.objects.filter(areas=area, carrier=gtype.value):
-                    if grids.count() > 1:
-                        raise Exception("Only one grid per grid type and area allowed")
-                    initial["grid_" + gtype] = grids.first()
-
-            else:
-                # annotate each area, if it has a grid of this type, with this grids id
-                # Subquery will fail if more than 1 grid_id is found per area and carrier type
-                # distinct casts the ids to a set which may contain None.
-                grid_ids = (
-                    areas.annotate(
-                        grid_id=Subquery(
-                            Grid.areas.through.objects.filter(
-                                area_id=OuterRef("pk"),
-                                grid__carrier=gtype.value,
-                            ).values("grid_id")
-                        )
-                    )
-                    .order_by()
-                    .values_list("grid_id", flat=True)
-                    .distinct()
-                )
-                if len(grid_ids) == 1 and grid_ids[0]:
-                    initial["grid_" + gtype] = Grid.objects.get(id=grid_ids[0])
-        return initial
-
     def get(self, request, *args, **kwargs):
         if not has_authorization(self.instance, request.user, "details"):
             return HttpResponse("You are not allowed to see details")
@@ -1172,19 +1181,11 @@ class DetailsView(View):
         if self.Model not in [Area, Load, Grid] and not issubclass(self.Model, ElectricComponent):
             raise Http404("This model does not exist or is not implemented yet")
         if self.Model == Area:
-            group = Group.objects.get(name=self.scenario.project.group_name())
-            # If Object permissions are queried multiple times consider using a
-            # guardian.core.ObjectPermissionChecker
-            initial = {"is_public": "details" in get_perms(group, self.instance)}
-            initial_grids = self._get_initial_grids(area=self.instance)
-            initial |= initial_grids
             self.context |= self.get_area_context()
-        elif self.Model == Load:
-            self.context["upload_form"] = TimeseriesUploadForm()
         elif self.Model == Grid:
             self.context |= self.get_grid_create_context(request, self.instance)
 
-        elif issubclass(self.Model, ElectricComponent):
+        elif issubclass(self.Model, ElectricComponent) or self.Model == Load:
             # nothing to do here
             # ElectricComponent does not reference other models and does not need
             # further data injected
@@ -1194,29 +1195,12 @@ class DetailsView(View):
 
         template_data = {}
         if template_internal_id := request.GET.get(USE_TEMPLATE):
-            template_model = get_template_model(self.Model)
-            if template := template_model.objects.filter(
-                manager=request.user, internal_id=template_internal_id
-            ).first():
-                # get template data for instance
-                # TODO: Refactor into function
-                for field in self.Form.base_fields:
-                    if field in (
-                        "manager",
-                        "updated_user",
-                        "internal_id",
-                        "id",
-                        "created_at",
-                        "updated_at",
-                    ):
-                        continue
-                    template_value = vars(template).get(field)
-                    if template_value is not None:
-                        template_data[field] = template_value
-                        # mark the fields populated by the templated for styling/indicating
-                        self.Form.base_fields[field].widget.attrs["data-template-value"] = (
-                            template_value
-                        )
+            template_data = generate_template_data(
+                template_internal_id, self.Model, request.user, self.Form
+            )
+            for field, template_value in template_data.items():
+                # mark the fields populated by the template for styling/indicating
+                self.Form.base_fields[field].widget.attrs["data-template-value"] = template_value
 
         initial.update(template_data)
         self.context["form"] = self.Form(initial=initial, instance=self.instance)
@@ -1342,8 +1326,6 @@ class DetailsView(View):
             self.context |= grid_context
 
         elif self.Model == Load or issubclass(self.Model, ElectricComponent):
-            if self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
@@ -1443,57 +1425,27 @@ class DetailsView(View):
             return response
 
         if self.Model == Area or issubclass(self.Model, ElectricComponent):
-            merged_data = model_to_dict(self.instances[0])
-            if self.Model == Area:
-                initial_grids = self._get_initial_grids(areas=self.instances)
-                merged_data |= initial_grids
-            for x in self.instances:
-                data = model_to_dict(x)
-                for key, value in data.items():
-                    if merged_data.get(key) != value and key in merged_data:
-                        del merged_data[key]
-
+            merged_data = merge_instances_data(self.instances)
             template_data = {}
             if template_internal_id := request.GET.get(USE_TEMPLATE):
-                template_model = get_template_model(self.Model)
-                if template := template_model.objects.filter(
-                    manager=request.user, internal_id=template_internal_id
-                ).first():
-                    # get template data for instance
-                    # TODO: Refactor into function
-                    for field in self.Form.base_fields:
-                        if field in (
-                            "manager",
-                            "updated_user",
-                            "internal_id",
-                            "id",
-                            "created_at",
-                            "updated_at",
-                        ):
-                            continue
-                        template_value = vars(template).get(field)
-
-                        if template_value is not None:
-                            template_data[field] = template_value
-                            # mark the fields populated by the template for styling/indicating
-                            self.Form.base_fields[field].widget.attrs["data-template-value"] = (
-                                template_value
-                            )
+                template_data = generate_template_data(
+                    template_internal_id, self.Model, request.user, self.Form
+                )
+                for field, template_value in template_data.items():
+                    # mark the fields populated by the template for styling/indicating
+                    self.Form.base_fields[field].widget.attrs["data-template-value"] = (
+                        template_value
+                    )
 
             merged_data.update(template_data)
             merged_data["internal_ids"] = ",".join(self.internal_ids)
 
-            form = self.Form(data=merged_data)
+            form = self.Form(initial=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
         elif self.Model == Load:
-            self.context["upload_form"] = TimeseriesUploadForm()
-            merged_data = model_to_dict_w_internal_id(self.instances[0])
-            for x in self.instances:
-                data = model_to_dict_w_internal_id(x)
-                for key, value in data.items():
-                    if merged_data.get(key) != value and key in merged_data:
-                        del merged_data[key]
+            merged_data = merge_instances_data(self.instances)
+
             self.context["area_internal_ids"] = ",".join(
                 str(y)
                 for y in (
@@ -1538,8 +1490,6 @@ class DetailsView(View):
             traceback.print_exc()
 
         if self.Model == Load or issubclass(self.Model, ElectricComponent):
-            if self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
             # Multi post request for Load needs references to areas
             self.context["area_internal_ids"] = ",".join(
                 str(y)
@@ -1570,8 +1520,6 @@ class DetailsView(View):
             form = self.Form(data=request.POST, instance=self.instance)
             if self.Model == Area:
                 self.context |= self.get_area_context()
-            elif self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
             elif self.Model == Grid:
                 self.context |= self.get_grid_create_context(request, self.instance)
 
@@ -1582,25 +1530,6 @@ class DetailsView(View):
                 # are both needed?
                 self.context["instance"] = instance
                 self.context["item"] = instance
-                group = Group.objects.get(name=self.scenario.project.group_name())
-                if self.Model == Area:
-                    if form.cleaned_data.get("is_public"):
-                        assign_perm("details", group, form.instance)
-                    else:
-                        remove_perm("details", group, form.instance)
-
-                    # Delete previous assignment of area -> grid
-                    # All connections are recreated next based on the current selection
-                    Grid.areas.through.objects.filter(area=form.instance).delete()
-                    grid_areas = []
-                    for key, value in form.cleaned_data.items():
-                        if "grid" in key and isinstance(value, Grid):
-                            grid_area = Grid.areas.through(
-                                area_id=form.instance.id, grid_id=value.id
-                            )
-                            # Add the area to the selected grid
-                            grid_areas.append(grid_area)
-                    Grid.areas.through.objects.bulk_create(grid_areas)
 
                 # refresh the form, with the newly created instance.
                 self.Form = ScenarioItemFormFactory(

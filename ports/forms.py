@@ -1,6 +1,8 @@
+from collections import defaultdict
 from typing import Any
 
 import django.forms as forms
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
@@ -12,12 +14,16 @@ from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
 from django.utils import timezone
+from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_perms
+from guardian.shortcuts import remove_perm
 
 from .authorization import has_authorization
 from .constants import GRID_FIELD_PREFIX
 from .models import UNITS
 from .models import Area
 from .models import ChangedItem
+from .models import DuplicateGridCarrierError
 from .models import ElectricComponent
 from .models import EnergyCost
 from .models import Grid
@@ -415,6 +421,31 @@ class GridForm(ScopedModelForm):
         self.fields["load"].queryset = self.own_or_current("load", Load)
 
 
+def get_shared_grids(areas: QuerySet[Area]) -> dict[str, Grid]:
+    """Get a dictionary of the grids shared by all areas with key of grid_{grid_type}"""
+    initial = {}
+    area_ids = set(areas.values_list("id", flat=True))
+    if not area_ids:
+        return {}
+    # all links <grid_id <-> area_id>
+    links = Grid.areas.through.objects.filter(area_id__in=areas).select_related("grid")
+    carriers_per_area = defaultdict(set)
+    shared_grids = defaultdict(set)
+    # shared grid = all areas are linked to this grid
+    for link in links:
+        # enforce that each area has at most 1 grid per gridtype
+        if link.grid.carrier in carriers_per_area[link.area_id]:
+            raise DuplicateGridCarrierError("Area has multiple grids per carrier")
+        carriers_per_area[link.area_id].add(link.grid.carrier)
+
+        shared_grids[link.grid].add(link.area_id)
+
+    for grid, grid_ids in shared_grids.items():
+        if len(grid_ids) == len(area_ids):
+            initial[GRID_FIELD_PREFIX + grid.carrier] = grid
+    return initial
+
+
 class AreaFormBase(ScopedModelForm):
     multi = False
     # fallback when the instance has no area_type, e.g. bulk forms (see ScenarioItemFormFactory)
@@ -454,11 +485,54 @@ class AreaFormBase(ScopedModelForm):
 
         self.fields["usage"].choices = usage_choices
 
+        # an unbound form of an existing area shows its current visibility and grids.
+        # Explicitly passed initial values (e.g. from templates) take precedence
+        if (self.instance.pk or self.multi) and not self.is_bound:
+            # If Object permissions are queried multiple times consider using a
+            # guardian.core.ObjectPermissionChecker
+            if not self.multi:
+                is_public = "details" in get_perms(self.get_project_group(), self.instance)
+                self.initial.setdefault("is_public", is_public)
+                areas = Area.objects.filter(scenario=self.scope_scenario, pk=self.instance.pk)
+            else:
+                internal_ids = kwargs.get("initial", {}).get("internal_ids", "").split(",")
+                areas = Area.objects.filter(
+                    scenario=self.scope_scenario, internal_id__in=internal_ids
+                )
+            for key, grid in get_shared_grids(areas).items():
+                self.initial.setdefault(key, grid)
+
     def scope_querysets(self) -> None:
         for carrier in Grid.CarrierChoices:
             self.fields[GRID_FIELD_PREFIX + carrier].queryset = Grid.objects.filter(
                 scenario=self.scope_scenario, carrier=carrier
             )
+
+    def get_project_group(self) -> Group:
+        return Group.objects.get(name=self.instance.scenario.project.group_name())
+
+    def save(self, commit: bool = True) -> Area:
+        instance = super().save(commit=commit)
+        if commit:
+            self.save_relations()
+        return instance
+
+    def save_relations(self) -> None:
+        """Save is_public as project group permission and recreate the grid connections"""
+        group = self.get_project_group()
+        if self.cleaned_data.get("is_public"):
+            assign_perm("details", group, self.instance)
+        else:
+            remove_perm("details", group, self.instance)
+
+        # Delete previous assignment of area -> grid
+        # All connections are recreated next based on the current selection
+        Grid.areas.through.objects.filter(area=self.instance).delete()
+        Grid.areas.through.objects.bulk_create(
+            Grid.areas.through(area_id=self.instance.id, grid_id=grid.id)
+            for key, grid in self.cleaned_data.items()
+            if key.startswith(GRID_FIELD_PREFIX) and isinstance(grid, Grid)
+        )
 
 
 # Each Area can be connected to one grid of each carrier.
