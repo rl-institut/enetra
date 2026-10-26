@@ -59,6 +59,7 @@ from . import models  # needed to get all component classes
 from . import tasks
 from .authorization import has_area_authorization_from_uuids
 from .authorization import has_authorization
+from .constants import USE_TEMPLATE
 from .create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from .forms import AreaItemFormFactory
 from .forms import ChangeProjectForm
@@ -1192,7 +1193,7 @@ class DetailsView(View):
             raise NotImplementedError("No template defined for this Model")
 
         template_data = {}
-        if template_internal_id := request.GET.get("template"):
+        if template_internal_id := request.GET.get(USE_TEMPLATE):
             template_model = get_template_model(self.Model)
             if template := template_model.objects.filter(
                 manager=request.user, internal_id=template_internal_id
@@ -1453,7 +1454,7 @@ class DetailsView(View):
                         del merged_data[key]
 
             template_data = {}
-            if template_internal_id := request.GET.get("template"):
+            if template_internal_id := request.GET.get(USE_TEMPLATE):
                 template_model = get_template_model(self.Model)
                 if template := template_model.objects.filter(
                     manager=request.user, internal_id=template_internal_id

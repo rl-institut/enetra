@@ -25,6 +25,7 @@ from django.test import Client
 from django.test import TestCase
 from django.urls import reverse
 
+from ports.constants import USE_TEMPLATE
 from ports.models import Area
 from ports.models import Generator
 from ports.models import GeneratorTemplate
@@ -325,7 +326,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": str(self.generator.internal_id),
-                "template": str(self.generator_template.internal_id),
+                USE_TEMPLATE: str(self.generator_template.internal_id),
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -340,7 +341,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": str(self.generator.internal_id),
-                "template": str(self.generator_template.internal_id),
+                USE_TEMPLATE: str(self.generator_template.internal_id),
             },
         )
         form = response.context["form"]
@@ -362,7 +363,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": internal_ids,
-                "template": str(self.generator_template.internal_id),
+                USE_TEMPLATE: str(self.generator_template.internal_id),
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -383,7 +384,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": internal_ids,
-                "template": str(self.generator_template.internal_id),
+                USE_TEMPLATE: str(self.generator_template.internal_id),
             },
         )
         form = response.context["form"]
@@ -400,7 +401,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": str(self.generator.internal_id),
-                "template": str(self.generator_template_other.internal_id),
+                USE_TEMPLATE: str(self.generator_template_other.internal_id),
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -421,7 +422,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": internal_ids,
-                "template": str(self.generator_template_other.internal_id),
+                USE_TEMPLATE: str(self.generator_template_other.internal_id),
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -434,7 +435,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             url,
             {
                 "internal_ids": str(self.generator.internal_id),
-                "template": str(uuid4()),
+                USE_TEMPLATE: str(uuid4()),
             },
         )
         self.assertEqual(response.status_code, 200)

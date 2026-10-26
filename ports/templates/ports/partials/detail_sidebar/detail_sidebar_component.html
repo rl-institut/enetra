@@ -71,11 +71,12 @@
             >Komponente aus Vorlage</label
           >
 
-          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET.template}}">
+          {% constant "USE_TEMPLATE" as use_template %}
+          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET|get_value_or_none:use_template|default:''}}">
             <c-select.button selectValue="">------</c-select.button>
             {% for template in templates %}
             <c-select.button selectValue="{{template.internal_id}}"
-              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}?template={{template.internal_id}}"
+              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name %}?{{use_template}}={{template.internal_id}}"
               hx-vals='{"internal_id": "{{instance.internal_id}}"}'
               hx-target="#detailSidebar"
               hx-select="unset"
