@@ -17,6 +17,19 @@
     }
 }
 
+.no-stepper input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    /* Firefox */
+}
+
+.no-stepper input[type="number"] ::-webkit-outer-spin-button,
+.no-stepper input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    /* Chrome/Safari/Edge */
+    margin: 0;
+}
+
 .map-label-icon {
     background: transparent !important;
     border: none !important;

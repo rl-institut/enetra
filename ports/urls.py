@@ -36,6 +36,11 @@ urlpatterns = [
         views.timeseries_rename,
         name="timeseries_rename",
     ),
+    path(
+        "energy_cost/<uuid:scenario_internal_id>/",
+        views.energy_cost,
+        name="energy_cost",
+    ),
     # two paths each for the templates, so the scenario can be inside the context.
     # For normal swaps the scenario might not be necessary, since templates dont belong to scenarios
     path(

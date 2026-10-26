@@ -19,6 +19,7 @@ from .models import UNITS
 from .models import Area
 from .models import ChangedItem
 from .models import ElectricComponent
+from .models import EnergyCost
 from .models import Grid
 from .models import ItemTemplate
 from .models import Load
@@ -433,6 +434,26 @@ class ChangeTimeseriesForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(),
         }
+
+
+class EnergyCostForm(forms.ModelForm):
+    class Meta:
+        model = EnergyCost
+        fields = (
+            "co2_price",
+            "electricity_price",
+            "heat_price",
+            "oil_price",
+            "diesel_price",
+            "gasoline_price",
+            "hydrogen_price",
+            "ammonia_price",
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            field.unit = UNITS.get(field_name, "")
 
 
 class CreateScenarioForm(forms.ModelForm):

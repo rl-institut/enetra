@@ -402,6 +402,9 @@
   .z-\[99999\] {
     z-index: 99999;
   }
+  .row-span-3 {
+    grid-row: span 3 / span 3;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -664,9 +667,6 @@
   .h-\[12px\] {
     height: 12px;
   }
-  .h-\[14px\] {
-    height: 14px;
-  }
   .h-\[16px\] {
     height: 16px;
   }
@@ -810,9 +810,6 @@
   }
   .w-\[12px\] {
     width: 12px;
-  }
-  .w-\[14px\] {
-    width: 14px;
   }
   .w-\[16px\] {
     width: 16px;
@@ -958,6 +955,10 @@
   .border-collapse {
     border-collapse: collapse;
   }
+  .-translate-x-\[100\%\] {
+    --tw-translate-x: calc(100% * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
   .translate-x-0 {
     --tw-translate-x: calc(var(--spacing) * 0);
     translate: var(--tw-translate-x) var(--tw-translate-y);
@@ -1042,6 +1043,9 @@
   }
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grid-rows-subgrid {
+    grid-template-rows: subgrid;
   }
   .flex-col {
     flex-direction: column;
@@ -1132,6 +1136,9 @@
   }
   .gap-\[24px\] {
     gap: 24px;
+  }
+  .gap-x-6 {
+    column-gap: calc(var(--spacing) * 6);
   }
   .gap-x-12 {
     column-gap: calc(var(--spacing) * 12);
@@ -1763,14 +1770,11 @@
   .pr-6 {
     padding-right: calc(var(--spacing) * 6);
   }
-  .pr-17\.5 {
-    padding-right: calc(var(--spacing) * 17.5);
+  .pr-8 {
+    padding-right: calc(var(--spacing) * 8);
   }
-  .pr-20 {
-    padding-right: calc(var(--spacing) * 20);
-  }
-  .pr-22\.5 {
-    padding-right: calc(var(--spacing) * 22.5);
+  .pr-16 {
+    padding-right: calc(var(--spacing) * 16);
   }
   .pr-\[60px\] {
     padding-right: 60px;
@@ -3042,6 +3046,11 @@
       background-color: var(--color-gray-500);
     }
   }
+  .disabled\:bg-red-200 {
+    &:disabled {
+      background-color: var(--color-red-200);
+    }
+  }
   .disabled\:opacity-40 {
     &:disabled {
       opacity: 40%;
@@ -3526,6 +3535,14 @@
       color: #0E7490;
     }
   }
+}
+.no-stepper input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.no-stepper input[type="number"] ::-webkit-outer-spin-button, .no-stepper input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .map-label-icon {
   background: transparent !important;

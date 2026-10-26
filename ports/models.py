@@ -49,6 +49,14 @@ UNITS = {
     "surface_area_installed": "m²",
     "surface_area_min": "m²",
     "surface_area_max": "m²",
+    "co2_price": "€/t",
+    "electricity_price": "€/kWh",
+    "heat_price": "€/kWh",
+    "oil_price": "€/l",
+    "diesel_price": "€/l",
+    "gasoline_price": "€/l",
+    "hydrogen_price": "€/kg",
+    "ammonia_price": "€/kg",
 }
 
 
@@ -680,6 +688,54 @@ class Timeseries(ScenarioItem):
         self.dailyAvg = dailyAverage
         self.yearlyAvg = yearlyAverage
         return self
+
+
+class EnergyCost(ScenarioItem):
+    """Energy carrier prices
+
+    units are defined in UNITS
+    """
+
+    co2_price = models.FloatField(
+        verbose_name=_("CO₂-Preis"), default=80, help_text=_("CO2-Preis.")
+    )
+    electricity_price = models.FloatField(
+        verbose_name=_("Strom-Preis"), default=0.25, help_text=_("Strompreis.")
+    )
+    heat_price = models.FloatField(
+        verbose_name=_("Wärme-Preis"), default=0.12, help_text=_("Wärmepreis.")
+    )
+    oil_price = models.FloatField(verbose_name=_("Öl-Preis"), default=1.60, help_text=_("Ölpreis."))
+    diesel_price = models.FloatField(
+        verbose_name=_("Diesel-Preis"), default=1.65, help_text=_("Dieselpreis.")
+    )
+    gasoline_price = models.FloatField(
+        verbose_name=_("Benzin-Preis"), default=1.80, help_text=_("Benzinpreis.")
+    )
+    hydrogen_price = models.FloatField(
+        verbose_name=_("H₂-Preis"), default=7, help_text=_("Preis für Wasserstoff.")
+    )
+    ammonia_price = models.FloatField(
+        verbose_name=_("NH₃-Preis"), default=0.70, help_text=_("Preis für Ammoniak.")
+    )
+
+    class Meta(ScenarioItem.Meta):
+        # retains the internal_id/scenario unique-together constraint from ScenarioItem.Meta,
+        # and additionally enforces a single EnergyCost row per Scenario.
+        constraints = [
+            *ScenarioItem.Meta.constraints,
+            models.UniqueConstraint(fields=["scenario"], name="unique_energycost_per_scenario"),
+        ]
+
+    @classmethod
+    def get_or_create_for_scenario(cls, scenario: Scenario, manager: User) -> "EnergyCost":
+        # helpful since EnergyCost is a singleton per scenario right now
+
+        instance, _ = cls.objects.get_or_create(
+            scenario=scenario,
+            defaults={"name": "Energiekosten", "manager": manager, "updated_user": manager},
+        )
+        return instance
 
 
 class Load(ScenarioItem):

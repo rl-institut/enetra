@@ -66,6 +66,7 @@ from .forms import ChangeScenarioForm
 from .forms import ChangeTimeseriesForm
 from .forms import CreateProjectForm
 from .forms import CreateScenarioForm
+from .forms import EnergyCostForm
 from .forms import ScenarioItemFormFactory
 from .forms import TemplateFormFactory
 from .forms import TimeseriesUploadForm
@@ -75,6 +76,7 @@ from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import ElectricComponentTemplate
+from .models import EnergyCost
 from .models import Grid
 from .models import ItemTemplate
 from .models import Load
@@ -482,6 +484,9 @@ def get_home_context(user: User, scenario: Scenario):
 
     data["profile_timeseries"] = get_timeseries_for_user(user, scenario)
     data["profile_upload_form"] = TimeseriesUploadForm()
+
+    energy_cost = EnergyCost.get_or_create_for_scenario(scenario, user)
+    data["energy_cost_form"] = EnergyCostForm(instance=energy_cost)
 
     return data
 
@@ -2009,6 +2014,25 @@ def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
 
     context = {"scenario": scenario, "ts": timeseries, "form": form}
     return render(request, "ports/partials/timeseries_rename_modal.html", context)
+
+
+@login_required()
+@require_http_methods(["GET", "POST"])
+def energy_cost(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden(b"You are not authorized for this function")
+
+    instance = EnergyCost.get_or_create_for_scenario(scenario, request.user)
+    if request.method == "POST":
+        form = EnergyCostForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+    else:
+        form = EnergyCostForm(instance=instance)
+
+    context = {"scenario": scenario, "form": form}
+    return render(request, "ports/partials/energiekosten.html", context)
 
 
 def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
