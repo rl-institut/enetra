@@ -1,9 +1,13 @@
+from functools import partial
+from functools import reduce
 from typing import Any
+from typing import Protocol
 
 import django.forms as forms
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
+from django.db.models import Field
 from django.db.models import ForeignKey
 from django.db.models import Q
 from django.db.models import QuerySet
@@ -12,9 +16,8 @@ from django.forms import ValidationError
 from django.forms import modelform_factory
 from django.utils import timezone
 
-from ports.models import update_scenario_post_save
-
 from .authorization import has_authorization
+from .constants import GRID_FIELD_PREFIX
 from .models import UNITS
 from .models import Area
 from .models import ChangedItem
@@ -26,13 +29,91 @@ from .models import Load
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
+from .models import Solar
 from .models import Timeseries
+from .models import update_scenario_post_save
 from .util import duplicate_scenario_with_permissions
 
 
 class ScenarioChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return obj.name
+
+
+class FormfieldModifier(Protocol):
+    # db_field, scenario, user and instance are bound as keywords by formfield_callback_factory
+    def __call__(
+        self,
+        field: forms.Field | None,
+        /,
+        *,
+        db_field: Field,
+        scenario: Scenario,
+        user: User,
+        instance: ScenarioItem | None,
+    ) -> forms.Field | None: ...
+
+
+def formfield_callback_factory(
+    funcs: list[FormfieldModifier],
+    scenario: Scenario,
+    user: User,
+    instance: ScenarioItem | None,
+):
+    """Reduces functions, sets safe defaults, and binds queryset
+
+    All querysets which are of type ModelChoiceField are autoset to none.
+    Later callbacks can explicitly overwrite
+    """
+
+    def formfield_callback(db_field, **kwargs):
+        # insert the dynamic attribues so correct filtering can happen
+        bound_funcs = [
+            partial(func, db_field=db_field, scenario=scenario, user=user, instance=instance)
+            for func in funcs
+        ]
+        field = db_field.formfield(**kwargs)
+        field = reduce(lambda x, y: y(x), [empty_queryset_formfield, *bound_funcs], field)
+        if field is not None:
+            field.unit = UNITS.get(db_field.name, "")
+        return field
+
+    return formfield_callback
+
+
+def set_timeseries_for_user(field, db_field, user, scenario, instance):
+    if db_field.name == "timeseries":
+        # TODO: should the timeseries stay bound to the scenario OR
+        # be a TimeseriesTemplate without being bound to the scenario instead?
+        # When a LoadTemplate is used in a different scenario it needs to be handled!
+        # E.g. by copying timeseries to new scenario
+        timeseries = Timeseries.objects.filter(manager=user, scenario=scenario)
+        # add the current value
+        current = getattr(instance, db_field.name, None)
+        if instance and current:
+            timeseries = Timeseries.objects.filter(
+                Q(manager=user, scenario=scenario) | Q(id=current.id)
+            )
+        field.queryset = timeseries
+    return field
+
+
+def set_loads_for_user(field, db_field, user, scenario, instance):
+    if db_field.related_model == Load:
+        loads = Load.objects.filter(manager=user, scenario=scenario)
+        current = getattr(instance, db_field.name, None)
+        if instance and current:
+            loads = Load.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
+        field.queryset = loads
+    return field
+
+
+def empty_queryset_formfield(field):
+    # Relation fields default to an empty queryset, so no items leak into a form
+    # unless the queryset is explicitly set afterwards
+    if isinstance(field, forms.ModelChoiceField):
+        field.queryset = field.queryset.none()
+    return field
 
 
 def AreaItemFormFactory():
@@ -53,11 +134,12 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-def TemplateFormFactory(ItemModel: type[ItemTemplate]):
+def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
     exclude = ["manager", "updated_user"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
+    formfield_callback = (formfield_callback_factory([], None, user, None),)
     if issubclass(ItemModel, ItemTemplate):
         # exclude all foreign key fields.
         # Templates should be atomic so they can be easily applied without side effects
@@ -65,6 +147,7 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
         exclude = set(exclude + fk_fields)
         BaseForm = modelform_factory(
             ItemModel,
+            formfield_callback=formfield_callback,
             exclude=exclude,
             widgets={
                 "internal_id": forms.HiddenInput(),
@@ -88,29 +171,27 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     return BaseForm
 
 
-def get_timeseries_for_user(user: User, scenario: Scenario, instance: Load | None = None):
-    # TODO: should the timeseries stay bound to the scenario OR
-    # be a TimeseriesTemplate without being bound to the scenario instead?
-    # When a LoadTemplate is used in a different scenario it needs to be handled!
-    # E.g. by copying timeseries to new scenario
-    timeseries = Timeseries.objects.filter(manager=user, scenario=scenario)
-
-    # add the current value
-    current = getattr(instance, "timeseries", None)
-    if instance and current:
-        timeseries = Timeseries.objects.filter(
-            Q(manager=user, scenario=scenario) | Q(id=current.id)
+def AreaBaseFormFactory(scenario: Scenario, multi=False) -> type[forms.ModelForm]:
+    fields = dict(
+        is_public=forms.BooleanField(
+            required=False,
+            widget=forms.CheckboxInput(),
+            label="Für andere im Projekt sichtbar machen",
         )
-    return timeseries
-
-
-def get_loads_for_grid(user: User, scenario: Scenario, instance: "Grid | None" = None):
-    loads = Load.objects.filter(manager=user, scenario=scenario)
-
-    current = getattr(instance, "timeseries", None)
-    if instance and current:
-        loads = Load.objects.filter(Q(manager=user, scenario=scenario) | Q(id=current.id))
-    return loads
+    )
+    # dynamic creation of grid selects
+    # get gridtypes. Each Area can be connected to one grid of each type
+    for gtype in Grid.CarrierChoices:
+        fields[GRID_FIELD_PREFIX + gtype] = InternalIDModelChoiceField(
+            queryset=Grid.objects.filter(
+                scenario=scenario,
+                carrier=gtype,
+            ),
+            label=gtype.label + "-Netz",
+            required=False,
+            empty_label="Kein Netz dieses Typs" if not multi else "Keine Anpassung vornehmen",
+        )
+    return type("AreaGridFieldsForm", (forms.ModelForm,), fields)
 
 
 def ScenarioItemFormFactory(
@@ -126,6 +207,7 @@ def ScenarioItemFormFactory(
     exclude = ["manager", "scenario", "updated_user", "description"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
+        formfield_callback = formfield_callback_factory([], scenario, user, instance)
         exclude = exclude + ["area_type", "geom"]
         field_classes = {"geom": GeoJSONPolygonField}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
@@ -133,7 +215,9 @@ def ScenarioItemFormFactory(
         BaseForm = modelform_factory(
             ItemModel,
             exclude=exclude,
+            form=AreaBaseFormFactory(scenario),
             field_classes=field_classes,
+            formfield_callback=formfield_callback,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 # "geom": GeoJSONWidget(),
@@ -141,26 +225,19 @@ def ScenarioItemFormFactory(
                 # "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
-        BaseForm.base_fields["is_public"] = forms.BooleanField(
-            required=False,
-            widget=forms.CheckboxInput(),
-            label="Für andere im Projekt sichtbar machen",
-        )
-
-        # dynamic creation of grid selects
-        # get gridtypes. Each Area can be connected to one grid of each type
-        for gtype in Grid.CarrierChoices:
-            BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
-                queryset=Grid.objects.filter(
-                    scenario=scenario,
-                    carrier=gtype,
-                ),
-                label=gtype.label + "-Netz",
-                required=False,
-                empty_label="Kein Netz dieses Typs",
-            )
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
+        if ItemModel == Load:
+            formfield_callback = formfield_callback_factory(
+                [set_timeseries_for_user], scenario, user, instance
+            )
+        elif ItemModel == Solar:
+            formfield_callback = formfield_callback_factory(
+                [set_loads_for_user], scenario, user, instance
+            )
+        else:
+            formfield_callback = formfield_callback_factory([], scenario, user, instance)
+
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
@@ -169,6 +246,7 @@ def ScenarioItemFormFactory(
             ItemModel,
             exclude=exclude,
             field_classes=field_classes,
+            formfield_callback=formfield_callback,
             widgets={
                 "internal_id": forms.HiddenInput(),
                 "name": forms.TextInput(),
@@ -176,12 +254,11 @@ def ScenarioItemFormFactory(
             },
         )
 
-        if ItemModel == Load:
-            BaseForm.base_fields["timeseries"].queryset = get_timeseries_for_user(
-                user, scenario, instance
-            )
     elif ItemModel == Grid:
-        fields = ["internal_id", "name", "feed_in", "power_max", "timeseries"]
+        formfield_callback = formfield_callback_factory(
+            [set_loads_for_user], scenario, user, instance
+        )
+        fields = ["internal_id", "name", "feed_in", "power_max", "load"]
         if not instance:
             # only allow a carrier when there is no instance yet
             fields.append("carrier")
@@ -189,19 +266,15 @@ def ScenarioItemFormFactory(
         BaseForm = modelform_factory(
             Grid,
             fields=fields,
-            field_classes={"timeseries": InternalIDModelChoiceField},
+            field_classes={"load": InternalIDModelChoiceField},
+            formfield_callback=formfield_callback,
             widgets={
                 "name": forms.TextInput(),
                 "internal_id": forms.HiddenInput(),
             },
         )
-        BaseForm.base_fields["timeseries"].queryset = get_loads_for_grid(user, scenario, instance)
     else:
         raise NotImplementedError()
-
-    # Add units
-    for field_name, field in BaseForm.base_fields.items():
-        field.unit = UNITS.get(field_name, "")
 
     if not multi:
         return BaseForm
@@ -239,13 +312,14 @@ def ScenarioItemFormFactory(
             if self.instance._meta.model == Area:
                 grids = []
                 for key in data.copy():
-                    if "grid" in key:
+                    if key.startswith(GRID_FIELD_PREFIX):
                         grids.append(data.pop(key))
+                scenario_id = qs.first().scenario_id
                 for grid in grids:
-                    assert grid.scenario_id == qs.first().scenario_id
+                    assert grid.scenario_id == scenario_id
                     # Delete old connection between grid and areas
                     Grid.areas.through.objects.filter(
-                        area__in=qs, grid__scenario=qs.first().scenario, grid__carrier=grid.carrier
+                        area__in=qs, grid__scenario_id=scenario_id, grid__carrier=grid.carrier
                     ).delete()
                     grid.areas.add(*qs)
 
@@ -259,29 +333,6 @@ def ScenarioItemFormFactory(
             # also trigger a scenario changed event through signals
             update_scenario_post_save(qs.model, qs.first())
             return qs
-
-    # Add units
-    for field_name, field in BulkForm.base_fields.items():
-        field.unit = UNITS.get(field_name, "")
-
-    if ItemModel == Load:
-        BulkForm.base_fields["timeseries"].queryset = get_timeseries_for_user(
-            user, scenario, instance
-        )
-
-    elif ItemModel == Area:
-        # dynamic creation of grid selects
-        # get gridtypes. Each Area can be connected to one grid of each type
-        for gtype in Grid.CarrierChoices:
-            BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
-                queryset=Grid.objects.filter(
-                    scenario=scenario,
-                    carrier=gtype,
-                ),
-                label=gtype.label + "-Netz",
-                required=False,
-                empty_label="Keine Anpassung vornehmen",
-            )
 
     return BulkForm
 
@@ -492,7 +543,7 @@ class CreateScenarioForm(forms.ModelForm):
 
 class CreateProjectForm(forms.ModelForm):
     template_scenario_internal_id = ScenarioChoiceField(
-        Scenario.objects, to_field_name="internal_id", required=False
+        Scenario.objects.none(), to_field_name="internal_id", required=False
     )
 
     def __init__(self, *args, template_queryset=None, **kwargs):

@@ -14,9 +14,9 @@
             <p class="text-[#64748b] text-sm">
                 <span class="text-[#0e7490] font-semibold">Kapazität:</span> {{grid|display:"power_max"}}
             </p>
-            {% if grid.timeseries %}
+            {% if grid.load %}
             <p class="text-[#64748b] text-sm">
-                <span class="text-[#0e7490] font-semibold">Lastzeitreihe:</span> {{grid|display:"timeseries"}}
+                <span class="text-[#0e7490] font-semibold">Lastzeitreihe:</span> {{grid|display:"load"}}
             </p>
             {% endif %}
             <p class="text-[#64748b] text-sm">

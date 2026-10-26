@@ -760,7 +760,6 @@ class Load(ScenarioItem):
     def adjust_Form(
         cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
     ) -> type[ModelForm]:
-        FormClass.base_fields["timeseries"].queryset = kwargs["timeseries_queryset"]
         return FormClass
 
     @classmethod
@@ -845,7 +844,7 @@ class Grid(ScenarioItem):
         blank=True,
         help_text=_("Netz, mit dem dieses Netz verbunden ist."),
     )
-    timeseries = models.ForeignKey(
+    load = models.ForeignKey(
         "Load",
         on_delete=models.SET_NULL,
         default=None,

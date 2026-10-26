@@ -430,7 +430,7 @@ def get_home_context(user: User, scenario: Scenario):
     grids = (
         Grid.objects.filter(scenario=scenario)
         .prefetch_related("areas")
-        .select_related("connected_to", "timeseries")
+        .select_related("connected_to", "load")
     )
     data["grids"] = grids
 
@@ -786,7 +786,7 @@ class ObjectTemplatesView(View):
             except ObjectDoesNotExist as err:
                 raise Http404("This item does not for the user") from err
 
-        self.Form = TemplateFormFactory(self.Model)
+        self.Form = TemplateFormFactory(self.Model, request.user)
         self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
 
     def adjust_Form(self):
@@ -838,9 +838,7 @@ class ObjectTemplatesView(View):
             self.instance = self.Model.objects.create(
                 manager=request.user, name=f"{self.Model.verbose_name()} {count}"
             )
-            self.Form = TemplateFormFactory(
-                self.Model,
-            )
+            self.Form = TemplateFormFactory(self.Model, request.user)
             self.context["instance"] = self.instance
             self.context["internal_id"] = str(self.instance.internal_id)
             self.context["form"] = self.Form(
@@ -1056,11 +1054,6 @@ class DetailsView(View):
             instance = self.instances[0] if self.multi else self.instance
             if instance:
                 form_kwargs = {"multi": self.multi}
-                if self.Model == Load:
-                    templates = get_timeseries_for_user(
-                        self.request.user, self.scenario, self.instance
-                    )
-                    form_kwargs["timeseries_queryset"] = templates
                 self.Form = self.Model.adjust_Form(self.Form, instance, **form_kwargs)
         self.template = self.get_template()
 
