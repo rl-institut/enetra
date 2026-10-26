@@ -395,15 +395,15 @@ class DetailsViewDeleteTest(DetailsViewBase):
 
 class DetailsViewCreateTest(DetailsViewBase):
     def test_create_area(self):
+        # Area creation returns an empty response — the new Area is picked up by the
+        # list via the scenario change-event pipeline (update_delete_create_scenario_item.html
+        # / changes_count) instead of being rendered directly in this response. See
+        # ports/views.py DetailsView.create(), Model == Area branch.
         url = self.details_create_url("area")
         initial_count = Area.objects.filter(scenario=self.scenario).count()
         response = self.client.post(url, {"area_type": Area.AreaTypeChoices.BUILDING})
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["created"])
-        self.assertTemplateUsed(
-            response,
-            "ports/partials/detail_sidebar/detail_sidebar_main.html",
-        )
+        self.assertEqual(response.content, b"")
         self.assertEqual(
             Area.objects.filter(scenario=self.scenario).count(),
             initial_count + 1,

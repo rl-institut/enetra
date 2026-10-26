@@ -24,7 +24,7 @@ from django.urls import path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
-    path("", include("ports.urls", namespace="foo")),
+    path("", include("ports.urls")),
     path("", include("django.contrib.auth.urls")),
     path("__reload__/", include("django_browser_reload.urls")),
     # Media files
