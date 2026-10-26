@@ -7,6 +7,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import ForeignKey
 from django.db.models import Q
 from django.db.models import QuerySet
+from django.db.models import TextChoices
 from django.forms import CharField
 from django.forms import ValidationError
 from django.forms import modelform_factory
@@ -22,6 +23,7 @@ from .models import EnergyCost
 from .models import Grid
 from .models import ItemTemplate
 from .models import Load
+from .models import MissingFormValueException
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
@@ -95,6 +97,7 @@ def ScenarioItemFormFactory(
     user: User,
     multi: bool = False,
     instance: ScenarioItem | None = None,
+    area_type: str | None = None,
     **kwargs,
 ):
     exclude = ["manager", "scenario", "updated_user", "description"]
@@ -116,6 +119,7 @@ def ScenarioItemFormFactory(
                 # "description": forms.Textarea(attrs={"rows": 2, "cols": 15}),
             },
         )
+        BaseForm.area_type = area_type or getattr(instance, "area_type", None)
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
         if ItemModel == Load:
@@ -172,6 +176,7 @@ def ScenarioItemFormFactory(
             queryset=ItemModel.objects.none(),
             widget=forms.HiddenInput(),
         )
+        multi = True
         # only used by area forms
         grid_empty_label = "Keine Anpassung vornehmen"
 
@@ -411,6 +416,9 @@ class GridForm(ScopedModelForm):
 
 
 class AreaFormBase(ScopedModelForm):
+    multi = False
+    # fallback when the instance has no area_type, e.g. bulk forms (see ScenarioItemFormFactory)
+    area_type: str | None = None
     is_public = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(),
@@ -423,6 +431,28 @@ class AreaFormBase(ScopedModelForm):
         for carrier in Grid.CarrierChoices:
             if field := self.fields.get(GRID_FIELD_PREFIX + carrier):
                 field.empty_label = self.grid_empty_label
+
+        area_type = self.instance.area_type or self.area_type
+        if not area_type:
+            raise MissingFormValueException(
+                "The area form needs an area_type to show the correct usage choices. "
+                "It can be provided by the instance or by ScenarioItemFormFactory"
+            )
+        if area_type == Area.AreaTypeChoices.BUILDING:
+            usage_choices = Area.BuildingUsageChoices
+        else:
+            usage_choices = Area.OpenUsageChoices
+        if self.multi:
+            # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
+            # textchoices expects choice_label:choice_value
+            usage_choices = TextChoices(
+                "MultiUsageChoices",
+                {**{x[1]: x[0] for x in usage_choices.choices}, "Keine Veränderung": ""},
+            )
+        else:
+            self.fields["usage"].required = True
+
+        self.fields["usage"].choices = usage_choices
 
     def scope_querysets(self) -> None:
         for carrier in Grid.CarrierChoices:

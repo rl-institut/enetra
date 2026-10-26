@@ -25,7 +25,6 @@ from django.db.models.signals import post_save
 from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
-from django.forms import ModelForm
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
@@ -283,12 +282,6 @@ class ItemTemplate(models.Model):
         """Symbol id of the outline icon variant in ports/static/ports/icons/sprite.svg
         This is used for more efficient rendering on large loops"""
         return f"{self.icon_selected}-outline"
-
-    @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        return FormClass
 
     rud_url = "ports:templates"
 
@@ -575,33 +568,6 @@ class Area(ScenarioItem):
             return "icon.building-list"
         else:
             return "icon.area-list"
-
-    @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area", **kwargs
-    ) -> type[ModelForm]:
-        # Usage is not required for multi area view
-        multi = kwargs.get("multi")
-        if not multi:
-            FormClass.base_fields["usage"].required = True
-        area_type = (instance and instance.area_type) or kwargs.get("area_type")
-        if not area_type:
-            raise MissingFormValueException(
-                "The area form needs an area_type to show the correct choices. The area_type can be provided by the instance or as kwarg"
-            )
-        if area_type == Area.AreaTypeChoices.BUILDING:
-            choices = Area.BuildingUsageChoices
-        else:
-            choices = Area.OpenUsageChoices
-        if multi:
-            # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
-            # textchoices expects choice_label:choice_value
-            choices = models.TextChoices(
-                "MultiUsageChoices",
-                {**{x[1]: x[0] for x in choices.choices}, "Keine Veränderung": ""},
-            )
-        FormClass.base_fields["usage"].choices = choices
-        return FormClass
 
     @classmethod
     def create_new(cls, scenario: Scenario, manager: User, **kwargs):

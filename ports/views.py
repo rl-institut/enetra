@@ -1045,16 +1045,16 @@ class DetailsView(View):
             self.instance = self.Model.objects.filter(
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
+        # bulk forms have no instance, so the area type is taken from the first selected item
+        first_instance = self.instances[0] if self.multi else self.instance
         self.Form = ScenarioItemFormFactory(
-            self.Model, self.scenario, request.user, multi=self.multi, instance=self.instance
+            self.Model,
+            self.scenario,
+            request.user,
+            multi=self.multi,
+            instance=self.instance,
+            area_type=getattr(first_instance, "area_type", None),
         )
-
-        # Adjust the form
-        if not self.created:
-            instance = self.instances[0] if self.multi else self.instance
-            if instance:
-                form_kwargs = {"multi": self.multi}
-                self.Form = self.Model.adjust_Form(self.Form, instance, **form_kwargs)
         self.template = self.get_template()
 
     def get_template(self) -> str:
@@ -1093,8 +1093,6 @@ class DetailsView(View):
             return response
         self.context = self.get_basic_context(request, *args, **kwargs)
         if self.created:
-            if self.Model == Area:
-                self.context["area_type"] = self.data.get("area_type")
             return self.create(request, *args, **kwargs)
         elif self.multi:
             if request.method == "POST":
@@ -1107,7 +1105,7 @@ class DetailsView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_area_context(self) -> dict:
-        # pass queryset to frontend to create links to load forms
+        # pass queryset to Frontend to create links to loads and energy components
         context = {}
         context["loads"] = Load.objects.filter(area=self.instance)
         models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
@@ -1295,7 +1293,6 @@ class DetailsView(View):
             return HttpResponse()
         elif self.Model == Grid:
             # validate the form if posted and create context for grid_modal
-            # self.Form = ScenarioItemFormFactory(self.Model, self.scenario, request.user)
             form = self.Form(data=request.POST if request.method == "POST" else None)
             form_valid = form.is_valid()
             grid_context = self.get_grid_create_context(request, None)
@@ -1377,7 +1374,6 @@ class DetailsView(View):
             data = {}
             if not self.multi:
                 self.instance = self.instances[0]
-                # self.Form = self.Model.adjust_Form(self.Form, self.instance)
                 self.instances = []
                 self.instance.has_authorization = True
                 self.context["instance"] = self.instance
@@ -1529,7 +1525,6 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            # form = self.Model.adjust_Form(self.Form, self.instances[0])(data=request.POST)
             form = self.Form(data=request.POST)
             self.context["form"] = form
             if form.is_valid():
@@ -1607,7 +1602,6 @@ class DetailsView(View):
                     Grid.areas.through.objects.bulk_create(grid_areas)
 
                 # refresh the form, with the newly created instance.
-                # For Load forms this adjusts the selectable Timeseries
                 self.Form = ScenarioItemFormFactory(
                     self.Model, self.scenario, request.user, instance=instance
                 )
@@ -2048,53 +2042,6 @@ def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
         "updated_at": timeseries.updated_at.isoformat(),
     }
     return JsonResponse(data)
-
-
-# @login_required()
-# @require_http_methods(["GET", "POST"])
-# def grid_modal_view(request, scenario_internal_id, areas_internal_ids=None, grid_internal_id=None):
-#     # without areas_internal_ids the grid is created but not assigned to areas
-#     scenario = Scenario.objects.get(internal_id=scenario_internal_id)
-#     if not has_authorization(scenario.project, request.user, "details"):
-#         return HttpResponseForbidden("Not authorized")
-#     instance = None
-#     if grid_internal_id:
-#         instance = Grid.objects.get(scenario=scenario, internal_id=grid_internal_id)
-#         if not has_authorization(instance, request.user, "details"):
-#             return HttpResponseForbidden("Not authorized")
-#     Form = ScenarioItemFormFactory(Grid, scenario, request.user)
-#     Form.base_fields["timeseries"].queryset = DetailsView.get_loadtemplates_for_user(
-#         request.user, scenario, instance
-#     )
-#     context = {
-#         "form": Form(instance=instance),
-#     }
-#     context["dialog_id"] = "grid-modal"
-#     if instance:
-#         context["instance"] = instance
-#         context["title"] = "Netzanschluss bearbeiten"
-#         context["submit_label"] = "Anschluss bearbeiten"
-#         context["submit_url"] = reverse(
-#             "ports:api",
-#             kwargs={
-#                 "scenario_internal_id": str(scenario.internal_id),
-#                 "model": "grid",
-#                 "internal_id": str(instance.internal_id),
-#             },
-#         )
-#     else:
-#         context["title"] = "Netzanschluss erstellen"
-#         context["submit_label"] = "Anschluss erstellen"
-#         url = reverse(
-#             "ports:api_create",
-#             kwargs={
-#                 "scenario_internal_id": str(scenario.internal_id),
-#                 "model": "grid",
-#             },
-#         )
-#         context["submit_url"] = f"{url}?areas={areas_internal_ids}"
-#     return render(request, "ports/partials/grid_form_modal.html", context)
-#
 
 
 # from /django/forms/models.py
