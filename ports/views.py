@@ -20,7 +20,7 @@ from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import BooleanField
 from django.db.models import ForeignObjectRel
-from django.db.models import ManyToManyRel
+from django.db.models import Model as DjangoModel
 from django.db.models import ObjectDoesNotExist
 from django.db.models import Value
 from django.db.transaction import atomic
@@ -94,11 +94,40 @@ logger = logging.getLogger(__name__)
 def merge_instances_data(instances) -> dict:
     """Cast instances to dict and only keep key/value pairs for keys which share a single value
 
-    Foreign keys are cast to internal_ids
+    Foreign keys are cast to internal_ids.
+    Only works on instances of the same Modeltype.
+    If instance do not hold the cached objects.with internal_ids, all instances are refetched in a single query
+
+    If Grid should ever be cast to dict, make sure to prefetch the related objects if they are not cached
     """
-    merged_data = model_to_dict_w_internal_id(instances[0])
-    for x in instances[1:]:
-        data = model_to_dict(x)
+    exclude = {"manager", "updated_user"}
+    # internal_id is on the ForeignKey objects. If the instance does not hold this data yet,
+    # iterating over all instances fetches the n times
+
+    Model: DjangoModel = instances[0]._meta.model
+    related_fields = [
+        field
+        for field in Model._meta.concrete_fields
+        if field.is_relation and field.name not in exclude
+    ]
+    refetch = False
+    for instance in instances:
+        assert instance._meta.model == Model
+        for field in related_fields:
+            if field.name not in instance._state.fields_cache and getattr(instance, field.attname):
+                refetch = True
+    if refetch:
+        instances_w_all_selected = Model.objects.filter(
+            id__in=[x.id for x in instances]
+        ).select_related(*[f.name for f in related_fields])
+
+    else:
+        instances_w_all_selected = instances
+
+    instances_w_all_selected = list(instances_w_all_selected)
+    merged_data = model_to_dict_w_internal_id(instances_w_all_selected[0], exclude=exclude)
+    for x in instances_w_all_selected[1:]:
+        data = model_to_dict_w_internal_id(x, exclude=exclude)
         for key, value in data.items():
             if merged_data.get(key) != value and key in merged_data:
                 del merged_data[key]
@@ -431,7 +460,7 @@ def prefetch_all_related(qs):
     related_lookups = [
         field.get_accessor_name()
         for field in model._meta.get_fields()
-        if isinstance(field, ForeignObjectRel | ManyToManyRel)
+        if isinstance(field, ForeignObjectRel)
         and field.auto_created
         and not field.hidden
         and issubclass(field.related_model, ElectricComponent)

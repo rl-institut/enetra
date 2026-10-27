@@ -300,7 +300,7 @@ class GridGetInitialSelectionTest(GridTestBase):
         response = self.client.get(url, {"internal_ids": internal_ids})
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertEqual(form.data.get("grid_electricity"), self.grid)
+        self.assertEqual(form.initial.get("grid_electricity"), self.grid)
 
     def test_get_area_multi_mixed_grid_not_returned(self):
         # Areas have different grids of the same carrier -> mixed value,
@@ -312,7 +312,7 @@ class GridGetInitialSelectionTest(GridTestBase):
         response = self.client.get(url, {"internal_ids": internal_ids})
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertNotIn("grid_electricity", form.data)
+        self.assertNotIn("grid_electricity", form.initial)
 
 
 class GridRemoveCarrierTest(GridTestBase):

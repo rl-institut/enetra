@@ -372,10 +372,10 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             "ports/partials/detail_sidebar/detail_sidebar_component_multi.html",
         )
         form = response.context["form"]
-        # multi_get binds the merged+template data directly as form data.
-        self.assertEqual(form.data.get("power_kw"), self.generator_template.power_kw)
-        self.assertEqual(form.data.get("efficiency"), self.generator_template.efficiency)
-        self.assertEqual(form.data.get("carrier"), self.generator_template.carrier)
+        # multi_get passes the merged+template data as initial data of an unbound form.
+        self.assertEqual(form.initial.get("power_kw"), self.generator_template.power_kw)
+        self.assertEqual(form.initial.get("efficiency"), self.generator_template.efficiency)
+        self.assertEqual(form.initial.get("carrier"), self.generator_template.carrier)
 
     def test_multi_component_template_data_excludes_internal_id_and_manager(self):
         url = self.details_url("generator")
@@ -388,11 +388,13 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
             },
         )
         form = response.context["form"]
-        self.assertNotEqual(form.data.get("internal_id"), str(self.generator_template.internal_id))
+        self.assertNotEqual(
+            form.initial.get("internal_id"), str(self.generator_template.internal_id)
+        )
         # "manager" is not a field of this form, so even though model_to_dict()
         # put a raw "manager" key into the merged data dict, the form never uses it.
         self.assertNotIn("manager", form.fields)
-        self.assertIsNone(form.data.get("manager"))
+        self.assertIsNone(form.initial.get("manager"))
 
     def test_other_users_template_is_not_applied_single(self):
         """Only templates owned by the requesting user may be used via ?template=."""
@@ -427,7 +429,7 @@ class TemplateApplyToComponentTest(ItemTemplateTestBase):
         )
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertNotEqual(form.data.get("power_kw"), self.generator_template_other.power_kw)
+        self.assertNotEqual(form.initial.get("power_kw"), self.generator_template_other.power_kw)
 
     def test_unknown_template_query_param_is_ignored(self):
         url = self.details_url("generator")

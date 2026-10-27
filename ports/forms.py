@@ -428,7 +428,7 @@ def get_shared_grids(areas: QuerySet[Area]) -> dict[str, Grid]:
     if not area_ids:
         return {}
     # all links <grid_id <-> area_id>
-    links = Grid.areas.through.objects.filter(area_id__in=areas).select_related("grid")
+    links = Grid.areas.through.objects.filter(area_id__in=area_ids).select_related("grid")
     carriers_per_area = defaultdict(set)
     shared_grids = defaultdict(set)
     # shared grid = all areas are linked to this grid
@@ -440,8 +440,8 @@ def get_shared_grids(areas: QuerySet[Area]) -> dict[str, Grid]:
 
         shared_grids[link.grid].add(link.area_id)
 
-    for grid, grid_ids in shared_grids.items():
-        if len(grid_ids) == len(area_ids):
+    for grid, linked_area_ids in shared_grids.items():
+        if len(linked_area_ids) == len(area_ids):
             initial[GRID_FIELD_PREFIX + grid.carrier] = grid
     return initial
 
@@ -485,9 +485,12 @@ class AreaFormBase(ScopedModelForm):
 
         self.fields["usage"].choices = usage_choices
 
-        # an unbound form of an existing area shows its current visibility and grids.
+        # an unbound form of an existing area or areas shows its grids.
+        # the single area form also sets the public initial data
         # Explicitly passed initial values (e.g. from templates) take precedence
         if (self.instance.pk or self.multi) and not self.is_bound:
+            if not self.scope_scenario:
+                raise Exception("ScopedModelForm needs a scenario and user injection on the type")
             # If Object permissions are queried multiple times consider using a
             # guardian.core.ObjectPermissionChecker
             if not self.multi:
@@ -495,7 +498,7 @@ class AreaFormBase(ScopedModelForm):
                 self.initial.setdefault("is_public", is_public)
                 areas = Area.objects.filter(scenario=self.scope_scenario, pk=self.instance.pk)
             else:
-                internal_ids = kwargs.get("initial", {}).get("internal_ids", "").split(",")
+                internal_ids = [x for x in self.initial.get("internal_ids", "").split(",") if x]
                 areas = Area.objects.filter(
                     scenario=self.scope_scenario, internal_id__in=internal_ids
                 )
