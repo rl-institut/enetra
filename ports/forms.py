@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
 from django.contrib.gis.geos import GEOSGeometry
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import ForeignKey
 from django.db.models import Q
 from django.db.models import QuerySet
@@ -490,7 +491,9 @@ class AreaFormBase(ScopedModelForm):
         # Explicitly passed initial values (e.g. from templates) take precedence
         if (self.instance.pk or self.multi) and not self.is_bound:
             if not self.scope_scenario:
-                raise Exception("ScopedModelForm needs a scenario and user injection on the type")
+                raise ImproperlyConfigured(
+                    "ScopedModelForm needs a scenario and user injection on the type"
+                )
             # If Object permissions are queried multiple times consider using a
             # guardian.core.ObjectPermissionChecker
             if not self.multi:

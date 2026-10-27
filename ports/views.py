@@ -547,7 +547,7 @@ def get_home_context(user: User, scenario: Scenario):
     data["profile_timeseries"] = get_timeseries_for_user(user, scenario)
     data["profile_upload_form"] = TimeseriesUploadForm()
 
-    energy_cost = EnergyCost.get_or_create_for_scenario(scenario, user)
+    energy_cost = EnergyCost.get_or_create_for_scenario(scenario)
     data["energy_cost_form"] = EnergyCostForm(instance=energy_cost)
 
     return data
@@ -1107,7 +1107,8 @@ class DetailsView(View):
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
         # bulk forms have no instance, so the area type is taken from the first selected item
-        first_instance = self.instances[0] if self.multi else self.instance
+        # when creating multiple instances multi is true but instances is empty
+        first_instance = self.instances[0] if (self.multi and not self.created) else self.instance
         self.Form = ScenarioItemFormFactory(
             self.Model,
             self.scenario,
@@ -1343,9 +1344,6 @@ class DetailsView(View):
                 # validate the form if posted and create context for grid_modal
                 grid_context = self.get_grid_create_context(request, instance)
 
-            elif request.method == "POST" and not form_valid:
-                grid_context = self.get_grid_create_context(request, instance=None)
-
             self.context["form"] = form
             self.context |= grid_context
 
@@ -1552,7 +1550,6 @@ class DetailsView(View):
                 self.instance = instance
                 # are both needed?
                 self.context["instance"] = instance
-                self.context["item"] = instance
 
                 # refresh the form, with the newly created instance.
                 self.Form = ScenarioItemFormFactory(
@@ -1899,7 +1896,6 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
             # Raise 404 if a single load is missing
             if len(loads) != len(internal_load_ids):
                 raise Http404("Item does not exist")
-            load = loads[0]
         else:
             #  missing internal_id
             return HttpResponseBadRequest("Missing load internal_id")
@@ -1908,7 +1904,6 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
             response = HttpResponseForbidden(b"You are not authorized for this function")
             return retargetForFailure(response)
 
-    # Early return if file form is invalid
     file_form = TimeseriesUploadForm(request.POST, request.FILES)
     updated = []
     now = timezone.now()
@@ -1922,8 +1917,6 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
         if updated:
             Load.objects.bulk_update(updated, fields=["timeseries", "updated_at", "updated_user"])
             update_scenario_post_save(Load, updated[0])
-
-        # return retargetForFailure(response)
     response = render(
         request,
         "ports/partials/timeseries_upload.html",
@@ -1967,7 +1960,7 @@ def energy_cost(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden(b"You are not authorized for this function")
 
-    instance = EnergyCost.get_or_create_for_scenario(scenario, request.user)
+    instance = EnergyCost.get_or_create_for_scenario(scenario)
     if request.method == "POST":
         form = EnergyCostForm(request.POST, instance=instance)
         if form.is_valid():

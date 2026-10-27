@@ -901,8 +901,8 @@ class ElectricComponentTemplate(ItemTemplate):
         abstract = True  # abstract table
 
     # power_kw, power_installed, power_min, power_max, capex, opex all use the
-    # UNITS-based default from ItemTemplate.get_<field>_display(). efficiency needs
-    # the fraction -> percentage conversion, so it gets an explicit formatter.
+    # UNITS-based default from ItemTemplate.display_value()
+    # efficiency needs the fraction -> percentage conversion, so it gets an explicit formatter.
     display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
         "efficiency": lambda v: f"{(v * 100):.2f} %",
     }
