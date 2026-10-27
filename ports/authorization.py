@@ -23,8 +23,6 @@ def filter_model_fields(fields, model):
     m2m_fields = [
         f for f in fields if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
     ]
-    if not fk_fields and not m2m_fields:
-        return None
     return fk_fields, m2m_fields
 
 

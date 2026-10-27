@@ -134,7 +134,6 @@ document.addEventListener("htmx:afterSwap", (event) => {
 })
 
 document.addEventListener("htmx:oobBeforeSwap", (event) => {
-    console.log('added func')
     const el = event.target;
     var list_items;
     if (el.classList.contains("cotton-list-item")) {

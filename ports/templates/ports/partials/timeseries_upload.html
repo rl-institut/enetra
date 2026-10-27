@@ -19,7 +19,7 @@
             hx-swap="innerHTML"
             hx-indicator='find span'
             hx-disabled-elt="this"
-            x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, {{duration}})"
+            x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, {{duration|default:1000}})"
         >
             <span
                 class="w-[1em]! h-[1em]! loader htmx-indicator"></span>

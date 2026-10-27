@@ -852,12 +852,6 @@ class ObjectTemplatesView(View):
         self.Form = TemplateFormFactory(self.Model, request.user)
         self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
 
-    def adjust_Form(self):
-        raise NotImplementedError(
-            "Adjust form is currently needed for Area and Load objects. "
-            "Both do not have templates and therefore no form adjustment is needed"
-        )
-
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         # Instantiate the class with its fixed attributes
@@ -1323,6 +1317,7 @@ class DetailsView(View):
                 ):
                     return HttpResponseForbidden("No permission for these areas")
                 instance = form.save(commit=False)
+                instance.manager = request.user
                 instance.scenario = self.scenario
                 instance.save()
 
@@ -1395,7 +1390,6 @@ class DetailsView(View):
                 # For creation this is decided here, since self.multi might have been overwritten
                 self.template = self.get_template()
                 self.context["instances"] = self.instances
-                # self.Form = self.Model.adjust_Form(self.Form, self.instances[0])
                 for item in self.instances:
                     item.has_authorization = True
 
@@ -1604,8 +1598,10 @@ def create_project(request):
                         new_scenario = duplicate_scenario(scenario, request.user)
                     else:
                         new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+
                     new_scenario.project = new_project
                     new_scenario.save()
+                    EnergyCost.get_or_create_for_scenario(new_scenario)
 
                     # FIXME: If a scenario is copied into a new project, all users should have access to the new project
                     # Must make sure not to overwrite area access to new scenario/project manager
@@ -1643,6 +1639,7 @@ def create_scenario(request, scenario_internal_id: UUID):
         success = form.is_valid()
         if success:
             new_scenario = form.save()
+            EnergyCost.get_or_create_for_scenario(new_scenario)
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
         context["form"] = form
@@ -1870,7 +1867,7 @@ class ApiView(View):
 @require_http_methods(["POST"])
 def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | None = None):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    if not has_authorization(scenario.project, request.user, "view"):
+    if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden(b"You are not authorized for this project")
 
     def retargetForFailure(response):
@@ -1919,10 +1916,11 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
         timeseries = file_form.save(scenario, request.user)
         for load in loads:
             load.timeseries = timeseries
+            load.updated_user = request.user
             load.updated_at = now
             updated.append(load)
         if updated:
-            Load.objects.bulk_update(updated, fields=["timeseries", "updated_at"])
+            Load.objects.bulk_update(updated, fields=["timeseries", "updated_at", "updated_user"])
             update_scenario_post_save(Load, updated[0])
 
         # return retargetForFailure(response)
