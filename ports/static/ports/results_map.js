@@ -18,9 +18,8 @@ function makeLabelIcon(name, opacity) {
     });
 }
 
-function showResultsMap(map_id, carto_api_token) {
-    const areas = JSON.parse(document.getElementById('areas').textContent);
-    if (areas.length == 0)
+function showResultsMap(map_id, carto_api_token, areas) {
+    if (!areas || areas.length == 0)
         return;  // no areas -> no map
     const map = L.map(map_id, { zoomControl: true });
     L.tileLayer(
