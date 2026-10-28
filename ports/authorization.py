@@ -99,8 +99,8 @@ def has_authorization(
         # item is not an area, or has an area attribute.
         # Since authorization is scoped to areas, deny authorization.
         # Only managers and superusers are authenticated to work
-        fk_m2m = filter_model_fields(item._meta.get_fields(), Area)
-        if not isinstance(item, Area) and not fk_m2m:
+        fk_fields, m2m_fields = filter_model_fields(item._meta.get_fields(), Area)
+        if not isinstance(item, Area) and not (fk_fields or m2m_fields):
             return False
         return has_area_authorization_from_uuids(
             [item.internal_id], user, crud, item.scenario, item.model()

@@ -547,7 +547,7 @@ def get_home_context(user: User, scenario: Scenario):
     data["profile_timeseries"] = get_timeseries_for_user(user, scenario)
     data["profile_upload_form"] = TimeseriesUploadForm()
 
-    energy_cost = EnergyCost.get_or_create_for_scenario(scenario)
+    energy_cost, _ = EnergyCost.get_or_create_for_scenario(scenario)
     data["energy_cost_form"] = EnergyCostForm(instance=energy_cost)
 
     return data
@@ -1598,7 +1598,11 @@ def create_project(request):
 
                     new_scenario.project = new_project
                     new_scenario.save()
-                    EnergyCost.get_or_create_for_scenario(new_scenario)
+                    ec, created = EnergyCost.get_or_create_for_scenario(new_scenario)
+                    if created:
+                        logger.warning(
+                            "Created energy cost on get request. This can happpen for old scenarios, but in general, get requests should not trigger db mutations."
+                        )
 
                     # FIXME: If a scenario is copied into a new project, all users should have access to the new project
                     # Must make sure not to overwrite area access to new scenario/project manager
@@ -1617,6 +1621,9 @@ def create_project(request):
             except:  # noqa
                 # something inside the transaction failed
                 success = False
+                context["errors"] = ["Something went wrong"]
+        else:
+            context["errors"] = form.errors
         context["form"] = form
         context["success"] = success
     return render(request, "core/partials/create_project.html", context)
@@ -1639,6 +1646,8 @@ def create_scenario(request, scenario_internal_id: UUID):
             EnergyCost.get_or_create_for_scenario(new_scenario)
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
+        else:
+            context["errors"] = form.errors
         context["form"] = form
         context["success"] = success
 
@@ -1960,7 +1969,11 @@ def energy_cost(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden(b"You are not authorized for this function")
 
-    instance = EnergyCost.get_or_create_for_scenario(scenario)
+    instance, created = EnergyCost.get_or_create_for_scenario(scenario)
+    if created:
+        logger.warning(
+            "Created energy cost on get request. This can happpen for old scenarios, but in general, get requests should not trigger db mutations."
+        )
     if request.method == "POST":
         form = EnergyCostForm(request.POST, instance=instance)
         if form.is_valid():

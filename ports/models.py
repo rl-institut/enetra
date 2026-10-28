@@ -696,15 +696,15 @@ class EnergyCost(ScenarioItem):
     @classmethod
     def get_or_create_for_scenario(cls, scenario: Scenario) -> "EnergyCost":
         # helpful since EnergyCost is a singleton per scenario right now
-        instance, _ = cls.objects.get_or_create(
+        instance, created = cls.objects.get_or_create(
             scenario=scenario,
             defaults={
                 "name": "Energiekosten",
                 "manager_id": scenario.manager_id,
-                "updated_user_ud": scenario.manager_id,
+                "updated_user_id": scenario.manager_id,
             },
         )
-        return instance
+        return instance, created
 
 
 class Load(ScenarioItem):
