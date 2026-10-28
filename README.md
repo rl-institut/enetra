@@ -77,8 +77,9 @@ uvx ruff check filepath [--fix]
          - on ubuntu: `apt install redis-server`
          - without a reachable redis, a startup warning is printed and live scenario updates (SSE) won't work, but the rest of the app (including saving scenario items) works normally
          - celery (if used) also reads its broker/result backend from the same `REDIS_URL`
-    4. install [uv](https://docs.astral.sh/uv/getting-started/installation/)
-    5. The dependencies can be installed via
+    4. As a background map, we use material from carto.com. You will need a basemap API key to see a map. Request a key here: https://carto.com/basemaps/apikey/ **not required, but recommended**
+    5. install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+    6. The dependencies can be installed via
         ```bash
         uv sync
         ```
@@ -123,7 +124,7 @@ uvx ruff check filepath [--fix]
             .venv\Scripts\activate
             ```
 
-    6. install pre-commit to make sure every git commit is ruff conform
+    7. install pre-commit to make sure every git commit is ruff conform
         `pre-commit install`
         - to force commits during work in progress use
         `git commit --no-verify -m "commit message"`
@@ -134,7 +135,7 @@ uvx ruff check filepath [--fix]
         `ruff format --check`
         if the commmands are not recognized remember to activate the .venv or run with 'uv run'
 
-    7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
+    8. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
     DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME
@@ -142,6 +143,7 @@ uvx ruff check filepath [--fix]
     DJANGO_DEBUG=True
     DJANGO_ADMIN_PASSWORD=SecretAdminPassword
     REDIS_URL=redis://localhost:6379/0
+    DJANGO_CARTO_API_TOKEN=<your Carto token>
 
 
     DATA_USER=data
@@ -149,7 +151,7 @@ uvx ruff check filepath [--fix]
     DATA_USER_PASSWORD=SomePassword
      ````
 
-    7. Set up django (inside the virtual environment)
+    9. Set up django (inside the virtual environment)
         1. Create admin account: `uv run manage.py createsuperuser`
         2. Setup a username and password for a user which scenarios are public using the .env variables.
         `DATA_USER` for username (defaults to 'data') and `DATA_USER_PASSWORD` to give it a real password; otherwise the account has an unusable
@@ -157,7 +159,7 @@ uvx ruff check filepath [--fix]
          The user will be automatically created during the migration.
         3. Set up the database: `uv run manage.py migrate`
 
-    8. Import scenario seed data (optional)
+    10. Import scenario seed data (optional)
 
        Place GeoJSON data in subdirectories of `data/` whose names start with `scenario_area_data_`.
        Each directory must contain exactly one file with `regions` in its name and one with `buildings`:
