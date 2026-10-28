@@ -3,6 +3,9 @@ Tests for the Timeseries rename/upload views (`timeseries_rename`, `timeseries_u
 and the ApiView delete-in-use guard for Timeseries.
 """
 
+import re
+from uuid import uuid4
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
@@ -87,11 +90,6 @@ class TimeseriesRenameViewTest(TestCase):
         self.assertEqual(self.timeseries.name, "Original name")
 
     def test_non_manager_with_project_permission_is_forbidden_without_crashing(self):
-        # Regression test: has_authorization() used to be called directly on the Timeseries
-        # instance, which crashed with a TypeError for any non-manager (Timeseries has no Area
-        # relation for the per-item authorization path to walk). It must now return False —
-        # denying access — instead of raising, even for a user with project-level permission,
-        # since Timeseries aren't scoped to an Area for per-item authorization yet.
         other = User.objects.create_user("colleague", password="pass")
         group = Group.objects.get(name=self.project.group_name())
         group.user_set.add(other)
@@ -130,6 +128,22 @@ class TimeseriesUploadViewTest(TestCase):
             scenario=cls.scenario,
             name="Load 1",
             area=cls.area,
+            timeseries=cls.original_timeseries,
+            factor=1.0,
+        )
+        cls.area2 = Area.objects.create(
+            scenario=cls.scenario,
+            name="Area 2",
+            manager=cls.manager,
+            area_type=Area.AreaTypeChoices.BUILDING,
+            usage=Area.BuildingUsageChoices.OFFICE,
+            geom=GEOSGeometry("SRID=4326;POLYGON((1 1, 2 1, 2 2, 1 2, 1 1))"),
+        )
+        cls.load2 = Load.objects.create(
+            scenario=cls.scenario,
+            name="Load 2",
+            area=cls.area2,
+            manager=cls.manager,
             timeseries=cls.original_timeseries,
             factor=1.0,
         )
@@ -209,6 +223,117 @@ class TimeseriesUploadViewTest(TestCase):
         self.client.force_login(self.manager)
         response = self.client.get(self.upload_standalone_url())
         self.assertEqual(response.status_code, 405)
+
+    def test_upload_attached_to_multiple_loads_updates_all_loads(self):
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            self.upload_to_load_url(),
+            {
+                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
+                "timestep_minutes": "15",
+                "template_file": csv_file("multi.csv", values=(7, 8, 9)),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.load.refresh_from_db()
+        self.load2.refresh_from_db()
+        self.assertNotEqual(self.load.timeseries_id, self.original_timeseries.id)
+        self.assertEqual(self.load.timeseries_id, self.load2.timeseries_id)
+        self.assertEqual(self.load.timeseries.timeseries["values"], [7.0, 8.0, 9.0])
+        self.assertEqual(self.load.updated_user, self.manager)
+        self.assertEqual(self.load2.updated_user, self.manager)
+        self.assertEqual(response["HX-Trigger"], f"refresh-template-{self.load.internal_id}")
+
+    def test_upload_multiple_loads_with_unknown_id_returns_404(self):
+        self.client.force_login(self.manager)
+        before_count = Timeseries.objects.filter(scenario=self.scenario).count()
+        response = self.client.post(
+            self.upload_to_load_url(),
+            {
+                "internal_ids": f"{self.load.internal_id},{uuid4()}",
+                "timestep_minutes": "15",
+                "template_file": csv_file(),
+            },
+        )
+        self.assertEqual(response.status_code, 404)
+        self.load.refresh_from_db()
+        self.assertEqual(self.load.timeseries_id, self.original_timeseries.id)
+        self.assertEqual(Timeseries.objects.filter(scenario=self.scenario).count(), before_count)
+
+    def test_upload_multiple_loads_without_permission_for_one_is_forbidden(self):
+        # colleague manages load 1 but has no permission on area 2 (managed by self.manager)
+        colleague = User.objects.create_user("colleague", password="pass")
+        group = Group.objects.get(name=self.project.group_name())
+        group.user_set.add(colleague)
+        assign_perm("details", group, self.project)
+        Load.objects.filter(pk=self.load.pk).update(manager=colleague)
+
+        self.client.force_login(colleague)
+        before_count = Timeseries.objects.filter(scenario=self.scenario).count()
+        response = self.client.post(
+            self.upload_to_load_url(),
+            {
+                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
+                "timestep_minutes": "15",
+                "template_file": csv_file(),
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["HX-Retarget"], "#templateError")
+        self.load.refresh_from_db()
+        self.load2.refresh_from_db()
+        self.assertEqual(self.load.timeseries_id, self.original_timeseries.id)
+        self.assertEqual(self.load2.timeseries_id, self.original_timeseries.id)
+        self.assertEqual(Timeseries.objects.filter(scenario=self.scenario).count(), before_count)
+
+    def test_upload_after_creating_loads_for_multiple_areas_applies_to_all_new_loads(self):
+        """
+        Selecting multiple areas and adding a load creates one load per area. The rendered
+        multi load form must carry all new load ids, so the upload applies to every new load.
+        """
+        self.client.force_login(self.manager)
+        create_response = self.client.post(
+            reverse(
+                "ports:details_create",
+                kwargs={"scenario_internal_id": self.scenario.internal_id, "model": "load"},
+            ),
+            {"area_internal_ids": f"{self.area.internal_id},{self.area2.internal_id}"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(create_response.status_code, 200)
+        new_loads = Load.objects.filter(scenario=self.scenario).exclude(
+            pk__in=[self.load.pk, self.load2.pk]
+        )
+        self.assertEqual(new_loads.count(), 2)
+
+        # The upload button posts the enclosing form, so use the rendered hidden internal_ids
+        match = re.search(
+            r'<input[^>]*name="internal_ids"[^>]*value="([^"]*)"',
+            create_response.content.decode(),
+        )
+        self.assertIsNotNone(match, "multi load form does not render the internal_ids field")
+        self.assertEqual(
+            set(match.group(1).split(",")), {str(load.internal_id) for load in new_loads}
+        )
+
+        response = self.client.post(
+            self.upload_to_load_url(),
+            {
+                "internal_ids": match.group(1),
+                "timestep_minutes": "15",
+                "template_file": csv_file("new_loads.csv", values=(3, 2, 1)),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        timeseries_ids = set(new_loads.values_list("timeseries_id", flat=True))
+        self.assertEqual(len(timeseries_ids), 1)
+        timeseries = Timeseries.objects.get(pk=timeseries_ids.pop())
+        self.assertEqual(timeseries.name, "new_loads.csv")
+        # existing loads in the selected areas stay untouched
+        self.load.refresh_from_db()
+        self.load2.refresh_from_db()
+        self.assertEqual(self.load.timeseries_id, self.original_timeseries.id)
+        self.assertEqual(self.load2.timeseries_id, self.original_timeseries.id)
 
 
 class ApiViewTimeseriesDeleteTest(TestCase):
