@@ -26,6 +26,7 @@ from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -143,7 +144,10 @@ class Scenario(models.Model):
 
     # Area of the scenario / Port region
     geom = models.PolygonField(
-        default=None, null=True, blank=True, help_text=_("Geografische Ausdehnung des Szenarios.")
+        default=None,
+        null=True,
+        blank=True,
+        help_text=_("Geografische Ausdehnung des Szenarios."),
     )
 
     # Class variable which keeps track of scenarios which should be deleted
@@ -239,7 +243,7 @@ class ItemTemplate(models.Model):
         if formatter:
             return formatter(value)
         unit = UNITS.get(field_name)
-        return f"{value} {unit}" if unit else str(value)
+        return f"{number_format(value, 2)} {unit}" if unit else str(value)
 
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
@@ -663,7 +667,7 @@ class EnergyCost(ScenarioItem):
     """
 
     co2_price = models.FloatField(
-        verbose_name=_("CO₂-Preis"), default=80, help_text=_("CO2-Preis.")
+        verbose_name=_("CO₂-Preis"), default=80, help_text=_("CO₂-Preis.")
     )
     electricity_price = models.FloatField(
         verbose_name=_("Strom-Preis"), default=0.25, help_text=_("Strompreis.")
@@ -694,7 +698,7 @@ class EnergyCost(ScenarioItem):
         ]
 
     @classmethod
-    def get_or_create_for_scenario(cls, scenario: Scenario) -> "EnergyCost":
+    def get_or_create_for_scenario(cls, scenario: Scenario) -> tuple["EnergyCost", bool]:
         # helpful since EnergyCost is a singleton per scenario right now
         instance, created = cls.objects.get_or_create(
             scenario=scenario,
@@ -711,10 +715,14 @@ class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
     area = models.ForeignKey(
-        Area, on_delete=models.CASCADE, help_text=_("Fläche, der diese Last zugeordnet ist.")
+        Area,
+        on_delete=models.CASCADE,
+        help_text=_("Fläche, der diese Last zugeordnet ist."),
     )
     timeseries = models.ForeignKey(
-        Timeseries, on_delete=models.CASCADE, help_text=_("Zeitreihenvorlage dieser Last.")
+        Timeseries,
+        on_delete=models.CASCADE,
+        help_text=_("Zeitreihenvorlage dieser Last."),
     )
     # We could allow negative factors, but maybe its confusing
     factor = models.FloatField(
@@ -742,8 +750,8 @@ class Load(ScenarioItem):
         if not timeseries:
             timeseries = Timeseries.objects.create(
                 scenario=scenario,
-                name="Empty timeseries",
-                timeseries={"values": [1], "timestep_minutes": 15},
+                name="Konstante Zeitreihe",
+                timeseries={"values": [1, 1], "timestep_minutes": 15},
                 spec_load=0,
             )
         loads = []
@@ -904,7 +912,7 @@ class ElectricComponentTemplate(ItemTemplate):
     # UNITS-based default from ItemTemplate.display_value()
     # efficiency needs the fraction -> percentage conversion, so it gets an explicit formatter.
     display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
-        "efficiency": lambda v: f"{(v * 100):.2f} %",
+        "efficiency": lambda v: number_format(v * 100, 2) + " %",
     }
 
     def custom_fields(self):
@@ -947,7 +955,11 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
 
     @classmethod
     def create_new(
-        cls, scenario: Scenario, manager: User, area_internal_ids: list[str | uuid.UUID], **kwargs
+        cls,
+        scenario: Scenario,
+        manager: User,
+        area_internal_ids: list[str | uuid.UUID],
+        **kwargs,
     ):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
@@ -1175,7 +1187,10 @@ class AbstractHeatpump(models.Model):
         BIVALENT = 2
 
     heatsource = models.CharField(
-        choices=HeatChoices, blank=False, null=True, help_text=_("Wärmequelle der Wärmepumpe.")
+        choices=HeatChoices,
+        blank=False,
+        null=True,
+        help_text=_("Wärmequelle der Wärmepumpe."),
     )
     mode = models.IntegerField(
         choices=ModeChoices,
@@ -1299,7 +1314,10 @@ class AbstractStorage(models.Model):
         H2 = "h2", "H2"
 
     carrier = models.CharField(
-        choices=CarrierChoices, null=True, blank=False, help_text=_("Energieträger des Speichers.")
+        choices=CarrierChoices,
+        null=True,
+        blank=False,
+        help_text=_("Energieträger des Speichers."),
     )
     efficiency_load = models.FloatField(
         default=1.0,
@@ -1377,7 +1395,9 @@ class StorageTemplate(ItemTemplate, AbstractStorage):
 
 class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
     area = models.ForeignKey(
-        Area, on_delete=models.CASCADE, help_text=_("Fläche, der dieser Speicher zugeordnet ist.")
+        Area,
+        on_delete=models.CASCADE,
+        help_text=_("Fläche, der dieser Speicher zugeordnet ist."),
     )
     template_model_name = StorageTemplate.model_name()
 

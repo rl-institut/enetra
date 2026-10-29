@@ -123,7 +123,7 @@ uvx ruff check filepath [--fix]
             .venv\Scripts\activate
             ```
 
-    6. install pre-commit to make sure every git commit is ruff conform
+    6. install pre-commit to make sure every git commit is ruff compliant
         `pre-commit install`
         - to force commits during work in progress use
         `git commit --no-verify -m "commit message"`
@@ -134,7 +134,7 @@ uvx ruff check filepath [--fix]
         `ruff format --check`
         if the commmands are not recognized remember to activate the .venv or run with 'uv run'
 
-    7. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
+    7. Django uses an .env file to read user-specific data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
     DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME
@@ -149,7 +149,7 @@ uvx ruff check filepath [--fix]
     DATA_USER_PASSWORD=SomePassword
      ````
 
-    7. Set up django (inside the virtual environment)
+    8. Set up django (inside the virtual environment)
         1. Create admin account: `uv run manage.py createsuperuser`
         2. Setup a username and password for a user which scenarios are public using the .env variables.
         `DATA_USER` for username (defaults to 'data') and `DATA_USER_PASSWORD` to give it a real password; otherwise the account has an unusable
@@ -157,7 +157,7 @@ uvx ruff check filepath [--fix]
          The user will be automatically created during the migration.
         3. Set up the database: `uv run manage.py migrate`
 
-    8. Import scenario seed data (optional)
+    9. Import scenario seed data (optional)
 
        Place GeoJSON data in subdirectories of `data/` whose names start with `scenario_area_data_`.
        Each directory must contain exactly one file with `regions` in its name and one with `buildings`:

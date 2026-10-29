@@ -2,12 +2,13 @@
 {% comment %}
  the id follows the same structure as the list-items so the delete functionality works as intended
 {% endcomment %}
-<c-accordion.item value='grid_accordion-{{value}}' :id="button-list-item-{{grid.internal_id}}"
+
+<c-accordion.item  :id="button-list-item-{{grid.internal_id}}"
     hx-swap-oob='true'
 
 >
-    <c-accordion.trigger value='item-1' class='font-semibold cursor-pointer rounded px-2 mb-2 bg-gray-100 shadow-sm' >{{grid.name}}</c-accordion.trigger>
-    <c-accordion.content value='item-1' class='px-2'>
+    <c-accordion.trigger :value='value' class='font-semibold cursor-pointer rounded px-2 mb-2 bg-gray-100 shadow-sm' >{{grid.name}}</c-accordion.trigger>
+    <c-accordion.content :value='value' class='px-2'>
         <div class="flex flex-col gap-2">
             <p class="text-[#64748b] text-sm">Netzanschluss</p>
             <p class="text-[#64748b] text-sm">
@@ -28,7 +29,7 @@
             {% endif %}
             <p class="text-[#64748b] text-sm">
                 <c-expand.index variant='custom'>
-                    <c-slot name='title'><span class="text-[#0e7490] font-semibold cursor-pointer">Flächen anzeigen:</span> </c-slot>
+                    <c-slot name='title'><span class="text-[#0e7490] font-semibold cursor-pointer">Flächen anzeigen</span> </c-slot>
                     <ul>
                         {% for area in grid.areas.all %}
                         <li>{{area.name}}</li>
@@ -37,7 +38,7 @@
                 </c-expand.index>
             </p>
             <p class="text-[#64748b] text-sm">
-                <span class="text-[#0e7490] font-semibold">Netzbetreiber:</span> TO BE IMPLEMENTED
+                <span class="text-[#0e7490] font-semibold">Netzbetreiber:</span> MUSS IMPLENTIERT WERDEN
             </p>
             <div class="flex justify-end mt-2">
                 <button type='button'
@@ -52,12 +53,13 @@
             <div class="flex justify-end mt-2">
             {% url 'ports:details' scenario_internal_id=scenario.internal_id model='grid'  as delete_url %}
             <c-button
-             :hx-delete="{{ delete_url }}?internal_id={{ grid.internal_id }}"
-              hx-confirm="Willst du {{grid.name}} wirklich löschen?"
-              class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm text-red-500 hover:bg-red-50 transition-colors duration-150 text-left rounded"
-              x-cloak
-            >
-              <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i>Netzanschluss löschen<span class='htmx-indicator loader align-middle'></span>
+                variant="destructive"
+                type='button'
+                :hx-delete="{{ delete_url }}?internal_id={{ grid.internal_id }}"
+                hx-confirm="Willst du {{grid.name}} wirklich löschen?"
+                class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm! "
+                x-cloak >
+                <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i>Netzanschluss löschen<span class='htmx-indicator loader align-middle'></span>
             </c-button>
             </div>
 

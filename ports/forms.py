@@ -86,7 +86,7 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User | None = None)
     else:
         raise NotImplementedError()
 
-    # NOTE: if subclassing this Baseform this loop should be moved into a own baseforms __init__
+    # NOTE: if subclassing this Baseform this loop should be moved into its own baseforms __init__
     # or else the adjustments below would go missing
 
     # All fields are optional for a Template except name
@@ -436,7 +436,7 @@ def get_shared_grids(areas: QuerySet[Area]) -> dict[str, Grid]:
     for link in links:
         # enforce that each area has at most 1 grid per gridtype
         if link.grid.carrier in carriers_per_area[link.area_id]:
-            raise DuplicateGridCarrierError("Area has multiple grids per carrier")
+            raise DuplicateGridCarrierError("Fläche hate mehrere Grids für einen Carrier")
         carriers_per_area[link.area_id].add(link.grid.carrier)
 
         shared_grids[link.grid].add(link.area_id)
@@ -475,11 +475,11 @@ class AreaFormBase(ScopedModelForm):
         else:
             usage_choices = Area.OpenUsageChoices
         if self.multi:
-            # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
+            # dict choices.choices = key: choice_value, value: choice_label->can't cast to dict directly
             # textchoices expects choice_label:choice_value
             usage_choices = TextChoices(
                 "MultiUsageChoices",
-                {**{x[1]: x[0] for x in usage_choices.choices}, "Keine Veränderung": ""},
+                {**{x[1]: x[0] for x in usage_choices.choices}, "Keine Anpassung vornehmen": ""},
             )
         else:
             self.fields["usage"].required = True

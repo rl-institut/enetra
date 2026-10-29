@@ -5,8 +5,15 @@
       <div class="py-4 px-0">
 
         <div class="flex flex-col gap-4">
-
-          <c-accordion id="grid-list" type='multi' collapsible='true' open='{"item-1": true, "item-3": true}' value='grids'>
+          <button type="button"
+                  hx-get="{% url "ports:details_create" model='grid' scenario_internal_id=scenario.internal_id %}"
+                  hx-swap="innerHTML"
+                  hx-target="#grid-modal-container"
+                  hx-select="unset"
+                  class="text-3.5 font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+            + Anschluss
+          </button>
+          <c-accordion id="grid-list" type='multi' collapsible='true'>
             {% for grid in grids %}
             {% include "ports/partials/randbed_netze.html" with value=grid.internal_id %}
             {% endfor %}

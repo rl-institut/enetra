@@ -64,7 +64,7 @@
                 hx-select=".template-selection"
                 hx-target="this"
             {% comment %}
-            init the store by mutating the object, so other references still wok
+            init the store by mutating the object, so other references still work
 
             {% endcomment %}
           x-init='
@@ -79,7 +79,7 @@
            {% endfor %}'
           >
             <div>
-              <label class="font-semibold text-[14px] text-[#1e293b]">Template Name</label>
+              <label class="font-semibold text-[14px] text-[#1e293b]">Zeitreihe</label>
               <c-field-required :field="form.timeseries" />
             </div>
             {% comment %}
@@ -157,7 +157,7 @@
 
       <div
           {% comment %}
-            use the store so template wide state can be refresh from scoped refresh
+            use the store so template wide state can be refreshed from scoped refresh
           {% endcomment %}
           x-data='{ selectedDuration: null, templates: $store.templates.values }'
         >

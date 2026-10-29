@@ -86,23 +86,22 @@ function hideOtherDropDown(selector) {
 };
 
 
-// make child of div selects of class select2 select2 elements
+// make child selects of a div with class=="make-select2" select2 elements
 document.addEventListener("htmx:afterSettle", (event) => {
     // fires on the swapped in elements. Search these elements for select2
     const root = event.target;
-    initMake2(root);
+    initSelect2(root);
 }
 );
 
-// make child of div selects of class select2 select2 elements
+// make child selects of a div with class=="make-select2" select2 elements
 document.addEventListener("DOMContentLoaded", () => {
-    // fires on the swapped in elements. Search these elements for select2
     const root = document;
-    initMake2(root);
+    initSelect2(root);
 }
 );
 
-function initMake2(root) {
+function initSelect2(root) {
     const els = [...root.querySelectorAll('.make-select2')];
     if (root.matches?.('.make-select2')) els.unshift(root);   // root itself may match
     els.forEach(el => {

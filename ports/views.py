@@ -96,13 +96,13 @@ def merge_instances_data(instances) -> dict:
 
     Foreign keys are cast to internal_ids.
     Only works on instances of the same Modeltype.
-    If instance do not hold the cached objects.with internal_ids, all instances are refetched in a single query
+    If instance do not hold the cached objects with internal_ids, all instances are refetched in a single query
 
     If Grid should ever be cast to dict, make sure to prefetch the related objects if they are not cached
     """
     exclude = {"manager", "updated_user"}
     # internal_id is on the ForeignKey objects. If the instance does not hold this data yet,
-    # iterating over all instances fetches the n times
+    # iterating over all instances fetches them n times
 
     Model: DjangoModel = instances[0]._meta.model
     related_fields = [
@@ -1316,7 +1316,7 @@ class DetailsView(View):
                     scenario=self.scenario,
                     model=Area,
                 ):
-                    return HttpResponseForbidden("No permission for these areas")
+                    return HttpResponseForbidden("Sie haben keine Befugnis für diese Flächen")
                 instance = form.save(commit=False)
                 instance.manager = request.user
                 instance.scenario = self.scenario
@@ -1601,7 +1601,7 @@ def create_project(request):
                     ec, created = EnergyCost.get_or_create_for_scenario(new_scenario)
                     if created:
                         logger.warning(
-                            "Created energy cost on get request. This can happpen for old scenarios, but in general, get requests should not trigger db mutations."
+                            "Created energy cost on get request. This can happen for old scenarios, but in general, get requests should not trigger db mutations."
                         )
 
                     # FIXME: If a scenario is copied into a new project, all users should have access to the new project
@@ -1621,7 +1621,7 @@ def create_project(request):
             except:  # noqa
                 # something inside the transaction failed
                 success = False
-                context["errors"] = ["Something went wrong"]
+                context["errors"] = ["Ein unerwarteter Fehler ist aufgetreten."]
         else:
             context["errors"] = form.errors
         context["form"] = form
@@ -1724,10 +1724,16 @@ class ApiView(View):
                 status=400,
             )
         if self.Model not in self.ALLOWED_MODELS:
-            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
+            return JsonResponse(
+                {"success": False, "message": "Dieses Model unterstützt diese Funktion nicht."},
+                status=400,
+            )
         if self.Model == Grid and self.action != "remove_carrier":
             # Grid crud is done in the details view
-            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
+            return JsonResponse(
+                {"success": False, "message": "Dieses Model unterstützt diese Funktion nicht."},
+                status=400,
+            )
 
         if self.action == "remove_carrier":
             scenario_internal_id = kwargs["scenario_internal_id"]
@@ -1874,7 +1880,7 @@ class ApiView(View):
 def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | None = None):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
-        return HttpResponseForbidden(b"You are not authorized for this project")
+        return HttpResponseForbidden("Sie haben keine Befugnis für dieses Projekt")
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -1904,13 +1910,13 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
                 )
             # Raise 404 if a single load is missing
             if len(loads) != len(internal_load_ids):
-                raise Http404("Item does not exist")
+                raise Http404("Das Objekt existiert nicht")
         else:
             #  missing internal_id
-            return HttpResponseBadRequest("Missing load internal_id")
+            return HttpResponseBadRequest("Es fehlt die Angabe der internal_id der Last(en)")
 
         if not authorized_load:
-            response = HttpResponseForbidden(b"You are not authorized for this function")
+            response = HttpResponseForbidden("Sie haben keine Befugnis diese Funktion.")
             return retargetForFailure(response)
 
     file_form = TimeseriesUploadForm(request.POST, request.FILES)
@@ -1949,7 +1955,7 @@ def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
         scenario.project, request.user, "details"
     ) and has_authorization(timeseries, request.user, "details")
     if not is_authorized:
-        return HttpResponseForbidden(b"You are not authorized for this function")
+        return HttpResponseForbidden("Sie haben keine Befugnis für diese Funktion")
 
     if request.method == "POST":
         form = ChangeTimeseriesForm(request.POST, instance=timeseries)
@@ -1967,12 +1973,12 @@ def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
 def energy_cost(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
-        return HttpResponseForbidden(b"You are not authorized for this function")
+        return HttpResponseForbidden("Sie haben keine Befugnis für diese Funktion")
 
     instance, created = EnergyCost.get_or_create_for_scenario(scenario)
-    if created:
+    if created and request.method == "GET":
         logger.warning(
-            "Created energy cost on get request. This can happpen for old scenarios, but in general, get requests should not trigger db mutations."
+            "Created energy cost on get request. This can happen for old scenarios, but in general, get requests should not trigger db mutations."
         )
     if request.method == "POST":
         form = EnergyCostForm(request.POST, instance=instance)

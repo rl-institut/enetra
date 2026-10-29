@@ -27,7 +27,7 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
     {% elif status == 'deleted' %}
       <div hx-swap-oob='outerHTML'
            id='button-list-item-{{instance.internal_id}}'>
-        This item was deleted
+        Dieses Objekt wurde gelöscht.
         <button x-data type="button" @click="$el.parentElement.remove()">
           <c-icon.close />
         </button>
@@ -46,7 +46,7 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
     {% elif status == 'deleted' %}
       <div hx-swap-oob='outerHTML'
            id='button-list-item-{{instance.internal_id}}'>
-        This item was deleted
+        Dieses Objekt wurde gelöscht.
         <button x-data type="button" @click="$el.parentElement.remove()">
           <c-icon.close />
         </button>
@@ -59,7 +59,7 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
       {% comment %}
       When inserting a newly created area, the content depends on the state of the list.
       For Areas the server responds with a createItemCallback which clicks the areaitem
-      Since currently the state is not transfered to the server, the item is clicked after settle.
+      Since currently the state is not transferred to the server, the item is clicked after settle.
       this fetches the correct data and inserts it
 
       {% endcomment %}
@@ -120,7 +120,8 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
     "
     {% endif %}
        id='button-list-item-{{instance.internal_id}}'>
-    This item was deleted
+          Dieses Objekt wurde gelöscht.
+
     <button x-data type="button" @click="$el.parentElement.remove()">
       <c-icon.close />
     </button>
@@ -128,7 +129,7 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
 
   <div id="geom_form_container_{{instance.internal_id}}" hx-swap-oob="outerHTML"
   >
-      deleted
+      Gelöscht
   </div>
   {% endif %}
 {% endif %}

@@ -26,9 +26,6 @@ make the field participate in a parent's CSS subgrid instead of its default flex
     <c-field-required :field="field" />
   </label>
   <div class="relative">
-    {% comment %}
-     I would promote
-    {% endcomment %}
     <c-input
       :field="field"
       class="w-full rounded border border-[#cbd5e1] bg-white px-4 py-3 text-sm text-[#1e293b]{% if field.field.unit %} pr-16{% endif %}" />
