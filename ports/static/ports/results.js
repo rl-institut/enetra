@@ -1,4 +1,6 @@
 function createGridChart(grids, time, div) {
+    if (grids.length == 0)
+        return;  // no grids -> no plot
     const gridChart = echarts.init(gridDiv);
     const series = [];
     for (let grid of grids) {
@@ -18,5 +20,6 @@ function createGridChart(grids, time, div) {
         xAxis: {data: time},
         yAxis: {axisLabel: { formatter: v => v + ' kW'}},
         series: series,
+        animation: false,
     });
 }
