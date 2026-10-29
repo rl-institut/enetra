@@ -25,6 +25,8 @@ from django.db.models.signals import post_save
 from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
+from django.shortcuts import render  # noqa
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.formats import number_format
 from django.utils.safestring import mark_safe
@@ -689,6 +691,15 @@ class EnergyCost(ScenarioItem):
         verbose_name=_("NH₃-Preis"), default=0.70, help_text=_("Preis für Ammoniak.")
     )
 
+    def render_form(self):
+        from .forms import EnergyCostForm
+
+        form = EnergyCostForm(instance=self)
+        scenario = self.scenario
+        context = {"scenario": scenario, "form": form}
+
+        return render_to_string("ports/partials/energiekosten.html", context)
+
     class Meta(ScenarioItem.Meta):
         # retains the internal_id/scenario unique-together constraint from ScenarioItem.Meta,
         # and additionally enforces a single EnergyCost row per Scenario.
@@ -745,12 +756,13 @@ class Load(ScenarioItem):
             area_internal_ids = []
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
         count = cls.objects.filter(scenario=scenario).count()
-        timeseries = Timeseries.objects.filter(scenario=scenario).first()
+        timeseries = Timeseries.objects.filter(scenario=scenario, manager=manager).first()
 
         if not timeseries:
             timeseries = Timeseries.objects.create(
                 scenario=scenario,
                 name="Konstante Zeitreihe",
+                manager=manager,
                 timeseries={"values": [1, 1], "timestep_minutes": 15},
                 spec_load=0,
             )

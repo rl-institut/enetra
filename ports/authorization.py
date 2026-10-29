@@ -9,6 +9,7 @@ from django.db.models import QuerySet
 from guardian.shortcuts import get_objects_for_user
 
 from .models import Area
+from .models import Grid
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
@@ -54,7 +55,7 @@ def get_related_model_values(
 
 
 def has_area_authorization_from_uuids(
-    uuids: list[uuid.UUID | str],
+    uuids: list[uuid.UUID] | list[str],
     user: User,
     crud: Literal["view", "create", "details", "change", "delete"],
     scenario: Scenario,
@@ -95,7 +96,16 @@ def has_authorization(
 
     # For now short the authorization for ScenarioItems, since their authorization is
     # based only on areas for now
-    if isinstance(item, ScenarioItem):
+    if isinstance(item, Grid):
+        # Grids need generic project authorization since, they are not scoped to areas.
+        # in contrast to timeseries they are related to "areas", therefore should can be selected from all areas
+        # the selection mutates Grid.areas and just viewing the grid would not be enough
+        project = item.scenario.project
+        if not project:
+            return False
+        return has_authorization(project, user, crud)
+
+    elif isinstance(item, ScenarioItem):
         # Only managers and superusers are authorized to work
         fk_fields, m2m_fields = filter_model_fields(item._meta.get_fields(), Area)
         if not (isinstance(item, Area) or (fk_fields or m2m_fields)):

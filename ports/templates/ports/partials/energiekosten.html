@@ -3,6 +3,8 @@
 {% endcomment %}
 <form class="flex flex-col gap-3"
   autocomplete="off"
+  id="scenario-energy-cost-form"
+  hx-swap-oob="true"
 >
   <div class="py-4 px-0">
     <div class="flex justify-end pb-4 gap-2">
@@ -17,7 +19,11 @@
         x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, 2000)"
       >
         <p x-show="show">
-          {% if request.method == "GET"  %}
+          {% comment %}
+          the template is also directly rendered_to_string without a request in cases of updates.
+          In this case we dont want to show Gespeihert
+          {% endcomment %}
+          {% if request.method == "GET" or not request.method %}
           Speichern
           {% elif request.method == "POST" and form.errors %}
           Fehlgeschlagen

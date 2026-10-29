@@ -183,6 +183,72 @@ def patch_area(request, scenario_internal_id: UUID):
     return HttpResponse(b"failed")
 
 
+def get_scenario_updates(scenario, user, last_update, last_change):
+    created_items = []
+    changed_items = []
+    deleted_items = []
+    related_areas = set()
+    port_models = apps.get_app_config("ports").get_models()
+    for Model in port_models:
+        base_filter = {}
+        if Model in [Scenario, ChangedItem]:
+            continue
+        if not issubclass(Model, ScenarioItem):
+            continue
+        if Model in [DeletedItem]:
+            filter = {
+                "created_at__gt": last_update,
+                "created_at__lte": last_change,
+            }
+            items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
+            for i in items:
+                Model = i.content_type.model_class()
+                data = model_to_dict(i)
+                del data["content_type"]
+                cleaned_data = {}
+                for key, value in data.items():
+                    cleaned_data[Model._meta.get_field(key).attname] = value
+                model_item = Model(**cleaned_data)
+                deleted_items.append(model_item)
+            continue
+        if Model == Timeseries:
+            # Updates for Timeseries are only sent for the manager
+            # Otherwise new Timeseries would appear for other user
+            base_filter = {"manager": user}
+
+        # created items
+        filter = {"created_at__gt": last_update, "created_at__lte": last_change}
+        filter |= base_filter
+        base_qs = Model.objects.filter(scenario=scenario)
+        model_has_area = hasattr(Model, "area")
+        if model_has_area:
+            base_qs = base_qs.prefetch_related("area")
+        new_created_items = list(base_qs.filter(**filter))
+        created_items.extend(new_created_items)
+
+        # changed items
+        filter = {
+            "created_at__lte": last_update,
+            "updated_at__gt": last_update,
+            "updated_at__lte": last_change,
+        }
+        filter |= base_filter
+
+        new_changed_items = list(base_qs.filter(**filter))
+        changed_items.extend(new_changed_items)
+        if model_has_area:
+            for item in new_changed_items + new_created_items:
+                related_areas.add(item.area)
+
+    # add areas which are not part of the update list
+    updated_set = {i.internal_id for i in created_items + changed_items}
+    for related_area in related_areas:
+        if related_area.internal_id not in updated_set:
+            changed_items.append(related_area)
+
+    return created_items, changed_items, deleted_items
+
+
 def changes_count(request, scenario_internal_id: UUID):
     """Get the count of changes as partial update
 
@@ -193,62 +259,16 @@ def changes_count(request, scenario_internal_id: UUID):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
-    updated_at = scenario.items_updated_at
-    context["updated_at"] = updated_at
+    last_change = scenario.items_updated_at
+    context["updated_at"] = last_change
     context["changed"] = False
     if last_update:
         last_update = datetime.fromisoformat(last_update)
         if scenario.items_updated_at > last_update:
             context["changed"] = True
-            created_items = []
-            changed_items = []
-            deleted_items = []
-            related_areas = set()
-            port_models = apps.get_app_config("ports").get_models()
-            for Model in port_models:
-                if Model in [Scenario, ChangedItem]:
-                    continue
-                if not issubclass(Model, ScenarioItem):
-                    continue
-                if Model in [DeletedItem]:
-                    filter = {
-                        "created_at__gt": last_update,
-                        "created_at__lte": updated_at,
-                    }
-                    items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
-                    for i in items:
-                        Model = i.content_type.model_class()
-                        data = model_to_dict(i)
-                        del data["content_type"]
-                        cleaned_data = {}
-                        for key, value in data.items():
-                            cleaned_data[Model._meta.get_field(key).attname] = value
-                        model_item = Model(**cleaned_data)
-                        deleted_items.append(model_item)
-                    continue
-                filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                base_qs = Model.objects.filter(scenario=scenario)
-                model_has_area = hasattr(Model, "area")
-                if model_has_area:
-                    base_qs = base_qs.prefetch_related("area")
-                new_created_items = list(base_qs.filter(**filter))
-                created_items.extend(new_created_items)
-                filter = {
-                    "created_at__lte": last_update,
-                    "updated_at__gt": last_update,
-                    "updated_at__lte": updated_at,
-                }
-                new_changed_items = list(base_qs.filter(**filter))
-                changed_items.extend(new_changed_items)
-                if model_has_area:
-                    for item in new_changed_items + new_created_items:
-                        related_areas.add(item.area)
-
-            # add areas which are not part of the update list
-            updated_set = {i.internal_id for i in created_items + changed_items}
-            for related_area in related_areas:
-                if related_area.internal_id not in updated_set:
-                    changed_items.append(related_area)
+            created_items, changed_items, deleted_items = get_scenario_updates(
+                scenario, request.user, last_update, last_change
+            )
 
             base_qs = Area.objects.filter(scenario=scenario)
             allowed_details_ids = set(
@@ -273,7 +293,7 @@ def changes_count(request, scenario_internal_id: UUID):
                         item.has_authorization = True
 
             # fetch areas again with added related_sets. this might be not performant for large queries
-            # but since changes are emitted regularly, id count is expected to be small
+            # but since changes are emitted regularly, the count is expected to be small
             area_ids = []
             for item in changed_items + created_items:
                 if isinstance(item, Area):
@@ -831,6 +851,7 @@ class ObjectTemplatesView(View):
     def setup_view(self, request, *args, **kwargs) -> None:
         self.Model = apps.get_model("ports", kwargs["model"])
         assert issubclass(self.Model, ItemTemplate)
+        assert self.Model != EnergyCost
 
         self.data = request.GET
         if request.method == "POST":
@@ -1414,6 +1435,9 @@ class DetailsView(View):
         return response
 
     def delete(self, request, *args, **kwargs):
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponse("You are not allowed to edit this Project.")
+            return response
         if not has_authorization(self.instance, request.user, "delete"):
             response = HttpResponse("You are not allowed to delete")
             response["HX-Reselect"] = "unset"
@@ -1491,6 +1515,10 @@ class DetailsView(View):
                 b"The patching of multiple objects is not possible with an instance"
             )
 
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponse("You are not allowed to edit this Project.")
+            return response
+
         if not has_area_authorization_from_uuids(
             self.internal_ids, request.user, "details", self.scenario, self.Model
         ):
@@ -1531,6 +1559,11 @@ class DetailsView(View):
             raise NotImplementedError("This model is not implemented for posting yet")
         if not self.instance:
             return HttpResponseBadRequest(b"The patching of an object needs an instance")
+
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponse("You are not allowed to edit this Project.")
+            return response
+
         if not has_authorization(self.instance, request.user, "details"):
             response = HttpResponse("You are not allowed to change this item")
 
@@ -1725,13 +1758,19 @@ class ApiView(View):
             )
         if self.Model not in self.ALLOWED_MODELS:
             return JsonResponse(
-                {"success": False, "message": "Dieses Model unterstützt diese Funktion nicht."},
+                {
+                    "success": False,
+                    "message": "Dieses Model unterstützt diese Funktion nicht.",
+                },
                 status=400,
             )
         if self.Model == Grid and self.action != "remove_carrier":
             # Grid crud is done in the details view
             return JsonResponse(
-                {"success": False, "message": "Dieses Model unterstützt diese Funktion nicht."},
+                {
+                    "success": False,
+                    "message": "Dieses Model unterstützt diese Funktion nicht.",
+                },
                 status=400,
             )
 
@@ -1805,6 +1844,11 @@ class ApiView(View):
                 form = ChangeProjectForm(data=request.POST, instance=self.instance)
             case Scenario():
                 form = ChangeScenarioForm(data=request.POST, instance=self.instance)
+            case _:
+                return JsonResponse(
+                    {"success": False, "message": "Model not supported"}, status=400
+                )
+
         if form.is_valid():
             form.save()
             return JsonResponse({"success": True, "message": "Changed"}, status=200)
@@ -1830,6 +1874,13 @@ class ApiView(View):
                         },
                         status=400,
                     )
+            case Project():
+                pass
+            case _:
+                return JsonResponse(
+                    {"success": False, "message": "Model not supported"}, status=400
+                )
+
         try:
             with atomic():
                 if getattr(self.instance, "safe_delete", None):
@@ -1891,7 +1942,8 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
     loads = []
     if from_model:
         Model = apps.get_model("ports", from_model)
-        assert Model in (Load,)
+        if Model != Load:
+            return HttpResponseBadRequest("Diesem Modell können keine Lasten hinzugefügt werden ")
 
         # check if single or multi upload
         if internal_load_id := request.POST.get("internal_id"):

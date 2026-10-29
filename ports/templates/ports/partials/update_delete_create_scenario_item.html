@@ -53,7 +53,16 @@ NOTE: list items need their rud_url, so they can trigger things like hx-delete
       </div>
     {% endif %}
 
+{% elif instance.model_name == "energycost" %}
+      {% comment %}
+      energycost always exists and cant be deleted
+      {% endcomment %}
+      {{instance.render_form}}
 
+{% elif instance.model_name == "load" %}
+      {% comment %}
+      loads are not updated currently
+      {% endcomment %}
 {% else %}
   {% if status == 'created' %}
       {% comment %}
