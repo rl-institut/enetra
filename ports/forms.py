@@ -63,7 +63,7 @@ class ScenarioAreasForm(forms.Form):
     geojson_ports_buildings_file = forms.FileField(required=True)
 
 
-def TemplateFormFactory(ItemModel: type[ItemTemplate], user: User | None = None):
+def TemplateFormFactory(ItemModel: type[ItemTemplate]):
     exclude = ["manager", "updated_user"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if issubclass(ItemModel, ItemTemplate):
@@ -586,7 +586,8 @@ class ChangeTimeseriesForm(forms.ModelForm):
         }
 
 
-class EnergyCostForm(forms.ModelForm):
+class EnergyCostForm(ScopedModelForm):
+    # ScopedModel form gives the Form automatic units
     class Meta:
         model = EnergyCost
         fields = (
@@ -599,11 +600,6 @@ class EnergyCostForm(forms.ModelForm):
             "hydrogen_price",
             "ammonia_price",
         )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field_name, field in self.fields.items():
-            field.unit = UNITS.get(field_name, "")
 
 
 class CreateScenarioForm(forms.ModelForm):

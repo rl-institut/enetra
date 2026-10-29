@@ -417,7 +417,7 @@ class GridAreaAuthorizationTest(TestCase):
         # gate passes for the outsider; area-level "details" is deliberately
         # withheld, which is the permission actually being tested here.
         assign_perm("view", cls.project_group, cls.project)
-        assign_perm("details", cls.project_group, cls.scenario)
+        assign_perm("details", cls.project_group, cls.project)
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,

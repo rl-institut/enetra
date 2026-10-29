@@ -39,6 +39,7 @@ class HasAuthorizationAreaScopedItemsTest(TestCase):
             geom=GEOSGeometry("SRID=4326;POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))"),
             manager=cls.owner,
         )
+        assign_perm("details", group, cls.project)
         # The colleague isn't the area's manager, but is explicitly granted "details" on it —
         # this is what should make them authorized for any item scoped to that area.
         assign_perm("details", group, cls.area)
@@ -61,9 +62,7 @@ class HasAuthorizationAreaScopedItemsTest(TestCase):
         self.assertTrue(has_authorization(load, self.colleague, "details"))
 
     def test_colleague_with_area_permission_is_authorized_for_a_grid_in_that_area(self):
-        # Grid relates to Area through the plural `areas` M2M field, not a singular `area`
-        # ForeignKey like Load/Generator/etc. has_authorization() must still resolve this via
-        # the grid's areas, the same way it does for `area`-FK items above — not deny it.
+        # grid is only guarded by project "details"
         grid = Grid.objects.create(
             scenario=self.scenario,
             name="Grid 1",

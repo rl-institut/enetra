@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 import json
 import logging
@@ -870,7 +871,7 @@ class ObjectTemplatesView(View):
             except ObjectDoesNotExist as err:
                 raise Http404("This item does not for the user") from err
 
-        self.Form = TemplateFormFactory(self.Model, request.user)
+        self.Form = TemplateFormFactory(self.Model)
         self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
 
     @method_decorator(login_required)
@@ -916,7 +917,7 @@ class ObjectTemplatesView(View):
             self.instance = self.Model.objects.create(
                 manager=request.user, name=f"{self.Model.verbose_name()} {count}"
             )
-            self.Form = TemplateFormFactory(self.Model, request.user)
+            self.Form = TemplateFormFactory(self.Model)
             self.context["instance"] = self.instance
             self.context["internal_id"] = str(self.instance.internal_id)
             self.context["form"] = self.Form(
@@ -1308,6 +1309,10 @@ class DetailsView(View):
                 b"The creation of an object is not possible with an instance"
             )
 
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
+            return response
+
         # do NOT pass the request.POST directly into a query
         # which could lead to unauthorized injections
         # ScenarioItem.create_new sanitizes input for allowed attributes
@@ -1436,7 +1441,7 @@ class DetailsView(View):
 
     def delete(self, request, *args, **kwargs):
         if not has_authorization(self.scenario.project, request.user, "details"):
-            response = HttpResponse("You are not allowed to edit this Project.")
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
             return response
         if not has_authorization(self.instance, request.user, "delete"):
             response = HttpResponse("You are not allowed to delete")
@@ -1516,7 +1521,7 @@ class DetailsView(View):
             )
 
         if not has_authorization(self.scenario.project, request.user, "details"):
-            response = HttpResponse("You are not allowed to edit this Project.")
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
             return response
 
         if not has_area_authorization_from_uuids(
@@ -1561,7 +1566,7 @@ class DetailsView(View):
             return HttpResponseBadRequest(b"The patching of an object needs an instance")
 
         if not has_authorization(self.scenario.project, request.user, "details"):
-            response = HttpResponse("You are not allowed to edit this Project.")
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
             return response
 
         if not has_authorization(self.instance, request.user, "details"):
@@ -1632,10 +1637,6 @@ def create_project(request):
                     new_scenario.project = new_project
                     new_scenario.save()
                     ec, created = EnergyCost.get_or_create_for_scenario(new_scenario)
-                    if created:
-                        logger.warning(
-                            "Created energy cost on get request. This can happen for old scenarios, but in general, get requests should not trigger db mutations."
-                        )
 
                     # FIXME: If a scenario is copied into a new project, all users should have access to the new project
                     # Must make sure not to overwrite area access to new scenario/project manager
@@ -1941,9 +1942,11 @@ def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | Non
 
     loads = []
     if from_model:
-        Model = apps.get_model("ports", from_model)
+        Model = None
+        with contextlib.suppress(LookupError):
+            Model = apps.get_model("ports", from_model)
         if Model != Load:
-            return HttpResponseBadRequest("Diesem Modell können keine Lasten hinzugefügt werden ")
+            return HttpResponseBadRequest("Diesem Modell können keine Lasten hinzugefügt werden.")
 
         # check if single or multi upload
         if internal_load_id := request.POST.get("internal_id"):
