@@ -580,7 +580,7 @@ class Area(ScenarioItem):
     def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         if manager is None or not manager.is_authenticated:
-            raise ImproperlyConfigured("create_new can only be calles with an authenticated User")
+            raise ImproperlyConfigured("create_new can only be called with an authenticated User")
         allowed_attributes = ["area_type"]
         extra_args = {}
         for att in allowed_attributes:
@@ -757,7 +757,7 @@ class Load(ScenarioItem):
         if area_internal_ids is None:
             area_internal_ids = []
         if manager is None or not manager.is_authenticated:
-            raise ImproperlyConfigured("create_new can only be calles with an authenticated User")
+            raise ImproperlyConfigured("create_new can only be called with an authenticated User")
 
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
         count = cls.objects.filter(scenario=scenario).count()

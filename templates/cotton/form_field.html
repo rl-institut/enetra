@@ -19,7 +19,7 @@ make the field participate in a parent's CSS subgrid instead of its default flex
   <label for="{{ field.id_for_label }}" class="flex items-center gap-2 text-sm font-semibold text-[#1e293b]">
     {{ field.label }}
     {% if field.help_text %}
-    <span title="{{ field.help_text }}" class="cursor-not-allowed">
+    <span title="{{ field.help_text }}" class="cursor-help">
       <c-icon.info class="h-4 w-4 flex-shrink-0 text-[#64748b]" />
     </span>
     {% endif %}

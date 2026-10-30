@@ -50,7 +50,8 @@ NOTE: Should be refactor to use same interface as main map
 <script src="{% static 'ports/results_map.js' %}"></script>
 
 <script>
-  showResultsMap('{{ map_id }}', '{{ carto_api_token }}');
+  const areas = JSON.parse(document.getElementById('areas').textContent);
+  showResultsMap('{{ map_id }}', '{{ carto_api_token }}', areas);
 /*
 (function(mapId, scenarioEvent, initialScenario) {
 

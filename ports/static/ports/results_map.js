@@ -18,7 +18,9 @@ function makeLabelIcon(name, opacity) {
     });
 }
 
-function showResultsMap(map_id, carto_api_token) {
+function showResultsMap(map_id, carto_api_token, areas) {
+    if (!areas || areas.length == 0)
+        return;  // no areas -> no map
     const map = L.map(map_id, { zoomControl: true });
     L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + carto_api_token, {
@@ -28,7 +30,6 @@ function showResultsMap(map_id, carto_api_token) {
         }
     ).addTo(map);
 
-    const areas = JSON.parse(document.getElementById('areas').textContent);
     const layers = L.featureGroup();
     for (let area of areas) {
         // coordinates: latlng -> lnglat

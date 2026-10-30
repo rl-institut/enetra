@@ -436,7 +436,7 @@ def get_shared_grids(areas: QuerySet[Area]) -> dict[str, Grid]:
     for link in links:
         # enforce that each area has at most 1 grid per gridtype
         if link.grid.carrier in carriers_per_area[link.area_id]:
-            raise DuplicateGridCarrierError("Fläche hate mehrere Grids für einen Carrier")
+            raise DuplicateGridCarrierError("Fläche hat mehrere Grids für einen Carrier")
         carriers_per_area[link.area_id].add(link.grid.carrier)
 
         shared_grids[link.grid].add(link.area_id)
