@@ -1,0 +1,62 @@
+{% comment %}
+ autocomplete refills input-state before refresh into form after refresh. we rather want to show the server sent state
+{% endcomment %}
+<form class="flex flex-col gap-3"
+  autocomplete="off"
+  id="scenario-energy-cost-form"
+  hx-swap-oob="true"
+>
+  <div class="py-4 px-0">
+    <div class="flex justify-end pb-4 gap-2">
+
+      <button
+        type='submit'
+        hx-post="{% url "ports:energy_cost" scenario_internal_id=scenario.internal_id %}"
+        hx-disabled-elt='this'
+        hx-target="closest form"
+        hx-validate='true'
+        class="text-[#0e7490] font-semibold text-sm hover:opacity-80 transition-opacity flex items-center gap-2 cursor-pointer"
+        x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, 2000)"
+      >
+        <p x-show="show">
+          {% comment %}
+          the template is also directly rendered_to_string without a request in cases of updates.
+          In this case we dont want to show Gespeihert
+          {% endcomment %}
+          {% if request.method == "GET" or not request.method %}
+          Speichern
+          {% elif request.method == "POST" and form.errors %}
+          Fehlgeschlagen
+          {% else %}
+          Gespeichert
+          {% endif %}
+        </p>
+        <p x-show="!show">
+          Speichern
+        </p>
+      </button>
+      <button
+        type="button"
+        hx-get="{% url "ports:energy_cost" scenario_internal_id=scenario.internal_id %}"
+        hx-target="closest form"
+        class="text-[#0e7490] font-semibold text-sm hover:opacity-80 transition-opacity flex items-center gap-2 cursor-pointer">
+        <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 8a6 6 0 11-12 0 6 6 0 0112 0z" />
+          <path d="M8 4v4l2 2" stroke-linecap="round" />
+        </svg>
+        Zurücksetzen
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+      {% for field in form.hidden_fields %}
+      {{field}}
+      {% endfor %}
+
+      {% for field in form.visible_fields %}
+      <c-form-field  type="text" bodyclass="no-stepper grid grid-rows-subgrid row-span-3 gap-1" :field="field" />
+      {% endfor %}
+    </div>
+  </div>
+
+</form>

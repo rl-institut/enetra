@@ -30,6 +30,16 @@ def events_data():
     return settings.EVENTS_DICT
 
 
+@register.simple_tag
+def constant(name: str) -> str:
+    """Expose ports.constants, e.g. {% constant "USE_TEMPLATE" %}"""
+    from ports import constants
+
+    if not name.isupper() or not hasattr(constants, name):
+        raise template.TemplateSyntaxError(f"ports.constants has no constant '{name}'")
+    return getattr(constants, name)
+
+
 @register.filter
 def assertValue(val):
     if val is None or val == "" or val == "None":

@@ -9,11 +9,22 @@ from django.db.models import QuerySet
 from guardian.shortcuts import get_objects_for_user
 
 from .models import Area
+from .models import Grid
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
 
 logger = logging.getLogger(__name__)
+
+
+def filter_model_fields(fields, model):
+    fk_fields = [
+        f for f in fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
+    ]
+    m2m_fields = [
+        f for f in fields if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
+    ]
+    return fk_fields, m2m_fields
 
 
 def get_related_model_values(
@@ -25,16 +36,7 @@ def get_related_model_values(
     can be checked on those areas
     """
     all_fields = instances.model._meta.get_fields()
-    fk_fields = [
-        f for f in all_fields if isinstance(f, ForeignKey) and issubclass(f.related_model, model)
-    ]
-    m2m_fields = [
-        f
-        for f in all_fields
-        if isinstance(f, ManyToManyField) and issubclass(f.related_model, model)
-    ]
-    if not fk_fields and not m2m_fields:
-        return None
+    fk_fields, m2m_fields = filter_model_fields(all_fields, model)
 
     if fk_fields:
         instances = instances.select_related(*[f.name for f in fk_fields])
@@ -53,7 +55,7 @@ def get_related_model_values(
 
 
 def has_area_authorization_from_uuids(
-    uuids: list[uuid.UUID | str],
+    uuids: list[uuid.UUID] | list[str],
     user: User,
     crud: Literal["view", "create", "details", "change", "delete"],
     scenario: Scenario,
@@ -94,7 +96,22 @@ def has_authorization(
 
     # For now short the authorization for ScenarioItems, since their authorization is
     # based only on areas for now
-    if isinstance(item, ScenarioItem):
+    if isinstance(item, Grid):
+        # Grids need generic project authorization since, they are not scoped to areas.
+        # in contrast to timeseries they are related to "areas", therefore should can be selected from all areas
+        # the selection mutates Grid.areas and just viewing the grid would not be enough
+        project = item.scenario.project
+        if not project:
+            return False
+        return has_authorization(project, user, crud)
+
+    elif isinstance(item, ScenarioItem):
+        # Only managers and superusers are authorized to work
+        fk_fields, m2m_fields = filter_model_fields(item._meta.get_fields(), Area)
+        if not (isinstance(item, Area) or (fk_fields or m2m_fields)):
+            # item is not an area, or has an area attribute.
+            # Since authorization is scoped to areas, deny authorization.
+            return False
         return has_area_authorization_from_uuids(
             [item.internal_id], user, crud, item.scenario, item.model()
         )

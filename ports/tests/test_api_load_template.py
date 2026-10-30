@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from ports.models import Project
 from ports.models import Scenario
 from ports.models import Timeseries
 
@@ -19,8 +20,10 @@ class ApiTimeseriesTest(TestCase):
         cls.manager = User.objects.create_user("manager", password="pass")
         cls.other_user = User.objects.create_user("other", password="pass")
 
-        cls.scenario = Scenario.objects.create(name="Test Scenario")
-        Group.objects.get_or_create(name=cls.scenario.group_name())
+        cls.project = Project.objects.create(name="TestProjekt", manager=cls.manager)
+        cls.scenario = Scenario.objects.create(name="Test Scenario", project=cls.project)
+
+        Group.objects.get_or_create(name=cls.project.group_name())
 
         cls.load_template = Timeseries.objects.create(
             scenario=cls.scenario,

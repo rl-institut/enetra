@@ -24,8 +24,7 @@
           {% if not active %}
           disabled
           {% endif %}
-
-           :name="isBulkMode ?'{{value }}' : '{{ radioName }}'"
+           name="{{ radioName }}"
            value="{{ value }}"
            class="cotton-list-item-input size-3.5  accent-[#0E7490]" />
   </div>

@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 import json
 import logging
@@ -20,11 +21,8 @@ from django.core import signing
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import BooleanField
 from django.db.models import ForeignObjectRel
-from django.db.models import ManyToManyRel
+from django.db.models import Model as DjangoModel
 from django.db.models import ObjectDoesNotExist
-from django.db.models import OuterRef
-from django.db.models import Q
-from django.db.models import Subquery
 from django.db.models import Value
 from django.db.transaction import atomic
 from django.forms import model_to_dict
@@ -32,7 +30,6 @@ from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
-from django.http import HttpResponseNotAllowed
 from django.http import JsonResponse
 from django.http import StreamingHttpResponse
 from django.http.response import HttpResponse
@@ -45,36 +42,39 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.http import urlsplit
+from django.views.decorators.http import require_http_methods
 from django.views.generic import View
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
-from guardian.shortcuts import get_perms
-from guardian.shortcuts import remove_perm
 from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
 from core.views import ensure_project_rights
-from ports.forms import GridFormFactory
 from ports.models import update_scenario_post_save
 
 from . import models  # needed to get all component classes
 from . import tasks
 from .authorization import has_area_authorization_from_uuids
 from .authorization import has_authorization
+from .constants import USE_TEMPLATE
 from .create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from .forms import AreaItemFormFactory
 from .forms import ChangeProjectForm
 from .forms import ChangeScenarioForm
+from .forms import ChangeTimeseriesForm
 from .forms import CreateProjectForm
 from .forms import CreateScenarioForm
+from .forms import EnergyCostForm
 from .forms import ScenarioItemFormFactory
 from .forms import TemplateFormFactory
 from .forms import TimeseriesUploadForm
+from .forms import get_timeseries_for_user
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
 from .models import ElectricComponent
 from .models import ElectricComponentTemplate
+from .models import EnergyCost
 from .models import Grid
 from .models import ItemTemplate
 from .models import Load
@@ -90,6 +90,71 @@ from .util import get_template_model
 from .util import get_template_scenarios
 
 logger = logging.getLogger(__name__)
+
+
+def merge_instances_data(instances) -> dict:
+    """Cast instances to dict and only keep key/value pairs for keys which share a single value
+
+    Foreign keys are cast to internal_ids.
+    Only works on instances of the same Modeltype.
+    If instance do not hold the cached objects with internal_ids, all instances are refetched in a single query
+
+    If Grid should ever be cast to dict, make sure to prefetch the related objects if they are not cached
+    """
+    exclude = {"manager", "updated_user"}
+    # internal_id is on the ForeignKey objects. If the instance does not hold this data yet,
+    # iterating over all instances fetches them n times
+
+    Model: DjangoModel = instances[0]._meta.model
+    related_fields = [
+        field
+        for field in Model._meta.concrete_fields
+        if field.is_relation and field.name not in exclude
+    ]
+    refetch = False
+    for instance in instances:
+        assert instance._meta.model == Model
+        for field in related_fields:
+            if field.name not in instance._state.fields_cache and getattr(instance, field.attname):
+                refetch = True
+    if refetch:
+        instances_w_all_selected = Model.objects.filter(
+            id__in=[x.id for x in instances]
+        ).select_related(*[f.name for f in related_fields])
+
+    else:
+        instances_w_all_selected = instances
+
+    instances_w_all_selected = list(instances_w_all_selected)
+    merged_data = model_to_dict_w_internal_id(instances_w_all_selected[0], exclude=exclude)
+    for x in instances_w_all_selected[1:]:
+        data = model_to_dict_w_internal_id(x, exclude=exclude)
+        for key, value in data.items():
+            if merged_data.get(key) != value and key in merged_data:
+                del merged_data[key]
+    return merged_data
+
+
+def generate_template_data(template_internal_id, Model, user, Form):
+    template_data = {}
+    template_model = get_template_model(Model)
+    if template := template_model.objects.filter(
+        manager=user, internal_id=template_internal_id
+    ).first():
+        for field in Form.base_fields:
+            if field in (
+                "manager",
+                "updated_user",
+                "internal_id",
+                "id",
+                "created_at",
+                "updated_at",
+            ):
+                continue
+            template_value = vars(template).get(field)
+            if template_value is not None:
+                template_data[field] = template_value
+    return template_data
 
 
 def debug_switch_user(request, username: str):
@@ -119,6 +184,72 @@ def patch_area(request, scenario_internal_id: UUID):
     return HttpResponse(b"failed")
 
 
+def get_scenario_updates(scenario, user, last_update, last_change):
+    created_items = []
+    changed_items = []
+    deleted_items = []
+    related_areas = set()
+    port_models = apps.get_app_config("ports").get_models()
+    for Model in port_models:
+        base_filter = {}
+        if Model in [Scenario, ChangedItem]:
+            continue
+        if not issubclass(Model, ScenarioItem):
+            continue
+        if Model in [DeletedItem]:
+            filter = {
+                "created_at__gt": last_update,
+                "created_at__lte": last_change,
+            }
+            items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
+            for i in items:
+                Model = i.content_type.model_class()
+                data = model_to_dict(i)
+                del data["content_type"]
+                cleaned_data = {}
+                for key, value in data.items():
+                    cleaned_data[Model._meta.get_field(key).attname] = value
+                model_item = Model(**cleaned_data)
+                deleted_items.append(model_item)
+            continue
+        if Model == Timeseries:
+            # Updates for Timeseries are only sent for the manager
+            # Otherwise new Timeseries would appear for other user
+            base_filter = {"manager": user}
+
+        # created items
+        filter = {"created_at__gt": last_update, "created_at__lte": last_change}
+        filter |= base_filter
+        base_qs = Model.objects.filter(scenario=scenario)
+        model_has_area = hasattr(Model, "area")
+        if model_has_area:
+            base_qs = base_qs.prefetch_related("area")
+        new_created_items = list(base_qs.filter(**filter))
+        created_items.extend(new_created_items)
+
+        # changed items
+        filter = {
+            "created_at__lte": last_update,
+            "updated_at__gt": last_update,
+            "updated_at__lte": last_change,
+        }
+        filter |= base_filter
+
+        new_changed_items = list(base_qs.filter(**filter))
+        changed_items.extend(new_changed_items)
+        if model_has_area:
+            for item in new_changed_items + new_created_items:
+                related_areas.add(item.area)
+
+    # add areas which are not part of the update list
+    updated_set = {i.internal_id for i in created_items + changed_items}
+    for related_area in related_areas:
+        if related_area.internal_id not in updated_set:
+            changed_items.append(related_area)
+
+    return created_items, changed_items, deleted_items
+
+
 def changes_count(request, scenario_internal_id: UUID):
     """Get the count of changes as partial update
 
@@ -129,62 +260,16 @@ def changes_count(request, scenario_internal_id: UUID):
         return HttpResponseForbidden("No access")
     context = {}
     last_update = request.GET.get("updated_at")
-    updated_at = scenario.items_updated_at
-    context["updated_at"] = updated_at
+    last_change = scenario.items_updated_at
+    context["updated_at"] = last_change
     context["changed"] = False
     if last_update:
         last_update = datetime.fromisoformat(last_update)
         if scenario.items_updated_at > last_update:
             context["changed"] = True
-            created_items = []
-            changed_items = []
-            deleted_items = []
-            related_areas = set()
-            port_models = apps.get_app_config("ports").get_models()
-            for Model in port_models:
-                if Model in [Scenario, ChangedItem]:
-                    continue
-                if not issubclass(Model, ScenarioItem):
-                    continue
-                if Model in [DeletedItem]:
-                    filter = {
-                        "created_at__gt": last_update,
-                        "created_at__lte": updated_at,
-                    }
-                    items = list(DeletedItem.objects.filter(scenario=scenario).filter(**filter))
-                    for i in items:
-                        Model = i.content_type.model_class()
-                        data = model_to_dict(i)
-                        del data["content_type"]
-                        cleaned_data = {}
-                        for key, value in data.items():
-                            cleaned_data[Model._meta.get_field(key).attname] = value
-                        model_item = Model(**cleaned_data)
-                        deleted_items.append(model_item)
-                    continue
-                filter = {"created_at__gt": last_update, "created_at__lte": updated_at}
-                base_qs = Model.objects.filter(scenario=scenario)
-                model_has_area = hasattr(Model, "area")
-                if model_has_area:
-                    base_qs = base_qs.prefetch_related("area")
-                new_created_items = list(base_qs.filter(**filter))
-                created_items.extend(new_created_items)
-                filter = {
-                    "created_at__lte": last_update,
-                    "updated_at__gt": last_update,
-                    "updated_at__lte": updated_at,
-                }
-                new_changed_items = list(base_qs.filter(**filter))
-                changed_items.extend(new_changed_items)
-                if model_has_area:
-                    for item in new_changed_items + new_created_items:
-                        related_areas.add(item.area)
-
-            # add areas which are not part of the update list
-            updated_set = {i.internal_id for i in created_items + changed_items}
-            for related_area in related_areas:
-                if related_area.internal_id not in updated_set:
-                    changed_items.append(related_area)
+            created_items, changed_items, deleted_items = get_scenario_updates(
+                scenario, request.user, last_update, last_change
+            )
 
             base_qs = Area.objects.filter(scenario=scenario)
             allowed_details_ids = set(
@@ -209,7 +294,7 @@ def changes_count(request, scenario_internal_id: UUID):
                         item.has_authorization = True
 
             # fetch areas again with added related_sets. this might be not performant for large queries
-            # but since changes are emitted regularly, id count is expected to be small
+            # but since changes are emitted regularly, the count is expected to be small
             area_ids = []
             for item in changed_items + created_items:
                 if isinstance(item, Area):
@@ -396,7 +481,7 @@ def prefetch_all_related(qs):
     related_lookups = [
         field.get_accessor_name()
         for field in model._meta.get_fields()
-        if isinstance(field, ForeignObjectRel | ManyToManyRel)
+        if isinstance(field, ForeignObjectRel)
         and field.auto_created
         and not field.hidden
         and issubclass(field.related_model, ElectricComponent)
@@ -424,6 +509,13 @@ def get_home_context(user: User, scenario: Scenario):
     allowed_details_ids_union = allowed_details_ids.union(managed_area_ids)
 
     electric_components = dict()
+
+    grids = (
+        Grid.objects.filter(scenario=scenario)
+        .prefetch_related("areas")
+        .select_related("connected_to", "load")
+    )
+    data["grids"] = grids
 
     for m in apps.get_models():
         if issubclass(m, ElectricComponent):
@@ -472,6 +564,12 @@ def get_home_context(user: User, scenario: Scenario):
     ]
     data["template_models"] = template_models
     data["item_templates"] = get_user_templates(user)
+
+    data["profile_timeseries"] = get_timeseries_for_user(user, scenario)
+    data["profile_upload_form"] = TimeseriesUploadForm()
+
+    energy_cost, _ = EnergyCost.get_or_create_for_scenario(scenario)
+    data["energy_cost_form"] = EnergyCostForm(instance=energy_cost)
 
     return data
 
@@ -756,6 +854,7 @@ class ObjectTemplatesView(View):
         )
 
     def get_basic_context(self, request, *args, **kwargs) -> dict:
+        """Get context data which is used across request verbs"""
         context = {
             "Model": self.Model,
             "model_name": self.Model._meta.model_name,
@@ -768,6 +867,7 @@ class ObjectTemplatesView(View):
     def setup_view(self, request, *args, **kwargs) -> None:
         self.Model = apps.get_model("ports", kwargs["model"])
         assert issubclass(self.Model, ItemTemplate)
+        assert self.Model != EnergyCost
 
         self.data = request.GET
         if request.method == "POST":
@@ -788,12 +888,6 @@ class ObjectTemplatesView(View):
 
         self.Form = TemplateFormFactory(self.Model)
         self.template = "ports/partials/detail_sidebar/detail_sidebar_component_template.html"
-
-    def adjust_form(self):
-        raise NotImplementedError(
-            "Adjust form is currently needed for Area and Load objects. "
-            "Both do not have templates and therefore no form adjustment is needed"
-        )
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
@@ -838,9 +932,7 @@ class ObjectTemplatesView(View):
             self.instance = self.Model.objects.create(
                 manager=request.user, name=f"{self.Model.verbose_name()} {count}"
             )
-            self.Form = TemplateFormFactory(
-                self.Model,
-            )
+            self.Form = TemplateFormFactory(self.Model)
             self.context["instance"] = self.instance
             self.context["internal_id"] = str(self.instance.internal_id)
             self.context["form"] = self.Form(
@@ -991,6 +1083,7 @@ class DetailsView(View):
         )
 
     def get_basic_context(self, request, *args, **kwargs) -> dict:
+        """Get context data which is used across request verbs"""
         context = {
             "scenario": self.scenario,
             "Model": self.Model,
@@ -1001,6 +1094,9 @@ class DetailsView(View):
             "instances": self.instances,
             "electric_models": [m for m in apps.get_models() if issubclass(m, ElectricComponent)],
         }
+        if self.Model == Load:
+            context["upload_form"] = TimeseriesUploadForm()
+
         if issubclass(self.Model, ElectricComponent):
             template_model = get_template_model(self.Model)
             context["templates"] = template_model.objects.filter(manager=request.user)
@@ -1018,7 +1114,11 @@ class DetailsView(View):
         self.data = request.GET
         if request.method == "POST":
             self.data = request.POST
-        internal_ids = self.data.get("internal_ids", "").split(",")
+            internal_ids = self.data.get("internal_ids", "").split(",")
+        else:
+            internal_ids = request.GET.getlist("internal_id") or self.data.get(
+                "internal_ids", ""
+            ).split(",")
         # These instances should be shown or posted.
         self.internal_ids = [] if internal_ids[0] == "" else internal_ids
         self.internal_id = self.data.get("internal_id")
@@ -1043,35 +1143,18 @@ class DetailsView(View):
             self.instance = self.Model.objects.filter(
                 scenario=self.scenario, internal_id=self.internal_id
             ).first()
-        self.Form = ScenarioItemFormFactory(self.Model, multi=self.multi, scenario=self.scenario)
-
-        # Adjust the form
-        instance = self.instances[0] if self.multi else self.instance
-        if not self.created and instance:
-            self.Form = self.adjust_form(instance)
+        # bulk forms have no instance, so the area type is taken from the first selected item
+        # when creating multiple instances multi is true but instances is empty
+        first_instance = self.instances[0] if (self.multi and not self.created) else self.instance
+        self.Form = ScenarioItemFormFactory(
+            self.Model,
+            self.scenario,
+            request.user,
+            multi=self.multi,
+            instance=self.instance,
+            area_type=getattr(first_instance, "area_type", None),
+        )
         self.template = self.get_template()
-
-    def adjust_form(self, instance):
-        form_kwargs = {"multi": self.multi}
-        if self.Model == Load:
-            templates = self.get_loadtemplates_for_user(
-                self.request.user, self.scenario, self.instance
-            )
-            form_kwargs["templates_queryset"] = templates
-        return self.Model.adjust_Form(self.Form, instance=instance, **form_kwargs)
-
-    @staticmethod
-    def get_loadtemplates_for_user(user: User, scenario: Scenario, instance: Load | None = None):
-        # TODO: should the timeseries stay bound to the scenario OR
-        # be a TimeseriesTemplate without being bound to the scenario instead?
-        # When a LoadTemplate is used in a different scenario it needs to be handled!
-        # E.g. by copying timeseries to new scenario
-        templates = Timeseries.objects.filter(manager=user, scenario=scenario)
-        if instance and instance.template:
-            templates = Timeseries.objects.filter(
-                Q(manager=user, scenario=scenario) | Q(id=instance.template_id)
-            )
-        return templates
 
     def get_template(self) -> str:
         suffix = ""
@@ -1080,7 +1163,8 @@ class DetailsView(View):
         if self.Model == Area:
             template = f"ports/partials/detail_sidebar/detail_sidebar_main{suffix}.html"
         elif self.Model == Grid:
-            template = "ports/partials/create_grid_modal.html"
+            # grids are rendered directly as c-component
+            template = "ports/partials/grid_form_modal.html"
         elif self.Model == Load:
             template = f"ports/partials/detail_sidebar/detail_sidebar_load_detail{suffix}.html"
         elif issubclass(self.Model, ElectricComponent):
@@ -1108,8 +1192,6 @@ class DetailsView(View):
             return response
         self.context = self.get_basic_context(request, *args, **kwargs)
         if self.created:
-            if self.Model == Area:
-                self.context["area_type"] = self.data.get("area_type")
             return self.create(request, *args, **kwargs)
         elif self.multi:
             if request.method == "POST":
@@ -1122,7 +1204,11 @@ class DetailsView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_area_context(self) -> dict:
-        # pass queryset to frontend to create links to load forms
+        """Get the context for a single area detail view.
+
+        Multi area views do not show their components
+        """
+        # pass queryset to frontend to create links to loads and energy components
         context = {}
         context["loads"] = Load.objects.filter(area=self.instance)
         models = [m for m in apps.get_models() if issubclass(m, ElectricComponent)]
@@ -1148,55 +1234,19 @@ class DetailsView(View):
 
         raise Http404("This instance does not exist")
 
-    def _get_initial_grids(self, area: Area | None = None, areas=None):
-        assert area or areas
-        initial = {}
-        for gtype in Grid.CarrierChoices:
-            if area:
-                if grids := Grid.objects.filter(areas=area, carrier=gtype.value):
-                    if grids.count() > 1:
-                        raise Exception("Only one grid per grid type and area allowed")
-                    initial["grid_" + gtype] = grids.first()
-
-            else:
-                # annotate each area, if it has a grid of this type, with this grids id
-                # Subquery will fail if more than 1 grid_id is found per area and carrier type
-                # distinct casts the ids to a set which may contain None.
-                grid_ids = (
-                    areas.annotate(
-                        grid_id=Subquery(
-                            Grid.areas.through.objects.filter(
-                                area_id=OuterRef("pk"),
-                                grid__carrier=gtype.value,
-                            ).values("grid_id")
-                        )
-                    )
-                    .order_by()
-                    .values_list("grid_id", flat=True)
-                    .distinct()
-                )
-                if len(grid_ids) == 1 and grid_ids[0]:
-                    initial["grid_" + gtype] = Grid.objects.get(id=grid_ids[0])
-        return initial
-
     def get(self, request, *args, **kwargs):
         if not has_authorization(self.instance, request.user, "details"):
             return HttpResponse("You are not allowed to see details")
 
         initial = {}
-        if self.Model not in [Area, Load] and not issubclass(self.Model, ElectricComponent):
+        if self.Model not in [Area, Load, Grid] and not issubclass(self.Model, ElectricComponent):
             raise Http404("This model does not exist or is not implemented yet")
         if self.Model == Area:
-            group = Group.objects.get(name=self.scenario.project.group_name())
-            # If Object permissions are queried multiple times consider using a
-            # guardian.core.ObjectPermissionChecker
-            initial = {"is_public": "details" in get_perms(group, self.instance)}
-            initial_grids = self._get_initial_grids(area=self.instance)
-            initial |= initial_grids
             self.context |= self.get_area_context()
-        elif self.Model == Load:
-            self.context["upload_form"] = TimeseriesUploadForm()
-        elif issubclass(self.Model, ElectricComponent):
+        elif self.Model == Grid:
+            self.context |= self.get_grid_create_context(request, self.instance)
+
+        elif issubclass(self.Model, ElectricComponent) or self.Model == Load:
             # nothing to do here
             # ElectricComponent does not reference other models and does not need
             # further data injected
@@ -1205,30 +1255,13 @@ class DetailsView(View):
             raise NotImplementedError("No template defined for this Model")
 
         template_data = {}
-        if template_internal_id := request.GET.get("template"):
-            template_model = get_template_model(self.Model)
-            if template := template_model.objects.filter(
-                manager=request.user, internal_id=template_internal_id
-            ).first():
-                # get template data for instance
-                # TODO: Refactor into function
-                for field in self.Form.base_fields:
-                    if field in (
-                        "manager",
-                        "updated_user",
-                        "internal_id",
-                        "id",
-                        "created_at",
-                        "updated_at",
-                    ):
-                        continue
-                    template_value = vars(template).get(field)
-                    if template_value is not None:
-                        template_data[field] = template_value
-                        # mark the fields populated by the templated for styling/indicating
-                        self.Form.base_fields[field].widget.attrs["data-template-value"] = (
-                            template_value
-                        )
+        if template_internal_id := request.GET.get(USE_TEMPLATE):
+            template_data = generate_template_data(
+                template_internal_id, self.Model, request.user, self.Form
+            )
+            for field, template_value in template_data.items():
+                # mark the fields populated by the template for styling/indicating
+                self.Form.base_fields[field].widget.attrs["data-template-value"] = template_value
 
         initial.update(template_data)
         self.context["form"] = self.Form(initial=initial, instance=self.instance)
@@ -1236,35 +1269,126 @@ class DetailsView(View):
         response["HX-Trigger"] = "map-redraw"
         return response
 
+    def get_grid_create_context(self, request, instance: Grid | None = None) -> dict:
+        """Helper to get the context to create the grid modal
+
+        Unlike other views, the grid is only created after the save interaction and
+        not created as an empty shell. This needs special handling in comparison to other
+        detail views.
+        Handles all cases,
+        GET with instance (refresh)
+        GET without instance (get create view)
+        POST with instance (update)
+        POST without instance (create)
+
+
+        Returns only the dict of context. Do not mutate state of self to avoid confusion
+        """
+        context = {}
+        create_context = {
+            "title": "Netzanschluss erstellen",
+            "submit_label": "Anschluss erstellen",
+            "submit_url": reverse(
+                "ports:details_create",
+                kwargs={
+                    "scenario_internal_id": str(self.scenario.internal_id),
+                    "model": "grid",
+                },
+            ),
+        }
+        if not instance:
+            context |= create_context
+        else:
+            context |= {
+                "title": "Netzanschluss bearbeiten",
+                "submit_label": "Anschluss bearbeiten",
+                "submit_url": reverse(
+                    "ports:details",
+                    kwargs={
+                        "scenario_internal_id": str(self.scenario.internal_id),
+                        "model": "grid",
+                    },
+                    query={"internal_id": instance.internal_id},
+                ),
+            }
+
+        context["dialog_id"] = "grid-modal"
+        context["area_internal_ids"] = request.POST.get("area_internal_ids") or request.GET.get(
+            "area_internal_ids", ""
+        )
+        return context
+
     def create(self, request, *args, **kwargs):
         if self.instance:
             return HttpResponseBadRequest(
                 b"The creation of an object is not possible with an instance"
             )
 
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
+            return response
+
         # do NOT pass the request.POST directly into a query
         # which could lead to unauthorized injections
         # ScenarioItem.create_new sanitizes input for allowed attributes
         data = request.POST.dict()
+        extra_trigger = None
         if self.Model == Area:
             new_instance = Area.create_new(self.scenario, request.user, **data)
             new_instance.save()
-            new_instance.has_authorization = True
-            self.context["instance"] = new_instance
-
-            # Created areas are selected immediately
-            self.context["createItemCallback"] = "this.click()"
-            self.context["geom_form"] = AreaItemFormFactory()(instance=new_instance)
+            # empty response. The update is triggered through the change_event
+            # this streamlines the list updates, without having to consolidate two sources
+            # of updates. All updates of the lists are done via
+            # ports/partials/update_delete_create_scenario_item.html and changes_count
+            return HttpResponse()
         elif self.Model == Grid:
-            form = self.Form(data=request.POST)
-            if form.is_valid():
+            # validate the form if posted and create context for grid_modal
+            form = self.Form(data=request.POST if request.method == "POST" else None)
+            form_valid = form.is_valid()
+            grid_context = self.get_grid_create_context(request, None)
+            if request.method == "POST" and form_valid:
+                area_internal_ids = [
+                    i for i in request.POST.get("area_internal_ids", "").split(",") if i
+                ]
+                if area_internal_ids and not has_area_authorization_from_uuids(
+                    area_internal_ids,
+                    request.user,
+                    "details",
+                    scenario=self.scenario,
+                    model=Area,
+                ):
+                    return HttpResponseForbidden("Sie haben keine Befugnis für diese Flächen")
                 instance = form.save(commit=False)
+                instance.manager = request.user
                 instance.scenario = self.scenario
                 instance.save()
 
+                if area_internal_ids:
+                    area_or_areas = Area.objects.filter(
+                        scenario=self.scenario, internal_id__in=area_internal_ids
+                    )
+                    Grid.areas.through.objects.filter(
+                        area__in=area_or_areas, grid__carrier=instance.carrier
+                    ).delete()
+                    instance.areas.add(*area_or_areas)
+                    # Trigger a refresh of the area, so the selects contain the new grid
+                    extra_trigger = f"refresh-{area_internal_ids[0]}"
+
+                self.instance = instance
+                self.context["instance"] = instance
+                # grid form with an instance needs a different form than the create form
+                self.Form = ScenarioItemFormFactory(
+                    self.Model, self.scenario, request.user, instance=instance
+                )
+                form = self.Form(data=request.POST, instance=instance)
+
+                # validate the form if posted and create context for grid_modal
+                grid_context = self.get_grid_create_context(request, instance)
+
+            self.context["form"] = form
+            self.context |= grid_context
+
         elif self.Model == Load or issubclass(self.Model, ElectricComponent):
-            if self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
             # Handle single creation as well as creation from batch view
             area_internal_ids = self.request.POST.get("area_internal_ids").split(",")
             data["area_internal_ids"] = area_internal_ids
@@ -1284,15 +1408,18 @@ class DetailsView(View):
             new_items = self.Model.create_new(self.scenario, request.user, **data)
             self.multi = len(area_internal_ids) > 1
             self.Form = ScenarioItemFormFactory(
-                self.Model, multi=self.multi, scenario=self.scenario
+                self.Model,
+                self.scenario,
+                request.user,
+                multi=self.multi,
             )
             self.instances = self.Model.objects.bulk_create(new_items)
             # Trigger the change event for the scenario
             assert self.instances[0]
             update_scenario_post_save(self.Model, self.instances[0])
+            data = {}
             if not self.multi:
                 self.instance = self.instances[0]
-                self.Form = self.adjust_form(self.instance)
                 self.instances = []
                 self.instance.has_authorization = True
                 self.context["instance"] = self.instance
@@ -1302,7 +1429,6 @@ class DetailsView(View):
                 # For creation this is decided here, since self.multi might have been overwritten
                 self.template = self.get_template()
                 self.context["instances"] = self.instances
-                self.Form = self.adjust_form(self.instances[0])
                 for item in self.instances:
                     item.has_authorization = True
 
@@ -1310,9 +1436,11 @@ class DetailsView(View):
                 self.context["internal_ids"] = ",".join(
                     [str(x.internal_id) for x in self.instances]
                 )
+                data = {"internal_ids": self.context["internal_ids"]}
                 self.context["area_internal_ids"] = ",".join(area_internal_ids)
 
             self.context["form"] = self.Form(
+                initial=data,
                 instance=self.instance,
             )
         else:
@@ -1320,10 +1448,16 @@ class DetailsView(View):
 
         self.context["created"] = True
         response = self.details_render(self.request, self.template, self.context)
-        response["HX-Trigger"] = "map-redraw"
+        triggers = ["map-redraw"]
+        if extra_trigger:
+            triggers.append(extra_trigger)
+        response["HX-Trigger"] = ", ".join(triggers)
         return response
 
     def delete(self, request, *args, **kwargs):
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
+            return response
         if not has_authorization(self.instance, request.user, "delete"):
             response = HttpResponse("You are not allowed to delete")
             response["HX-Reselect"] = "unset"
@@ -1356,56 +1490,27 @@ class DetailsView(View):
             return response
 
         if self.Model == Area or issubclass(self.Model, ElectricComponent):
-            merged_data = model_to_dict(self.instances[0])
-            if self.Model == Area:
-                initial_grids = self._get_initial_grids(areas=self.instances)
-                merged_data |= initial_grids
-            for x in self.instances:
-                data = model_to_dict(x)
-                for key, value in data.items():
-                    if merged_data.get(key) != value and key in merged_data:
-                        del merged_data[key]
-
+            merged_data = merge_instances_data(self.instances)
             template_data = {}
-            if template_internal_id := request.GET.get("template"):
-                template_model = get_template_model(self.Model)
-                if template := template_model.objects.filter(
-                    manager=request.user, internal_id=template_internal_id
-                ).first():
-                    # get template data for instance
-                    # TODO: Refactor into function
-                    for field in self.Form.base_fields:
-                        if field in (
-                            "manager",
-                            "updated_user",
-                            "internal_id",
-                            "id",
-                            "created_at",
-                            "updated_at",
-                        ):
-                            continue
-                        template_value = vars(template).get(field)
-
-                        if template_value is not None:
-                            template_data[field] = template_value
-                            # mark the fields populated by the template for styling/indicating
-                            self.Form.base_fields[field].widget.attrs["data-template-value"] = (
-                                template_value
-                            )
+            if template_internal_id := request.GET.get(USE_TEMPLATE):
+                template_data = generate_template_data(
+                    template_internal_id, self.Model, request.user, self.Form
+                )
+                for field, template_value in template_data.items():
+                    # mark the fields populated by the template for styling/indicating
+                    self.Form.base_fields[field].widget.attrs["data-template-value"] = (
+                        template_value
+                    )
 
             merged_data.update(template_data)
+            merged_data["internal_ids"] = ",".join(self.internal_ids)
 
-            form = self.Form(data=merged_data)
+            form = self.Form(initial=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
         elif self.Model == Load:
-            self.context["upload_form"] = TimeseriesUploadForm()
-            merged_data = model_to_dict_w_internal_id(self.instances[0])
-            for x in self.instances:
-                data = model_to_dict_w_internal_id(x)
-                for key, value in data.items():
-                    if merged_data.get(key) != value and key in merged_data:
-                        del merged_data[key]
+            merged_data = merge_instances_data(self.instances)
+
             self.context["area_internal_ids"] = ",".join(
                 str(y)
                 for y in (
@@ -1415,6 +1520,7 @@ class DetailsView(View):
                 )
             )
 
+            merged_data["internal_ids"] = ",".join(self.internal_ids)
             form = self.Form(initial=merged_data)
             self.context["form"] = form
             return self.details_render(self.request, self.template, self.context)
@@ -1429,6 +1535,10 @@ class DetailsView(View):
                 b"The patching of multiple objects is not possible with an instance"
             )
 
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
+            return response
+
         if not has_area_authorization_from_uuids(
             self.internal_ids, request.user, "details", self.scenario, self.Model
         ):
@@ -1437,8 +1547,7 @@ class DetailsView(View):
             response["HX-Reswap"] = "innerHTML"
             return response
         try:
-            # form = self.Form(data=request.POST)
-            form = self.adjust_form(self.instances[0])(data=request.POST)
+            form = self.Form(data=request.POST)
             self.context["form"] = form
             if form.is_valid():
                 self.context["instances"] = form.save()
@@ -1450,8 +1559,6 @@ class DetailsView(View):
             traceback.print_exc()
 
         if self.Model == Load or issubclass(self.Model, ElectricComponent):
-            if self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
             # Multi post request for Load needs references to areas
             self.context["area_internal_ids"] = ",".join(
                 str(y)
@@ -1468,10 +1575,15 @@ class DetailsView(View):
         return response
 
     def post(self, request, *args, **kwargs):
-        if self.Model not in [Area, Load] and not issubclass(self.Model, ElectricComponent):
+        if self.Model not in [Area, Load, Grid] and not issubclass(self.Model, ElectricComponent):
             raise NotImplementedError("This model is not implemented for posting yet")
         if not self.instance:
             return HttpResponseBadRequest(b"The patching of an object needs an instance")
+
+        if not has_authorization(self.scenario.project, request.user, "details"):
+            response = HttpResponseForbidden("You are not allowed to edit this Project.")
+            return response
+
         if not has_authorization(self.instance, request.user, "details"):
             response = HttpResponse("You are not allowed to change this item")
 
@@ -1482,38 +1594,22 @@ class DetailsView(View):
             form = self.Form(data=request.POST, instance=self.instance)
             if self.Model == Area:
                 self.context |= self.get_area_context()
-            elif self.Model == Load:
-                self.context["upload_form"] = TimeseriesUploadForm()
+            elif self.Model == Grid:
+                self.context |= self.get_grid_create_context(request, self.instance)
 
             self.context["form"] = form
             if form.is_valid():
                 instance = form.save()
-                self.context["item"] = instance
-                group = Group.objects.get(name=self.scenario.project.group_name())
-                if self.Model == Area:
-                    if form.cleaned_data.get("is_public"):
-                        assign_perm("details", group, form.instance)
-                    else:
-                        remove_perm("details", group, form.instance)
+                self.instance = instance
+                # are both needed?
+                self.context["instance"] = instance
 
-                    # Delete previous assignment of area -> grid
-                    # All connections are recreated next based on the current selection
-                    Grid.areas.through.objects.filter(area=form.instance).delete()
-                    grid_areas = []
-                    for key, value in form.cleaned_data.items():
-                        if "grid" in key and isinstance(value, Grid):
-                            grid_area = Grid.areas.through(
-                                area_id=form.instance.id, grid_id=value.id
-                            )
-                            # Add the area to the selected grid
-                            grid_areas.append(grid_area)
-                    Grid.areas.through.objects.bulk_create(grid_areas)
-
-                elif self.Model == Load:
-                    # refresh the form, with the newly created instance.
-                    # For Load forms this adjusts the selectable Timeseries
-                    form = self.adjust_form(instance)(data=request.POST, instance=instance)
-                    self.context["form"] = form
+                # refresh the form, with the newly created instance.
+                self.Form = ScenarioItemFormFactory(
+                    self.Model, self.scenario, request.user, instance=instance
+                )
+                form = self.Form(data=request.POST, instance=instance)
+                self.context["form"] = form
 
                 self.context["success"] = "Erfolgreich gespeichert"
             else:
@@ -1552,8 +1648,10 @@ def create_project(request):
                         new_scenario = duplicate_scenario(scenario, request.user)
                     else:
                         new_scenario = Scenario(manager=request.user, name="Basis-Szenario")
+
                     new_scenario.project = new_project
                     new_scenario.save()
+                    ec, created = EnergyCost.get_or_create_for_scenario(new_scenario)
 
                     # FIXME: If a scenario is copied into a new project, all users should have access to the new project
                     # Must make sure not to overwrite area access to new scenario/project manager
@@ -1572,6 +1670,9 @@ def create_project(request):
             except:  # noqa
                 # something inside the transaction failed
                 success = False
+                context["errors"] = ["Ein unerwarteter Fehler ist aufgetreten."]
+        else:
+            context["errors"] = form.errors
         context["form"] = form
         context["success"] = success
     return render(request, "core/partials/create_project.html", context)
@@ -1591,8 +1692,11 @@ def create_scenario(request, scenario_internal_id: UUID):
         success = form.is_valid()
         if success:
             new_scenario = form.save()
+            EnergyCost.get_or_create_for_scenario(new_scenario)
             redirect_url = reverse("ports:home", query={"internal_id": new_scenario.internal_id})
             context["redirect_url"] = redirect_url
+        else:
+            context["errors"] = form.errors
         context["form"] = form
         context["success"] = success
 
@@ -1646,10 +1750,15 @@ def remove_project_invite(request: HttpRequest, signed_invite_id: str) -> HttpRe
 
 
 class ApiView(View):
-    """Handle delete and duplicate for Project and Scenario, returning JSON responses."""
+    """This view handles crud for non ScenarioItems and 'special' methods like duplication
+
+    Handle delete and duplicate for Project and Scenario, returning JSON responses.
+    Action enhances dispatch to more options than request methods/verbs.
+    Should only be used if request does not own its own template, e.g. single buttons in different context
+    """
 
     action = None
-    ALLOWED_MODELS = (Project, Scenario, Grid)
+    ALLOWED_MODELS = (Project, Scenario, Grid, Timeseries)
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -1664,20 +1773,36 @@ class ApiView(View):
                 status=400,
             )
         if self.Model not in self.ALLOWED_MODELS:
-            return JsonResponse({"success": False, "message": "Model not supported"}, status=400)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Dieses Model unterstützt diese Funktion nicht.",
+                },
+                status=400,
+            )
+        if self.Model == Grid and self.action != "remove_carrier":
+            # Grid crud is done in the details view
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Dieses Model unterstützt diese Funktion nicht.",
+                },
+                status=400,
+            )
 
-        if self.action in ("create", "remove_carrier"):
+        if self.action == "remove_carrier":
             scenario_internal_id = kwargs["scenario_internal_id"]
             scenario = Scenario.objects.get(internal_id=scenario_internal_id)
             if not has_authorization(scenario.project, request.user, "details"):
                 return JsonResponse(
                     {"success": False, "message": "Authorization required"}, status=403
                 )
-            if self.action == "create":
-                return self.create(request, *args, **kwargs, scenario=scenario)
             return self.remove_carrier(request, *args, **kwargs, scenario=scenario)
 
-        self.instance = get_object_or_404(self.Model, internal_id=kwargs["internal_id"])
+        filter = {"internal_id": kwargs["internal_id"]}
+        if kwargs.get("scenario_internal_id"):
+            filter["scenario__internal_id"] = kwargs["scenario_internal_id"]
+        self.instance = get_object_or_404(self.Model, **filter)
         is_authorized = self._check_permission(request)
         if not is_authorized:
             return JsonResponse({"success": False, "message": "Authorization required"}, status=403)
@@ -1685,41 +1810,6 @@ class ApiView(View):
         if self.action == "duplicate":
             return self.duplicate(request, *args, **kwargs)
         return super().dispatch(request, *args, **kwargs)
-
-    def create(self, *args, scenario, **kwargs):
-        if self.Model == Grid:
-            # if area/s are provided check if the user is authorized
-            areas_internal_ids = self.request.GET.get("areas") and self.request.GET.get(
-                "areas"
-            ).split(",")
-            if areas_internal_ids and not has_area_authorization_from_uuids(
-                areas_internal_ids,
-                self.request.user,
-                "details",
-                scenario=scenario,
-                model=Area,
-            ):
-                return JsonResponse(
-                    {"success": False, "message": "Authorization required"}, status=403
-                )
-            form = GridFormFactory()(data=self.request.POST)
-            if form.is_valid():
-                instance = form.save(commit=False)
-                instance.scenario = scenario
-                instance.save()
-                response = JsonResponse({"success": True, "message": "Created"}, status=200)
-                if areas_internal_ids:
-                    area_or_areas = Area.objects.filter(
-                        scenario=scenario, internal_id__in=areas_internal_ids
-                    )
-                    Grid.areas.through.objects.filter(
-                        area__in=area_or_areas, grid__carrier=instance.carrier
-                    ).delete()
-                    instance.areas.add(*area_or_areas)
-                    # Trigger a refresh of the area, so the selects contain the new grid
-                    response["HX-Trigger"] = f"refresh-{areas_internal_ids[0]}"
-                return response
-        return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
     def remove_carrier(self, *args, scenario, **kwargs):
         if self.Model != Grid:
@@ -1755,6 +1845,13 @@ class ApiView(View):
                 is_authorized = has_authorization(self.instance, request.user, "details")
             case Scenario():
                 is_authorized = has_authorization(self.instance.project, request.user, "details")
+            case _:
+                is_authorized = has_authorization(
+                    self.instance.scenario.project, request.user, "details"
+                )
+                is_authorized = (
+                    has_authorization(self.instance, request.user, "details") and is_authorized
+                )
         return is_authorized
 
     def post(self, request, *args, **kwargs):
@@ -1763,6 +1860,11 @@ class ApiView(View):
                 form = ChangeProjectForm(data=request.POST, instance=self.instance)
             case Scenario():
                 form = ChangeScenarioForm(data=request.POST, instance=self.instance)
+            case _:
+                return JsonResponse(
+                    {"success": False, "message": "Model not supported"}, status=400
+                )
+
         if form.is_valid():
             form.save()
             return JsonResponse({"success": True, "message": "Changed"}, status=200)
@@ -1779,9 +1881,28 @@ class ApiView(View):
                         },
                         status=400,
                     )
+            case Timeseries():
+                if Load.objects.filter(timeseries=self.instance).exists():
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "Zeitreihe wird noch von einer Last verwendet",
+                        },
+                        status=400,
+                    )
+            case Project():
+                pass
+            case _:
+                return JsonResponse(
+                    {"success": False, "message": "Model not supported"}, status=400
+                )
+
         try:
             with atomic():
-                self.instance.safe_delete()
+                if getattr(self.instance, "safe_delete", None):
+                    self.instance.safe_delete()
+                else:
+                    self.instance.delete()
             success = True
         except:  # noqa
             success = False
@@ -1822,36 +1943,11 @@ class ApiView(View):
 
 
 @login_required()
-def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(b"This method only allows POST requests")
+@require_http_methods(["POST"])
+def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | None = None):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
-    Model = apps.get_model("ports", model)
-    assert Model in (Load,)
-
-    loads = None
-    # check if single or multi upload
-    if internal_load_id := request.GET.get("internal_id"):
-        multi = False
-        # single upload
-        load = get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)
-        authorized_load = has_authorization(load, request.user, "details")
-    elif internal_load_ids_str := request.POST.get("internal_ids"):
-        internal_load_ids = internal_load_ids_str.split(",")
-        multi = True
-        # multi upload
-        loads = Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids)
-        # Check authorization for all requested loads
-        authorized_load = True
-        for load in loads:
-            authorized_load = authorized_load and has_authorization(load, request.user, "details")
-        # Raise 404 if a single load is missing
-        if len(loads) != len(internal_load_ids):
-            raise Http404("Item does not exist")
-        load = loads[0]
-    else:
-        #  missing internal_id
-        return HttpResponseBadRequest("Missing load internal_id")
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("Sie haben keine Befugnis für dieses Projekt")
 
     def retargetForFailure(response):
         response["HX-Retarget"] = "#templateError"
@@ -1859,65 +1955,114 @@ def timeseries_upload_from_load(request, scenario_internal_id: UUID, model: str)
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    authorized_project = has_authorization(scenario.project, request.user, "view")
-    if not (authorized_load and authorized_project):
-        response = HttpResponseForbidden(b"You are not authorized for this function")
-        return retargetForFailure(response)
+    loads = []
+    if from_model:
+        Model = None
+        with contextlib.suppress(LookupError):
+            Model = apps.get_model("ports", from_model)
+        if Model != Load:
+            return HttpResponseBadRequest("Diesem Modell können keine Lasten hinzugefügt werden.")
 
-    # Early return if file form is invalid
-    file_form = TimeseriesUploadForm(request.POST, request.FILES)
-    if not file_form.is_valid():
-        errors = [e for field_errors in file_form.errors.values() for e in field_errors]
-        response = HttpResponse("".join(f"<p>{e}</p>" for e in errors))
-        return retargetForFailure(response)
-
-    # Save Loads so the current user input persists. Authorization is checked already
-    timeseries = DetailsView.get_loadtemplates_for_user(
-        request.user, scenario=scenario, instance=load
-    ).select_related("scenario")
-    Form = ScenarioItemFormFactory(Load, multi=multi, scenario=scenario)
-    Form = Load.adjust_Form(Form, load, templates_queryset=timeseries)
-    Form.base_fields.pop("template")
-    # template is not required and will be set to the just uploaded file
-    load_form = Form(request.POST, instance=load) if not multi else Form(request.POST)
-    if load_form.is_valid():
-        load_form.save()
-
-    file_form = TimeseriesUploadForm(request.POST, request.FILES)
-    if file_form.is_valid():
-        load.refresh_from_db()
-        timeseries = file_form.save(scenario, load, request.user)
-        if loads:
-            updated = []
+        # check if single or multi upload
+        if internal_load_id := request.POST.get("internal_id"):
+            # single upload
+            loads = [get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)]
+            authorized_load = has_authorization(loads[0], request.user, "details")
+        elif internal_load_ids_str := request.POST.get("internal_ids"):
+            internal_load_ids = internal_load_ids_str.split(",")
+            # multi upload
+            loads = list(Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids))
+            # Check authorization for all requested loads
+            authorized_load = True
             for load in loads:
-                load.template = timeseries
-                updated.append(load)
-            Load.objects.bulk_update(updated, fields=["template"])
-            return redirect(
-                reverse(
-                    "ports:details",
-                    kwargs={
-                        "scenario_internal_id": scenario_internal_id,
-                        "model": model,
-                    },
+                authorized_load = authorized_load and has_authorization(
+                    load, request.user, "details"
                 )
-                + f"?internal_ids={request.POST.get('internal_ids')}"
-            )
+            # Raise 404 if a single load is missing
+            if len(loads) != len(internal_load_ids):
+                raise Http404("Das Objekt existiert nicht")
+        else:
+            #  missing internal_id
+            return HttpResponseBadRequest("Es fehlt die Angabe der internal_id der Last(en)")
 
-        return redirect(
-            reverse(
-                "ports:details",
-                kwargs={
-                    "scenario_internal_id": scenario_internal_id,
-                    "model": model,
-                },
-            )
-            + f"?internal_id={internal_load_id}"
+        if not authorized_load:
+            response = HttpResponseForbidden("Sie haben keine Befugnis diese Funktion.")
+            return retargetForFailure(response)
+
+    file_form = TimeseriesUploadForm(request.POST, request.FILES)
+    updated = []
+    now = timezone.now()
+    if file_form.is_valid():
+        timeseries = file_form.save(scenario, request.user)
+        for load in loads:
+            load.timeseries = timeseries
+            load.updated_user = request.user
+            load.updated_at = now
+            updated.append(load)
+        if updated:
+            Load.objects.bulk_update(updated, fields=["timeseries", "updated_at", "updated_user"])
+            update_scenario_post_save(Load, updated[0])
+    response = render(
+        request,
+        "ports/partials/timeseries_upload.html",
+        {
+            "upload_form": file_form,
+            "scenario": scenario,
+            "instance": loads[0] if loads else None,
+        },
+    )
+
+    if updated:
+        response["HX-Trigger"] = f"refresh-template-{loads[0].internal_id}"
+    return response
+
+
+@login_required()
+def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    timeseries = get_object_or_404(Timeseries, scenario=scenario, internal_id=internal_id)
+    is_authorized = has_authorization(
+        scenario.project, request.user, "details"
+    ) and has_authorization(timeseries, request.user, "details")
+    if not is_authorized:
+        return HttpResponseForbidden("Sie haben keine Befugnis für diese Funktion")
+
+    if request.method == "POST":
+        form = ChangeTimeseriesForm(request.POST, instance=timeseries)
+        if form.is_valid():
+            form.save()
+    else:
+        form = ChangeTimeseriesForm(instance=timeseries)
+
+    context = {"scenario": scenario, "ts": timeseries, "form": form}
+    return render(request, "ports/partials/timeseries_rename_modal.html", context)
+
+
+@login_required()
+@require_http_methods(["GET", "POST"])
+def energy_cost(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("Sie haben keine Befugnis für diese Funktion")
+
+    instance, created = EnergyCost.get_or_create_for_scenario(scenario)
+    if created and request.method == "GET":
+        logger.warning(
+            "Created energy cost on get request. This can happen for old scenarios, but in general, get requests should not trigger db mutations."
         )
+    if request.method == "POST":
+        form = EnergyCostForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+    else:
+        form = EnergyCostForm(instance=instance)
+
+    context = {"scenario": scenario, "form": form}
+    return render(request, "ports/partials/energiekosten.html", context)
 
 
 def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
-    """Return a Timeseries as JSON. Only accessible to the template's manager."""
+    """Return a Timeseries as JSON. Only accessible to the timeseries's manager."""
     if not request.user.is_authenticated:
         return HttpResponse(b"You need to be logged in to use this function", status=401)
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
@@ -1936,20 +2081,6 @@ def api_timeseries(request, scenario_internal_id: UUID, internal_id: UUID):
         "updated_at": timeseries.updated_at.isoformat(),
     }
     return JsonResponse(data)
-
-
-@login_required()
-def grid_modal_view(request, scenario_internal_id, areas_internal_ids=None):
-    # without areas_internal_ids the grid is created but not assigned to areas
-    scenario = Scenario.objects.get(internal_id=scenario_internal_id)
-    if not has_authorization(scenario.project, request.user, "details"):
-        return HttpResponseForbidden("Not authorized")
-    context = {
-        "scenario": scenario,
-        "areas_internal_ids": areas_internal_ids,
-        "form": GridFormFactory(),
-    }
-    return render(request, "ports/partials/create_grid_modal.html", context=context)
 
 
 # from /django/forms/models.py

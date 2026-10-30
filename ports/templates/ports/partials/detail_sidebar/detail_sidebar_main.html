@@ -21,10 +21,10 @@
 
   {% comment %}
   TODO:
-  we should have a busy indicator
+  we should have a busy indicator. Move somewhere else
   {% endcomment %}
   <div class="htmx-indicator bg-red-500 loader"></div>
-  <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9998]">
+  <details-sidebar-header class="my-hide block relative sticky top-0 bg-white border-b border-[#e2e8f0] p-6 pb-0 z-[9998]">
     {% comment %}
     This shows when the client dispatches an event that this item was changed and
     the last update from the server is not equal to this change event.
@@ -40,15 +40,15 @@
         </c-alert>
       </div>
     {{ errors }}
-    <div class="flex items-center justify-between gap-[8px] mb-[8px]">
-      <div class="flex items-center gap-[8px] flex-1">
+    <div class="flex items-center justify-between gap-2 mb-2">
+      <div class="flex items-center gap-2 flex-1">
         <div class="flex shrink-0 text-[#a78bfa] ">
           <c-icon.building />
         </div>
           {% if instance.area_type == Model.AreaTypeChoices.BUILDING %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Gebäudefläche</h2>
+            <h2 class="font-semibold text-5 text-[#1e293b]">Gebäudefläche</h2>
           {% else %}
-            <h2 class="font-semibold text-[20px] text-[#1e293b]">Freifläche</h2>
+            <h2 class="font-semibold text-5 text-[#1e293b]">Freifläche</h2>
           {% endif %}
 
       </div>
@@ -67,37 +67,39 @@
     </div>
     {{form.non_field_errors}}
 
-    <div class="mt-[12px]">
+  </details-sidebar-header>
+  <details-sidebar-content class='block my-hide p-6 pt-0'>
+    <div class="mt-3">
     {% comment %}
      Do we need this special emitting of value changes?
     {% endcomment %}
             <div>
-            <label class="block font-medium text-[14px] text-[#64748b] mb-[4px]">Name</label> <c-field-required :field=form.name />
+            <label class="block font-medium text-3.5 text-[#64748b] mb-1">Name</label> <c-field-required :field=form.name />
             </div>
-      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch('{{ itemchange_event|default:'itemChanged' }}', {value: $el.value});" class="w-full px-[12px] py-[8px] border border-[#cbd5e1] rounded-[8px] text-[14px] text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
+      <c-input :field=form.name x-data='{}' type="text" @input.debounce.100ms="$dispatch('{{ itemchange_event|default:'itemChanged' }}', {value: $el.value});" class="w-full px-3 py-2 border border-[#cbd5e1] rounded-md text-3.5 text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#0e7490] focus:border-transparent" placeholder="Name eingeben">
       </c-input>
     </div>
     {% if not instance.geom %}
-      <div class="mt-[12px] flex-col gap-[8px] p-[12px] bg-[#f1f5f9] rounded-[8px]">
-        <p class="text-[13px] text-[#64748b] flex-1">
+      <div class="mt-3 flex-col gap-2 p-3 bg-[#f1f5f9] rounded-md">
+        <p class="text-sm text-[#64748b] flex-1">
           Es wurde noch keine {{ instance.get_area_type_display }} auf der Karte gezeichnet.
         </p>
         <button type="button"
-                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
+                class="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#cbd5e1] rounded-[6px] text-sm font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
                 active:scale-95 active:translate-y-[1px] active:shadow-inner
                 "
                 @click="
               $dispatch('map-stop-edit');
               $dispatch('create-polygon', {key:'{{instance.internal_id}}'})"
       >
-          <c-icon.location-marker class="w-[16px] h-[16px]" />
+          <c-icon.location-marker class="w-4 h-4" />
           {{ instance.get_area_type_display }} zeichnen
         </button>
       </div>
     {% else %}
         <button type="button"
                 x-data='{isEditing:false}'
-                class="flex items-center gap-[6px] px-[12px] py-[8px] bg-white border border-[#cbd5e1] rounded-[6px] text-[13px] font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
+                class="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#cbd5e1] rounded-md text-sm font-medium text-[#0e7490] hover:bg-[#f8fafc] transition-colors whitespace-nowrap
                 active:scale-95 active:translate-y-[1px] active:shadow-inner
                 "
 
@@ -110,73 +112,70 @@
                   "
             x-effect="isEditing=$store.map.editingElements.has('{{instance.internal_id}}')"
             >
-          <c-icon.location-marker class="w-[16px] h-[16px]" />
+          <c-icon.location-marker class="w-[16px] h-4" />
             {{ instance.get_area_type_display }} bearbeiten <span x-text="isEditing ? 'beenden' : ''"></span>
         </button>
     {% endif %}
-
     <!-- {/* Building/Area Type Dropdown */} -->
-    <div class="flex flex-col gap-[8px]">
+    <div class="flex flex-col gap-2">
             <div>
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ instance.get_area_type_display }} Options</label>
               <c-field-required :field=form.name />
             </div>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue="form.usage.value" :field="form.usage"  >
         {% for value, label in form.usage.field.choices %}
-          <c-select.button selectValue={{value}}>
+          <c-select.button selectValue={{value|default:""}}>
             {{ label }}
           </c-select.button>
         {% endfor %}
       </c-select.index>
     </div>
-  </details-sidebar-header>
-  <details-sidebar-content class='my-hide'>
-    <div class="px-[21px] py-[16px]">
-      <p class="text-center text-[#64748b] text-[14px] mb-[24px]">Was möchtest du konfigurieren?</p>
+    <div class="py-4">
+      <p class="text-center text-[#64748b] text-3.5 mb-6">Was möchtest du konfigurieren?</p>
 
-      <div class="flex flex-row gap-[8px]">
+      <div class="flex flex-row gap-2">
 
       <c-input :field=form.is_public
-          class="bg-white border border-[#cbd5e1] rounded px-[16px] text-[14px] text-[#1e293b] py-2" >
+          class="bg-white border border-[#cbd5e1] rounded px-4 text-3.5 text-[#1e293b] py-2" >
         </c-input>
-        <label class="font-semibold text-[14px] text-[#1e293b]">Öffentlich machen</label>
+        <label class="font-semibold text-3.5 text-[#1e293b]">Öffentlich machen</label>
 
       </div>
       <!-- {/* Configuration Sections */} -->
-      <div class="flex flex-col gap-[16px]">
+      <div class="flex flex-col gap-4">
         <!-- {/* LASTEN Section */} -->
         <c-detail-sidebar-section.index title=Lasten :items=loads model="load" :area_internal_ids=instance.internal_id>
           <c-slot name="icon">
-            <c-icon.lasten class="flex-shrink-0 w-[16px] h-[16px]" />
+            <c-icon.lasten class="flex-shrink-0 w-4 h-4" />
           </c-slot>
         </c-detail-sidebar-section>
         <c-detail-sidebar-section.index title=Energietechnik :items=energy_components :models=electric_models :area_internal_ids=instance.internal_id>
           <c-slot name="icon">
-            <c-icon.bolt class="flex-shrink-0 w-[16px] h-[16px]" />
+            <c-icon.bolt class="flex-shrink-0 w-4 h-4" />
           </c-slot>
         </c-detail-sidebar-section>
         TODO:
         <!-- #FIXME: add mobility items -->
         <c-detail-sidebar-section title=MOBILITÄT :items=[] model="mobility">
           <c-slot name="icon">
-            <c-icon.logistic class="flex-shrink-0 w-[16px] h-[16px]" />
+            <c-icon.logistic class="flex-shrink-0 w-4 h-4" />
           </c-slot>
         </c-detail-sidebar-section>
         <netzanschluss class="block">
-        <div class="flex flex-col gap-[16px] pt-[8px">
-          <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-[8px]">
-            <span class="w-[16px] h-[16px]">
+        <div class="flex flex-col gap-4 pt-[8px">
+            <h3 class="font-normal text-[16px] text-[#1e293b] uppercase flex items-center gap-2">
+            <span class="w-4 h-4">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </span>
             NETZANSCHLÜSSE
-            <c-icon.bolt class="w-[16px] h-[16px] text-[#64748b]" />
+            <c-icon.bolt class="w-4 h-4 text-[#64748b]" />
           </h3>
 
 
             {% partialdef grid_select %}
-            <label class="font-semibold text-[14px] text-[#1e293b]">{{field.label}}</label>
+            <label class="font-semibold text-3.5 text-[#1e293b]">{{field.label}}</label>
             <c-select.index :id="field.name|concat:_select_container" classButton="border-[#cbd5e1]!" :inputName=field.name :selectedValue=field.value
              :selectedValue=field.value >
               {% for value, label in field.field.choices %}
@@ -193,11 +192,12 @@
             {% endif %}
             {% endfor %}
             <button type="button"
-                    hx-get="{% url "ports:grid_modal" scenario_internal_id=scenario.internal_id  areas_internal_ids=instance.internal_id %}"
+                    hx-get="{% url "ports:details_create" model='grid' scenario_internal_id=scenario.internal_id %}"
+                    hx-vals='{"area_internal_ids": "{{ instance.internal_id }}"}'
                     hx-swap="innerHTML"
                     hx-target="#grid-modal-container"
                     hx-select="unset"
-                    class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
+                    class="text-3.5 font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
               + Anschluss
             </button>
           </div>
@@ -208,11 +208,9 @@
   </form>
 {% comment %}
  htmx loads the inner html of the modal and calls showModal
+grid-modal-container is in the tool_base sidebar as singleton for grid modals
+
 {% endcomment %}
-<div id="grid-modal-container"
-hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
->
-</div>
 
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
