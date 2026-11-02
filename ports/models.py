@@ -615,7 +615,21 @@ class Area(ScenarioItem):
 
 # FIXME: A load template is not part of an area. What permission state should it have?
 class Timeseries(ScenarioItem):
-    """Template for timeseries, mostly power series"""
+    """Template for timeseries, mostly power series, but also specfic solar radiation, temperature
+    and maybe mobility.
+    """
+
+    class TimeseriesTypeChoices(models.TextChoices):
+        LOAD = "load", "Lastprofil"
+        SOLAR = "solar", "spezfifisches Einstrahlungsprofil"
+        TEMPERATURE = "temperature", "TEMPERATURE"
+
+    timeseries_type = models.CharField(
+        choices=TimeseriesTypeChoices,
+        help_text=_("Art der Zeitreihe"),
+        blank=False,
+        default=TimeseriesTypeChoices.LOAD,
+    )
 
     timeseries = models.JSONField(help_text=_("Zeitreihendaten."))
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
@@ -727,10 +741,24 @@ class EnergyCost(ScenarioItem):
 class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
+    class CarrierChoices(models.TextChoices):
+        ELECTRICITY = "electricity", "Strom"
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+        GAS = "gas", "Gas"
+        HEAT = "heat", "Wärme"
+        H2 = "h2", "H2"
+
     area = models.ForeignKey(
         Area,
         on_delete=models.CASCADE,
         help_text=_("Fläche, der diese Last zugeordnet ist."),
+    )
+    carrier = models.CharField(
+        choices=CarrierChoices,
+        help_text=_("Energieträger der Last."),
+        blank=False,
+        default=CarrierChoices.ELECTRICITY,
     )
     timeseries = models.ForeignKey(
         Timeseries,
@@ -1090,11 +1118,18 @@ class AbstractCHP(models.Model):
         choices=CarrierChoices,
         help_text=_("Energieträger, der von der Kraft-Wärme-Kopplung genutzt wird."),
     )
-    efficiency_thermal = models.FloatField(
+    efficiency = models.FloatField(
         verbose_name=_("Thermische Effizienz"),
         default=1.0,
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
     @classmethod
@@ -1242,7 +1277,11 @@ class Heatpump(ElectricComponent, AbstractHeatpump):
 
 
 class AbstractSolar(models.Model):
-    """Photovoltaics"""
+    """Photovoltaics
+    The profile is the 'Einstrahlungsprofil' for the plane of the pv module,
+    e.g. 30˚ Incline towards south, with the locale sun radiation power.
+
+    """
 
     profile = models.ForeignKey(
         Load,
@@ -1252,31 +1291,13 @@ class AbstractSolar(models.Model):
         blank=True,
         help_text=_("Lastprofil der Solaranlage."),
     )
-    azimut = models.FloatField(
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(360)],
-        help_text=_(
-            "Ausrichtung der Solaranlage in Grad. Azimut muss ein Wert zwischen 0 und 360 betragen."
-        ),
-    )
-    angle = models.FloatField(
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(90)],
-        help_text=_(
-            "Neigungswinkel der Solaranlage in Grad. Winkel muss ein Wert zwischen 0 und 90 betragen."
-        ),
-    )
     spec_power = models.FloatField(
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Spezifische Leistung der Solaranlage in kW/m². Muss größer oder gleich 0 sein."
+            "Spezifische Peak-Leistung der Solaranlage in kW/m². Muss größer oder gleich 0 sein."
         ),
     )  # kW/m^2
     surface_area_installed = models.FloatField(
