@@ -1,7 +1,9 @@
+import contextlib
 from collections import defaultdict
 from typing import Any
 
 import django.forms as forms
+from django.apps.registry import apps
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.forms import PolygonField
@@ -280,62 +282,6 @@ class InternalIDModelChoiceField(forms.ModelChoiceField):
         return super().prepare_value(value)
 
 
-ALLOWED_UPLOAD_SUFFIXES = [".csv"]
-
-
-class TimeseriesUploadForm(forms.Form):
-    allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
-    # Set both required to false, so the fields to not mess with the outer load form
-    # otherwise we would need form injection for the inputs
-
-    template_file = forms.FileField(
-        label="Vorlagedatei",
-        widget=forms.FileInput(
-            attrs={
-                "accept": ",".join(ALLOWED_UPLOAD_SUFFIXES),
-                "title": "Datei auswählen",
-            }
-        ),
-        required=False,
-    )
-    timestep_minutes = forms.FloatField(
-        label="Zeitschritt (Minuten)",
-        initial=15,
-        min_value=1,
-        required=False,
-    )
-
-    def clean_template_file(self):
-        file = self.cleaned_data.get("template_file")
-        if not file:
-            raise ValidationError("Keine Datei ausgewählt")
-
-        suffix = "." + file.name.split(".")[-1].lower()
-        if suffix not in ALLOWED_UPLOAD_SUFFIXES:
-            raise ValidationError(
-                "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
-            )
-        values = Timeseries.values_from_csv(file=file)
-        if not values:
-            raise ValidationError("Keine numerischen Werte gefunden")
-        self._parsed_values = values
-        return file
-
-    def save(self, scenario, user):
-        values = self._parsed_values
-        timestep_minutes = self.cleaned_data["timestep_minutes"]
-        file = self.cleaned_data["template_file"]
-        template_load = Timeseries.objects.create(
-            timeseries={"values": values, "timestep_minutes": timestep_minutes},
-            spec_load=sum(values) / len(values),
-            scenario=scenario,
-            name=file.name,
-            manager=user,
-        )
-
-        return template_load
-
-
 class UUIDMultipleChoiceField(CharField):
     def __init__(self, queryset, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -348,7 +294,7 @@ class UUIDMultipleChoiceField(CharField):
         return self.queryset.filter(internal_id__in=ids)
 
     def validate(self, value) -> None:
-        if value.count() == 0:
+        if self.required and value.count() == 0:
             raise ValidationError(self.error_messages["required"], code="required")
 
     def clean(self, value):
@@ -397,6 +343,15 @@ class ScopedModelForm(forms.ModelForm):
         if current_id:
             allowed |= Q(id=current_id)
         return model.objects.filter(allowed)
+
+    @classmethod
+    def bind_form(cls, user, scenario) -> type:
+        FormClass = type(
+            "Scoped_" + cls.__name__,
+            (cls,),
+            {"scope_user": user, "scope_scenario": scenario},
+        )
+        return FormClass
 
 
 def get_timeseries_for_user(user: User, scenario: Scenario) -> QuerySet[Timeseries]:
@@ -653,3 +608,109 @@ class CreateProjectForm(forms.ModelForm):
             "name": forms.TextInput(),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
+
+
+ALLOWED_UPLOAD_SUFFIXES = [".csv"]
+
+
+class TimeseriesUploadForm(ScopedModelForm):
+    from_model = CharField(required=False, widget=forms.HiddenInput())
+    internal_ids_from_model = CharField(required=False, widget=forms.HiddenInput())
+
+    allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
+    # Set both required to false, so the fields to not mess with the outer load form
+    # otherwise we would need form injection for the inputs
+
+    template_file = forms.FileField(
+        label="Vorlagedatei",
+        widget=forms.FileInput(
+            attrs={
+                "accept": ",".join(ALLOWED_UPLOAD_SUFFIXES),
+                "title": "Datei auswählen",
+            }
+        ),
+        required=False,
+    )
+    timestep_minutes = forms.FloatField(
+        label="Zeitschritt (Minuten)",
+        initial=15,
+        min_value=1,
+        required=False,
+    )
+
+    class Meta:
+        model = Timeseries
+        fields = ("name", "timeseries_type")
+        widgets = {
+            "name": forms.TextInput(),
+        }
+
+    def clean_template_file(self):
+        file = self.cleaned_data.get("template_file")
+        if not file:
+            raise ValidationError("Keine Datei ausgewählt")
+
+        suffix = "." + file.name.split(".")[-1].lower()
+        if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+            raise ValidationError(
+                "Nicht unterstützter Dateityp. Erlaubt sind: " + ", ".join(ALLOWED_UPLOAD_SUFFIXES)
+            )
+        values = Timeseries.values_from_csv(file=file)
+        if not values:
+            raise ValidationError("Keine numerischen Werte gefunden")
+        self._parsed_values = values
+        return file
+
+    def clean_from_model(self):
+        Model = None
+        with contextlib.suppress(LookupError):
+            Model = apps.get_model("ports", self.cleaned_data.get("from_model"))
+        if Model and Model != Load:
+            raise ValidationError("Diesem Modell können keine Zeitreihen hinzugefügt werden.")
+        return Model
+
+    def clean(self):
+        cleaned_data = self.cleaned_data
+        # not xor. Form needs both or none for from_model and their internal_ids
+        internal_ids = cleaned_data.get("internal_ids_from_model")
+
+        FromModel = cleaned_data.get("from_model")
+        if bool(internal_ids) != bool(FromModel):
+            raise ValidationError(
+                "Es benötigt beide Eingaben ('from_model' und 'internal_ids_from_model') oder keine Eingabe für diese beiden Input Namen"
+            )
+        instances = []
+        if internal_ids:
+            internal_ids = set(internal_ids.split(","))
+            instances = list(
+                FromModel.objects.filter(scenario=self.scope_scenario, internal_id__in=internal_ids)
+            )
+            if len(instances) != len(internal_ids):
+                raise ValidationError(
+                    "Mindestens ein Objekt mit dieser internal_id existiert nicht."
+                )
+            # Check authorization for all requested loads
+            authorized_instance = True
+            for instance in instances:
+                authorized_instance = has_authorization(instance, self.scope_user, "details")
+                if not authorized_instance:
+                    break
+            if not authorized_instance:
+                raise ValidationError(
+                    "Sie sind nicht berechtigt diesem Objekt eine Zeitreihe hinzuzufügen"
+                )
+        cleaned_data["from_instances"] = instances
+        return cleaned_data
+
+    def save(self):
+        values = self._parsed_values
+        timestep_minutes = self.cleaned_data["timestep_minutes"]
+        template_load = Timeseries.objects.create(
+            timeseries={"values": values, "timestep_minutes": timestep_minutes},
+            spec_load=sum(values) / len(values),
+            scenario=self.scope_scenario,
+            name=self.cleaned_data["name"],
+            manager=self.scope_user,
+        )
+
+        return template_load

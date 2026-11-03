@@ -625,8 +625,11 @@ class Timeseries(ScenarioItem):
         TEMPERATURE = "temperature", "TEMPERATURE"
 
     timeseries_type = models.CharField(
+        verbose_name=_("Art der Zeitreihe"),
         choices=TimeseriesTypeChoices,
-        help_text=_("Art der Zeitreihe"),
+        help_text=_(
+            "Art der Zeitreihe, z.B. ein Lastprofil in kW oder ein spezifisches Einstrahlungsprofil in kW/m²"
+        ),
         blank=False,
         default=TimeseriesTypeChoices.LOAD,
     )
@@ -755,6 +758,7 @@ class Load(ScenarioItem):
         help_text=_("Fläche, der diese Last zugeordnet ist."),
     )
     carrier = models.CharField(
+        verbose_name=_("Energieträger"),
         choices=CarrierChoices,
         help_text=_("Energieträger der Last."),
         blank=False,

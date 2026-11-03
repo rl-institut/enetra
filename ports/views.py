@@ -1,4 +1,3 @@
-import contextlib
 import inspect
 import json
 import logging
@@ -1906,7 +1905,17 @@ class ApiView(View):
             success = True
         except:  # noqa
             success = False
-        return JsonResponse({"success": success, "message": "Deleted"}, status=200)
+        response = JsonResponse({"success": success, "message": "Deleted"}, status=200)
+        if isinstance(self.instance, Timeseries):
+            response["HX-Trigger"] = ", ".join(
+                [
+                    f"refresh-template-{internal_id}"
+                    for internal_id in Load.objects.filter(
+                        scenario=self.instance.scenario
+                    ).values_list("internal_id", flat=True)
+                ]
+            )
+        return response
 
     def duplicate(self, request, *args, **kwargs):
         try:
@@ -1943,77 +1952,69 @@ class ApiView(View):
 
 
 @login_required()
-@require_http_methods(["POST"])
-def timeseries_upload(request, scenario_internal_id: UUID, from_model: str | None = None):
+@require_http_methods(["GET", "POST"])
+def timeseries_upload(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("Sie haben keine Befugnis für dieses Projekt")
 
-    def retargetForFailure(response):
-        response["HX-Retarget"] = "#templateError"
-        response["HX-Reselect"] = "unset"
-        response["HX-Reswap"] = "innerHTML"
-        return response
-
-    loads = []
+    FormClass = TimeseriesUploadForm.bind_form(request.user, scenario)
+    is_get = request.method == "GET"
+    initial = request.GET.dict() if is_get else {}
+    data = request.GET.dict() if is_get else request.POST.dict()
+    # uploads for loads are always load profiles.
+    # Disabled fields are not submitted, Django uses the initial value on POST instead
+    from_model = data.get("from_model")
     if from_model:
-        Model = None
-        with contextlib.suppress(LookupError):
-            Model = apps.get_model("ports", from_model)
-        if Model != Load:
-            return HttpResponseBadRequest("Diesem Modell können keine Lasten hinzugefügt werden.")
-
-        # check if single or multi upload
-        if internal_load_id := request.POST.get("internal_id"):
-            # single upload
-            loads = [get_object_or_404(Load, scenario=scenario, internal_id=internal_load_id)]
-            authorized_load = has_authorization(loads[0], request.user, "details")
-        elif internal_load_ids_str := request.POST.get("internal_ids"):
-            internal_load_ids = internal_load_ids_str.split(",")
-            # multi upload
-            loads = list(Load.objects.filter(scenario=scenario, internal_id__in=internal_load_ids))
-            # Check authorization for all requested loads
-            authorized_load = True
-            for load in loads:
-                authorized_load = authorized_load and has_authorization(
-                    load, request.user, "details"
-                )
-            # Raise 404 if a single load is missing
-            if len(loads) != len(internal_load_ids):
-                raise Http404("Das Objekt existiert nicht")
+        if from_model == "load":
+            initial["timeseries_type"] = Timeseries.TimeseriesTypeChoices.LOAD
         else:
-            #  missing internal_id
-            return HttpResponseBadRequest("Es fehlt die Angabe der internal_id der Last(en)")
+            raise NotImplementedError("This from_model has no associcated TimeseriesType yet")
 
-        if not authorized_load:
-            response = HttpResponseForbidden("Sie haben keine Befugnis diese Funktion.")
-            return retargetForFailure(response)
+    if is_get:
+        file_form = FormClass(initial=initial)
+    else:
+        file_form = FormClass(request.POST, request.FILES, initial=initial)
 
-    file_form = TimeseriesUploadForm(request.POST, request.FILES)
+    if from_model:
+        # when creating a timeseries from a model, we only allow the timeseries which makes sense,
+        # e.g. LOAD when creating a timeseries for a Load. Therefore we disable the select
+        file_form.fields["timeseries_type"].disabled = True
+
+    if is_get:
+        context = dict(scenario=scenario, form=file_form)
+        return render(
+            request, template_name="ports/partials/timeseries_upload_modal.html", context=context
+        )
+
     updated = []
-    now = timezone.now()
     if file_form.is_valid():
-        timeseries = file_form.save(scenario, request.user)
-        for load in loads:
-            load.timeseries = timeseries
-            load.updated_user = request.user
-            load.updated_at = now
-            updated.append(load)
-        if updated:
-            Load.objects.bulk_update(updated, fields=["timeseries", "updated_at", "updated_user"])
-            update_scenario_post_save(Load, updated[0])
+        with atomic():
+            timeseries = file_form.save()
+            now = timezone.now()
+            loads = file_form.cleaned_data["from_instances"]
+            for load in loads:
+                load.timeseries = timeseries
+                load.updated_user = request.user
+                load.updated_at = now
+                updated.append(load)
+            if updated:
+                Load.objects.bulk_update(
+                    updated, fields=["timeseries", "updated_at", "updated_user"]
+                )
+                update_scenario_post_save(Load, updated[0])
     response = render(
         request,
-        "ports/partials/timeseries_upload.html",
+        "ports/partials/timeseries_upload_modal.html",
         {
-            "upload_form": file_form,
+            "form": file_form,
             "scenario": scenario,
-            "instance": loads[0] if loads else None,
         },
     )
-
     if updated:
-        response["HX-Trigger"] = f"refresh-template-{loads[0].internal_id}"
+        response["HX-Trigger"] = ",".join(
+            [f"refresh-template-{load.internal_id}" for load in loads]
+        )
     return response
 
 
@@ -2035,7 +2036,12 @@ def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
         form = ChangeTimeseriesForm(instance=timeseries)
 
     context = {"scenario": scenario, "ts": timeseries, "form": form}
-    return render(request, "ports/partials/timeseries_rename_modal.html", context)
+    response = render(request, "ports/partials/timeseries_rename_modal.html", context)
+    # let all loads now of changed loads
+    response["HX-Trigger"] = ", ".join(
+        [f"refresh-template-{load.internal_id}" for load in timeseries.load_set.all()]
+    )
+    return response
 
 
 @login_required()

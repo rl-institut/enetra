@@ -25,7 +25,12 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
       <div id="grid-modal-container"
         hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
         >
+
       </div>
+
+      <div id="upload-timeseries-modal-container"
+          hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+      ></div>
       {% comment %}
 
       <div

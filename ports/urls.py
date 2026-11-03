@@ -21,12 +21,6 @@ urlpatterns = [
         name="enetra_tool",
     ),
     path(
-        "timeseries_upload/<uuid:scenario_internal_id>/<str:from_model>/",
-        views.timeseries_upload,
-        name="timeseries_upload",
-    ),
-    # timeseries without a from model (load). in this case the load does not have the timeseries auto added
-    path(
         "timeseries_upload/<uuid:scenario_internal_id>/",
         views.timeseries_upload,
         name="timeseries_upload",

@@ -1251,11 +1251,17 @@
   .rounded-\[16px\] {
     border-radius: 16px;
   }
+  .rounded-\[50\%\]\! {
+    border-radius: 50% !important;
+  }
   .rounded-\[100px\] {
     border-radius: 100px;
   }
   .rounded-full {
     border-radius: calc(infinity * 1px);
+  }
+  .rounded-full\! {
+    border-radius: calc(infinity * 1px) !important;
   }
   .rounded-lg {
     border-radius: var(--radius);

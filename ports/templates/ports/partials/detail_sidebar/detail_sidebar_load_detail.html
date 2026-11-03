@@ -57,6 +57,10 @@
         {% endif %}
 
       <div class="flex flex-col gap-[8px]">
+          <c-form-field :field="form.carrier"></c-form-field>
+      </div>
+
+      <div class="flex flex-col gap-[8px]">
           <div class="template-selection"
                 hx-trigger="refresh-template-{{instance.internal_id}} from:body"
                 hx-include="#form_{{instance.internal_id}}"
@@ -120,8 +124,16 @@
           <span>oder</span>
           <div class="flex-1 h-px bg-[#e2e8f0]"></div>
         </div>
-          {% include "ports/partials/timeseries_upload.html" with upload_form=upload_form scenario=scenario instance=instance %}
+          <c-button type="button" variant="default" class="rounded-full! text-sm!"
+            hx-get="{% url "ports:timeseries_upload" scenario_internal_id=scenario.internal_id %}?from_model={{instance.model_name}}&internal_ids_from_model={{internal_ids|default:internal_id}}"
+            hx-target="#upload-timeseries-modal-container"
+            hx-swap="innerHTML"
+          >Neue Zeitreihe Hochladen</c-button>
       </div>
+        {% comment %}
+          modal container is placed at ports/templates/ports/tool_base.html:31
+          should be in a visible div
+        {% endcomment %}
 
     <div class="flex flex-col gap-[8px]">
           <div>
@@ -136,24 +148,6 @@
         <c-field-errors :field="form.factor" />
       </div>
 
-      <div class="flex flex-col gap-[8px]">
-        <label class="font-semibold text-[14px] text-[#1e293b]">Typ</label>
-
-        <c-select.index classButton='border-[#cbd5e1]!' selectedValue='1'>
-          <c-select.button selectValue='1'>
-            Heizung
-          </c-select.button>
-          <c-select.button selectValue='2'>
-            Kühlung
-          </c-select.button>
-          <c-select.button selectValue='3'>
-            Beleuchtung
-          </c-select.button>
-          <c-select.button selectValue='4'>
-            Andere
-          </c-select.button>
-        </c-select.index>
-      </div>
 
       <div
           {% comment %}
