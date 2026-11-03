@@ -1,4 +1,4 @@
-<c-vars expanded title :border=False variant></c-vars>
+<c-vars expanded title :border=False variant summaryClass=""></c-vars>
 {% comment %}
 NOTE:
 The following variants exist
@@ -6,9 +6,9 @@ default-> based on a "weaker looking expand like "andereBeteiligte"
 strong
 
 {% endcomment %}
-<details class="flex flex-col group size-full " {% if expanded %}open{% endif %} >
+<details class="flex flex-col group size-full " {% if expanded %}open{% endif %} {{attrs}}>
   {% if variant == 'custom'%}
-  <summary>
+  <summary class="{{summaryClass}}">
     {{title}}
   </summary>
     {% elif variant == 'strong' %}

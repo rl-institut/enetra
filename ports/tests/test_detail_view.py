@@ -63,14 +63,14 @@ class DetailsViewBase(TestCase):
             scenario=cls.scenario,
             name="Load 1",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
             factor=1.0,
         )
         cls.load2 = Load.objects.create(
             scenario=cls.scenario,
             name="Load 2",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
             factor=1.0,
         )
 
@@ -168,7 +168,7 @@ class DetailsViewGetTest(DetailsViewBase):
             scenario=self.scenario,
             name="Temp Load",
             area=self.area,
-            template=self.load_template,
+            timeseries=self.load_template,
             factor=1.0,
         )
         deleted_internal_id = temp_load.internal_id
@@ -197,7 +197,7 @@ class DetailsViewPostTest(DetailsViewBase):
             "internal_id": str(self.load.internal_id),
             "name": "Updated Load",
             "factor": "2.0",
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -276,7 +276,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": str(self.load.internal_id),
             "internal_id": str(self.load.internal_id),
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
             "factor": "not-a-float",
         }
         response = self.client.post(url, data)
@@ -296,7 +296,7 @@ class DetailsViewPostTest(DetailsViewBase):
         data = {
             "internal_ids": internal_ids,
             "factor": "3.5",
-            "template": self.load_template.internal_id,
+            "timeseries": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -362,7 +362,7 @@ class DetailsViewDeleteTest(DetailsViewBase):
             scenario=self.scenario,
             name="Delete Me",
             area=self.area,
-            template=self.load_template,
+            timeseries=self.load_template,
             factor=1.0,
         )
         internal_id = load_to_delete.internal_id
@@ -395,15 +395,15 @@ class DetailsViewDeleteTest(DetailsViewBase):
 
 class DetailsViewCreateTest(DetailsViewBase):
     def test_create_area(self):
+        # Area creation returns an empty response — the new Area is picked up by the
+        # list via the scenario change-event pipeline (update_delete_create_scenario_item.html
+        # / changes_count) instead of being rendered directly in this response. See
+        # ports/views.py DetailsView.create(), Model == Area branch.
         url = self.details_create_url("area")
         initial_count = Area.objects.filter(scenario=self.scenario).count()
         response = self.client.post(url, {"area_type": Area.AreaTypeChoices.BUILDING})
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["created"])
-        self.assertTemplateUsed(
-            response,
-            "ports/partials/detail_sidebar/detail_sidebar_main.html",
-        )
+        self.assertEqual(response.content, b"")
         self.assertEqual(
             Area.objects.filter(scenario=self.scenario).count(),
             initial_count + 1,
@@ -489,8 +489,10 @@ class DetailsViewPermissionsTest(TestCase):
         # Detailviews are gated by project access. Therefore users need to be added to project group
         cls.project_group.user_set.add(cls.user_a)
         cls.project_group.user_set.add(cls.user_b)
-        # Grant project-level view so the area check is the gating decision
+        # Grant project-level view/details so the area check is the gating decision
+        # (GET needs project "view", POST/DELETE need project "details")
         assign_perm("view", cls.project_group, cls.project)
+        assign_perm("details", cls.project_group, cls.project)
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -518,7 +520,16 @@ class DetailsViewPermissionsTest(TestCase):
             scenario=cls.scenario,
             name="SENTINEL_LOAD_XYZ_9f3a",
             area=cls.area,
-            template=cls.load_template,
+            timeseries=cls.load_template,
+            factor=1.0,
+            manager=cls.user_a,
+        )
+        # Second load so multi-instance POSTs hit the multi path (one id = single path)
+        cls.load2 = Load.objects.create(
+            scenario=cls.scenario,
+            name="Load 2",
+            area=cls.area,
+            timeseries=cls.load_template,
             factor=1.0,
             manager=cls.user_a,
         )
@@ -616,20 +627,67 @@ class DetailsViewPermissionsTest(TestCase):
                 "model": "load",
             },
         )
+        self.client.post(
+            url,
+            {
+                "internal_id": str(self.load.internal_id),
+                "name": "TAMPERED_NAME",
+                "factor": "9.9",
+                "timeseries": self.load_template.internal_id,
+            },
+        )
+        self.load.refresh_from_db()
+        self.assertNotEqual(self.load.name, "TAMPERED_NAME")
+
+    def test_post_load_factor_allowed_for_owner(self):
+        self.client.force_login(self.user_a)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        # Same payload as test_post_load_blocked_for_non_owner, so that test can only
+        # pass because of the permission check, not because the form is invalid.
         response = self.client.post(
             url,
             {
                 "internal_id": str(self.load.internal_id),
-                "name": "TAMPERED_BY_USER_B",
+                "name": "TAMPERED_NAME",
                 "factor": "9.9",
-                "template": self.load_template.internal_id,
+                "timeseries": self.load_template.internal_id,
             },
         )
-        self.assertIn(b"not allowed", response.content.lower())
+        self.assertEqual(response.status_code, 200)
         self.load.refresh_from_db()
-        self.assertNotEqual(self.load.name, "TAMPERED_BY_USER_B")
+        self.assertEqual(self.load.name, "TAMPERED_NAME")
+        self.assertAlmostEqual(self.load.factor, 9.9)
 
-    def test_post_load_factor_allowed_for_owner(self):
+    def test_multi_post_load_blocked_for_non_owner(self):
+        self.client.force_login(self.user_b)
+        url = reverse(
+            "ports:details",
+            kwargs={
+                "scenario_internal_id": self.scenario.internal_id,
+                "model": "load",
+            },
+        )
+        self.client.post(
+            url,
+            {
+                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
+                "factor": "9.9",
+                "timeseries": self.load_template.internal_id,
+            },
+        )
+        self.load.refresh_from_db()
+        self.load2.refresh_from_db()
+        self.assertNotEqual(self.load.factor, 9.9)
+        self.assertNotEqual(self.load2.factor, 9.9)
+
+    def test_multi_post_load_allowed_for_owner(self):
+        # Same payload as test_multi_post_load_blocked_for_non_owner.
         self.client.force_login(self.user_a)
         url = reverse(
             "ports:details",
@@ -641,36 +699,16 @@ class DetailsViewPermissionsTest(TestCase):
         response = self.client.post(
             url,
             {
-                "internal_id": str(self.load.internal_id),
-                "name": self.load.name,
-                "factor": "2.5",
-                "template": self.load_template.internal_id,
-            },
-        )
-        self.assertNotIn(b"not allowed", response.content.lower())
-        self.load.refresh_from_db()
-        self.assertAlmostEqual(self.load.factor, 2.5)
-
-    def test_multi_post_load_blocked_for_non_owner(self):
-        self.client.force_login(self.user_b)
-        url = reverse(
-            "ports:details",
-            kwargs={
-                "scenario_internal_id": self.scenario.internal_id,
-                "model": "load",
-            },
-        )
-        response = self.client.post(
-            url,
-            {
-                "internal_ids": str(self.load.internal_id),
+                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
                 "factor": "9.9",
-                "template": self.load_template.internal_id,
+                "timeseries": self.load_template.internal_id,
             },
         )
-        self.assertIn(b"not allowed", response.content.lower())
+        self.assertEqual(response.status_code, 200)
         self.load.refresh_from_db()
-        self.assertNotEqual(self.load.factor, 9.9)
+        self.load2.refresh_from_db()
+        self.assertAlmostEqual(self.load.factor, 9.9)
+        self.assertAlmostEqual(self.load2.factor, 9.9)
 
 
 @override_settings(DEBUG=False)

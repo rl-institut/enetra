@@ -124,7 +124,7 @@ uvx ruff check filepath [--fix]
             .venv\Scripts\activate
             ```
 
-    7. install pre-commit to make sure every git commit is ruff conform
+    7. install pre-commit to make sure every git commit is ruff compliant
         `pre-commit install`
         - to force commits during work in progress use
         `git commit --no-verify -m "commit message"`
@@ -135,7 +135,7 @@ uvx ruff check filepath [--fix]
         `ruff format --check`
         if the commmands are not recognized remember to activate the .venv or run with 'uv run'
 
-    8. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
+    8. Django uses an .env file to read user-specific data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
     DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME

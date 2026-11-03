@@ -1,0 +1,26 @@
+{% load widget_tweaks %}
+<c-slot name='label'>Profil</c-slot>
+<div class="py-4 px-0">
+
+    <div class="flex flex-col gap-4">
+          <c-button type="button" variant="default" class="rounded-full! text-sm!"
+            hx-get="{% url "ports:timeseries_upload" scenario_internal_id=scenario.internal_id %}"
+            hx-target="#upload-timeseries-modal-container"
+            hx-swap="innerHTML"
+          >Neue Zeitreihe Hochladen</c-button>
+          {% comment %}
+           ports/partials/timeseries_upload_modal.html
+          {% endcomment %}
+
+        <div id="profil-list" class="flex flex-col border border-[#cbd5e1] rounded-2 mt-4">
+            {% for ts in profile_timeseries %}
+            {% include "ports/partials/randbed_profil_list.html" %}
+            {% empty %}
+            <div class="p-4 rounded-2 bg-white text-sm text-[#64748b]">Keine Zeitreihen vorhanden</div>
+            {% endfor %}
+        </div>
+        <div id="rename-timeseries-modal-container"
+            hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+        ></div>
+    </div>
+</div>
