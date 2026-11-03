@@ -533,6 +533,13 @@ class ChangeScenarioForm(forms.ModelForm):
 
 
 class ChangeTimeseriesForm(forms.ModelForm):
+    timestep_minutes = forms.FloatField(
+        label="Zeitschritt (Minuten)",
+        initial=15,
+        min_value=1,
+        required=False,
+    )
+
     class Meta:
         model = Timeseries
         fields = ("name",)
@@ -618,8 +625,6 @@ class TimeseriesUploadForm(ScopedModelForm):
     internal_ids_from_model = CharField(required=False, widget=forms.HiddenInput())
 
     allowed_suffixes = ALLOWED_UPLOAD_SUFFIXES
-    # Set both required to false, so the fields to not mess with the outer load form
-    # otherwise we would need form injection for the inputs
 
     template_file = forms.FileField(
         label="Vorlagedatei",
@@ -629,18 +634,16 @@ class TimeseriesUploadForm(ScopedModelForm):
                 "title": "Datei auswählen",
             }
         ),
-        required=False,
     )
     timestep_minutes = forms.FloatField(
         label="Zeitschritt (Minuten)",
         initial=15,
         min_value=1,
-        required=False,
     )
 
     class Meta:
         model = Timeseries
-        fields = ("name", "timeseries_type")
+        fields = ("name",)
         widgets = {
             "name": forms.TextInput(),
         }

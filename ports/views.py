@@ -1961,25 +1961,10 @@ def timeseries_upload(request, scenario_internal_id: UUID):
     FormClass = TimeseriesUploadForm.bind_form(request.user, scenario)
     is_get = request.method == "GET"
     initial = request.GET.dict() if is_get else {}
-    data = request.GET.dict() if is_get else request.POST.dict()
-    # uploads for loads are always load profiles.
-    # Disabled fields are not submitted, Django uses the initial value on POST instead
-    from_model = data.get("from_model")
-    if from_model:
-        if from_model == "load":
-            initial["timeseries_type"] = Timeseries.TimeseriesTypeChoices.LOAD
-        else:
-            raise NotImplementedError("This from_model has no associcated TimeseriesType yet")
-
     if is_get:
         file_form = FormClass(initial=initial)
     else:
         file_form = FormClass(request.POST, request.FILES, initial=initial)
-
-    if from_model:
-        # when creating a timeseries from a model, we only allow the timeseries which makes sense,
-        # e.g. LOAD when creating a timeseries for a Load. Therefore we disable the select
-        file_form.fields["timeseries_type"].disabled = True
 
     if is_get:
         context = dict(scenario=scenario, form=file_form)

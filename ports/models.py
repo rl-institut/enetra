@@ -624,16 +624,6 @@ class Timeseries(ScenarioItem):
         SOLAR = "solar", "spezfifisches Einstrahlungsprofil"
         TEMPERATURE = "temperature", "TEMPERATURE"
 
-    timeseries_type = models.CharField(
-        verbose_name=_("Art der Zeitreihe"),
-        choices=TimeseriesTypeChoices,
-        help_text=_(
-            "Art der Zeitreihe, z.B. ein Lastprofil in kW oder ein spezifisches Einstrahlungsprofil in kW/m²"
-        ),
-        blank=False,
-        default=TimeseriesTypeChoices.LOAD,
-    )
-
     timeseries = models.JSONField(help_text=_("Zeitreihendaten."))
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
         default=None, help_text=_("Spezifische Last der Zeitreihe.")
