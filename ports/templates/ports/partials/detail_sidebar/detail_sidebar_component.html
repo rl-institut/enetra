@@ -139,6 +139,7 @@
         {% endpartialdef %}
 
         {% with field=form.name  %} {% partial input-component %}{% endwith %}
+        {% with field=form.efficiency %}{% partial input-component %}{% endwith %}
         {% comment %}
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
@@ -149,8 +150,6 @@
         {% with field=form.power_kw  %}
         {% partial input-component %}
         {% endwith %}
-
-        {% with field=form.efficiency %}{% partial input-component %}{% endwith %}
         {% with field=form.power_installed %}{% partial input-component %}{% endwith %}
         {% with field=form.power_min %}{% partial input-component %}{% endwith %}
         {% with field=form.power_max %}{% partial input-component %}{% endwith %}

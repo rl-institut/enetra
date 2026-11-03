@@ -1112,19 +1112,6 @@ class AbstractCHP(models.Model):
         choices=CarrierChoices,
         help_text=_("Energieträger, der von der Kraft-Wärme-Kopplung genutzt wird."),
     )
-    efficiency = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
-
-    power_to_heat_ratio = models.FloatField(
-        verbose_name=_("Stromkennzahl"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
-    )
 
     @classmethod
     def get_default_args(cls) -> dict:
@@ -1146,6 +1133,20 @@ class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
 
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
+    )
+
 
 class CHP(ElectricComponent, AbstractCHP):
     list_icon = "icon.chp"
@@ -1154,6 +1155,20 @@ class CHP(ElectricComponent, AbstractCHP):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung")
+
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
+    )
 
 
 class AbstractFuelCell(models.Model):
