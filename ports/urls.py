@@ -26,9 +26,9 @@ urlpatterns = [
         name="timeseries_upload",
     ),
     path(
-        "timeseries_rename/<uuid:scenario_internal_id>/<uuid:internal_id>/",
-        views.timeseries_rename,
-        name="timeseries_rename",
+        "timeseries_change/<uuid:scenario_internal_id>/<uuid:internal_id>/",
+        views.timeseries_change,
+        name="timeseries_change",
     ),
     path(
         "energy_cost/<uuid:scenario_internal_id>/",

@@ -2004,7 +2004,7 @@ def timeseries_upload(request, scenario_internal_id: UUID):
 
 
 @login_required()
-def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
+def timeseries_change(request, scenario_internal_id: UUID, internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     timeseries = get_object_or_404(Timeseries, scenario=scenario, internal_id=internal_id)
     is_authorized = has_authorization(
@@ -2021,7 +2021,7 @@ def timeseries_rename(request, scenario_internal_id: UUID, internal_id: UUID):
         form = ChangeTimeseriesForm(instance=timeseries)
 
     context = {"scenario": scenario, "ts": timeseries, "form": form}
-    response = render(request, "ports/partials/timeseries_rename_modal.html", context)
+    response = render(request, "ports/partials/timeseries_change_modal.html", context)
     # let all loads now of changed loads
     response["HX-Trigger"] = ", ".join(
         [f"refresh-template-{load.internal_id}" for load in timeseries.load_set.all()]

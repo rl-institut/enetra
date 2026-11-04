@@ -1,5 +1,5 @@
 """
-Tests for the Timeseries rename/upload views (`timeseries_rename`, `timeseries_upload`)
+Tests for the Timeseries rename/upload views (`timeseries_change`, `timeseries_upload`)
 and the ApiView delete-in-use guard for Timeseries.
 """
 
@@ -44,7 +44,7 @@ class TimeseriesRenameViewTest(TestCase):
 
     def rename_url(self, internal_id=None):
         return reverse(
-            "ports:timeseries_rename",
+            "ports:timeseries_change",
             kwargs={
                 "scenario_internal_id": self.scenario.internal_id,
                 "internal_id": internal_id or self.timeseries.internal_id,
@@ -55,7 +55,7 @@ class TimeseriesRenameViewTest(TestCase):
         self.client.force_login(self.manager)
         response = self.client.get(self.rename_url())
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "ports/partials/timeseries_rename_modal.html")
+        self.assertTemplateUsed(response, "ports/partials/timeseries_change_modal.html")
         self.assertContains(response, "Original name")
         self.assertContains(response, "Speichern")
         self.assertNotContains(response, "Gespeichert")

@@ -27,12 +27,12 @@
               class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50">
               <li>
                 <button type="button"
-                  hx-get="{% url 'ports:timeseries_rename' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id %}"
+                  hx-get="{% url 'ports:timeseries_change' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id %}"
                   hx-target="#rename-timeseries-modal-container"
                   hx-swap="innerHTML"
                   @click="show=false"
                   class="select-none w-full p-2 text-left text-[14px] font-semibold text-[#1e293b] hover:bg-slate-50 transition-colors rounded">
-                  Umbenennen
+                  Anpassen
                 </button>
               </li>
               <hr class="border-slate-200 my-1" />

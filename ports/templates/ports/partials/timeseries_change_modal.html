@@ -1,6 +1,6 @@
 <c-modal id="rename-timeseries-modal" closedby="any">
   <div class="flex items-center justify-between">
-    <h2 class="text-slate-800 text-lg font-semibold">Zeitreihe umbenennen</h2>
+    <h2 class="text-slate-800 text-lg font-semibold">Zeitreihe Anpassen</h2>
     <button type="button"
       commandfor="rename-timeseries-modal" command="close"
       class="size-6 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
@@ -14,7 +14,7 @@
     {% for field in form.visible_fields %}
     <c-form-field :field="field" />
     {% endfor %}
-    {% url 'ports:timeseries_rename' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id as rename_url %}
+    {% url 'ports:timeseries_change' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id as rename_url %}
     <c-button
       type="button"
       :hx-post="rename_url"
