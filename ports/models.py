@@ -21,7 +21,6 @@ from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db.models.functions import Now
-from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
 from django.db.transaction import atomic
 from django.dispatch import Signal
@@ -48,7 +47,7 @@ UNITS = {
     "opex": "€/a",
     "azimut": "°",
     "angle": "°",
-    "spec_power": "kW/m²",
+    "spec_power": "W/m²",
     "surface_area_installed": "m²",
     "surface_area_min": "m²",
     "surface_area_max": "m²",
@@ -151,6 +150,8 @@ class Scenario(models.Model):
         null=True,
         blank=True,
         help_text=_("Geografische Ausdehnung des Szenarios."),
+        srid=4326,
+        geography=True,
     )
 
     # Class variable which keeps track of scenarios which should be deleted
@@ -302,7 +303,6 @@ class ScenarioItem(ItemTemplate):
     internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
 
-    scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
 
     # the item was authorized. It can be shown in the frontend
@@ -342,15 +342,10 @@ class ScenarioItem(ItemTemplate):
         models based on ElectricComponent but __init_subclass__ is"""
         super().__init_subclass__(**kwargs)
         post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
-        post_delete.connect(cls._send_scenarioitem_post_delete, sender=cls)
 
     @classmethod
     def _connect_signals(cls):
         post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
-        post_delete.connect(cls._send_scenarioitem_post_delete, sender=cls)
-
-    def _send_scenarioitem_post_delete(sender, instance, **kwargs):
-        ScenarioItem.scenarioitem_post_delete.send(sender=sender, instance=instance)
 
     def _send_scenarioitem_post_save(sender, instance, **kwargs):
         ScenarioItem.scenarioitem_post_save.send(
@@ -395,22 +390,6 @@ class ScenarioItem(ItemTemplate):
     create_url = "ports:details_create"
 
 
-@receiver(ScenarioItem.scenarioitem_post_delete)
-def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
-    """Create a DeletedItem"""
-    # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
-    # Create a DeletedItem with all Scenario item values
-    # We use post_delete to only create these items when the item is really deleted.
-    # using pre_delete leads to errors if deletion fails
-    if sender in [DeletedItem, ChangedItem]:
-        return
-    # No DeletedItem creation in cases where the scenario is marked for deletion
-    if instance.scenario_id in Scenario._being_deleted:
-        return
-    deleted_item = DeletedItem.from_scenario_item(instance)
-    deleted_item.save()
-
-
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created
@@ -448,7 +427,7 @@ def create_changeditem_post_save(sender, instance, **kwargs):
     """Create a ChangedItem"""
     # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
     # Create a ChangedItem with all Scenarioitem values
-    # We use post_save to only create these items when the item is really deleted.
+    # We use post_save to only create these items when the item is really created
     if sender in [DeletedItem, ChangedItem]:
         return
     # Item was created. Dont create a ChangedItem
@@ -492,9 +471,9 @@ class ChangedItem(ScenarioItem):
 
 class DeletedItem(ScenarioItem):
     """Store basic information about deleted item.
+    These items are explicitly created on delete
 
-    This is an "easy" implementation, but its not very transparent to the developer.
-    A better approach might be deleting ScenarioItems via custom delete method. This would be more performant since it allows bulk creation, and the signal could be "turned" off for Scenario deletes. Each model would need an implementation of safe delete, since related models would need safe deletion as well, for proper cascading.
+    This keeps normal deletes fast during development and on the admin panel
 
     This gives explicit access to updates of items, which are not in the database anymore.
     Example:
@@ -510,7 +489,7 @@ class DeletedItem(ScenarioItem):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
 
     def __repr__(self):
-        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
+        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario_id} with uuid {self.internal_id}"
 
     @classmethod
     def from_scenario_item(cls, item: ScenarioItem) -> "DeletedItem":
@@ -540,7 +519,9 @@ class Area(ScenarioItem):
         OFFICE = "office", "Büro"
         STORAGE = "storage", "Lager"
 
-    geom = models.PolygonField(null=True, blank=False, help_text=_("Geometrie der Fläche."))
+    geom = models.PolygonField(
+        null=True, blank=False, help_text=_("Geometrie der Fläche."), geography=True, srid=4326
+    )
     area_type = models.CharField(choices=AreaTypeChoices, null=True, help_text=_("Art der Fläche."))
     usage = models.CharField(
         choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
@@ -615,14 +596,7 @@ class Area(ScenarioItem):
 
 # FIXME: A load template is not part of an area. What permission state should it have?
 class Timeseries(ScenarioItem):
-    """Template for timeseries, mostly power series, but also specfic solar radiation, temperature
-    and maybe mobility.
-    """
-
-    class TimeseriesTypeChoices(models.TextChoices):
-        LOAD = "load", "Lastprofil"
-        SOLAR = "solar", "spezfifisches Einstrahlungsprofil"
-        TEMPERATURE = "temperature", "TEMPERATURE"
+    """Template for timeseries"""
 
     timeseries = models.JSONField(help_text=_("Zeitreihendaten."))
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
@@ -729,6 +703,40 @@ class EnergyCost(ScenarioItem):
             },
         )
         return instance, created
+
+
+class SolarRadiation(models.Model):
+    """Global items to define Solar Radiation
+
+    These can be referenced by Solar.
+    They are public and server specified.
+    No need for
+    """
+
+    is_active = models.BooleanField(
+        default=True, help_text=_("Gibt an ob dieses Profil Nutzern zur Auswahl steht")
+    )
+    name = models.TextField(
+        blank=False,
+        null=True,
+        help_text=_("Name der Zeitreihe für solare einstrahlung"),
+    )
+    description = models.TextField(
+        blank=True, null=True, help_text=_("Optionale Beschreibung der Zeitreihe.")
+    )
+    timeseries = models.JSONField("Zeitreihe", help_text=_("Zeitreihendaten in W/m²"))
+    timestep = models.FloatField(verbose_name="Zeitschritt in Minuten")
+    timeseries_start = models.DateTimeField(verbose_name="Startzeitpunkt der Zeitreihe")
+
+    class ActiveSolarRadiationManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(is_active=True)
+
+    objects = ActiveSolarRadiationManager()
+    all_objects = models.Manager()
+
+    def __str__(self):
+        return self.name
 
 
 class Load(ScenarioItem):
@@ -1289,35 +1297,52 @@ class AbstractSolar(models.Model):
     """Photovoltaics
     The profile is the 'Einstrahlungsprofil' for the plane of the pv module,
     e.g. 30˚ Incline towards south, with the locale sun radiation power.
-
     """
 
     profile = models.ForeignKey(
-        Load,
+        "SolarRadiation",
+        verbose_name="Einstrahlungsprofil",
         on_delete=models.SET_NULL,
         default=None,
         null=True,
         blank=True,
-        help_text=_("Lastprofil der Solaranlage."),
+        help_text=_("Spezifisches Einstrahlungsprofil in W/m²"),
     )
     spec_power = models.FloatField(
+        default=210,
+        verbose_name="Spezifische Peak-Leistung",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch wenn eine Fläche mit installierte Photovoltaik angegeben ist."
+        ),
+    )  # kW/m^2
+
+    power_installed = models.FloatField(
+        verbose_name=_("Installierte Leistung"),
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Spezifische Peak-Leistung der Solaranlage in kW/m². Muss größer oder gleich 0 sein."
+            "Installierte Leistung der Komponente in kW. Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die Fläche mit installierter Photovolatik automatisch."
         ),
-    )  # kW/m^2
+    )
     surface_area_installed = models.FloatField(
         default=None,
+        verbose_name="Fläche mit installierter Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_("Installierte Fläche der Solaranlage in m². Muss größer oder gleich 0 sein."),
+        help_text=_(
+            "Installierte Fläche der Solaranlage in m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch."
+        ),
     )  # m^2
+
     surface_area_min = models.FloatField(
         default=None,
+        verbose_name="Minimale Fläche mit Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
@@ -1325,6 +1350,7 @@ class AbstractSolar(models.Model):
     )  # m^2
     surface_area_max = models.FloatField(
         default=None,
+        verbose_name="Maximale Fläche mit Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],

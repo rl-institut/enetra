@@ -163,3 +163,58 @@ document.addEventListener('alpine:init', () => {
         urls: {},
     });
 })
+
+function addAutoCalcSolarPower(el_spec_power, el_power_installed, el_surface_area_installed) {
+    // set the values of the installed power when changing the installed area and vice versa.
+    // changing the specific power, prioritizes changing the power if an area is given
+    // highlights the changed element and shows a short hint below it
+    const labelOf = (el) => document.querySelector(`label[for="${el.id}"]`)?.textContent.trim()
+        ?? el.closest(".group")?.querySelector("label")?.firstChild?.textContent.trim()
+        ?? el.name;
+
+    function applyHighlight(el, source_el) {
+        // restart the animation if it is still running
+        el.classList.remove("autofill-highlight");
+        void el.offsetWidth;
+        el.classList.add("autofill-highlight");
+        el.addEventListener("animationend", () => el.classList.remove("autofill-highlight"), { once: true });
+
+        // place the hint after the input wrapper (input + unit), fall back to directly after the input
+        const anchor = el.closest(".relative") ?? el;
+        anchor.parentElement.querySelector(":scope > .autofill-hint")?.remove();
+        const hint = document.createElement("p");
+        hint.className = "autofill-hint text-[12px] text-sky-700";
+        hint.setAttribute("role", "status");
+        hint.textContent = `↻ Automatisch berechnet aus „${labelOf(source_el)}“`;
+        hint.addEventListener("animationend", () => hint.remove(), { once: true });
+        anchor.after(hint);
+    }
+
+    function setCalculated(el, value, source_el) {
+        el.value = Number.isFinite(value) ? +value.toFixed(4) : "";
+        // keep alpine state (template changed/unchanged indicator) in sync. "input" does not
+        // retrigger the "change" listeners below, so no feedback loop
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        applyHighlight(el, source_el);
+    }
+
+    el_power_installed.addEventListener("change", (event) => {
+        if (el_spec_power.value) {
+            setCalculated(el_surface_area_installed, event.target.value / el_spec_power.value, event.target);
+        }
+    })
+    el_surface_area_installed.addEventListener("change", (event) => {
+        if (el_spec_power.value) {
+            setCalculated(el_power_installed, event.target.value * el_spec_power.value, event.target);
+        }
+    })
+    el_spec_power.addEventListener("change", (event) => {
+        const spec_power_value = event.target.value;
+        if (spec_power_value && el_surface_area_installed.value) {
+            setCalculated(el_power_installed, spec_power_value * el_surface_area_installed.value, event.target);
+        } else if (spec_power_value && el_power_installed.value) {
+            setCalculated(el_surface_area_installed, el_power_installed.value / spec_power_value, event.target);
+        }
+    })
+
+}

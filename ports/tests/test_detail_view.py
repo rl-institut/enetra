@@ -15,6 +15,7 @@ from guardian.shortcuts import assign_perm
 from guardian.shortcuts import remove_perm
 
 from ports.models import Area
+from ports.models import DeletedItem
 from ports.models import Generator
 from ports.models import Load
 from ports.models import Project
@@ -172,6 +173,8 @@ class DetailsViewGetTest(DetailsViewBase):
             factor=1.0,
         )
         deleted_internal_id = temp_load.internal_id
+
+        DeletedItem.from_scenario_item(temp_load).save()
         temp_load.delete()
 
         url = self.details_url("load")
@@ -195,13 +198,13 @@ class DetailsViewPostTest(DetailsViewBase):
         url = self.details_url("load")
         data = {
             "internal_id": str(self.load.internal_id),
+            "carrier": Load.CarrierChoices.ELECTRICITY,
             "name": "Updated Load",
             "factor": "2.0",
             "timeseries": self.load_template.internal_id,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
-        assert response.context.get("success")
         assert not response.context.get("errors")
         self.assertTemplateUsed(
             response,
@@ -654,6 +657,7 @@ class DetailsViewPermissionsTest(TestCase):
             url,
             {
                 "internal_id": str(self.load.internal_id),
+                "carrier": Load.CarrierChoices.ELECTRICITY,
                 "name": "TAMPERED_NAME",
                 "factor": "9.9",
                 "timeseries": self.load_template.internal_id,

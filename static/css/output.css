@@ -42,10 +42,13 @@
     --color-cyan-600: oklch(60.9% 0.126 221.723);
     --color-cyan-700: oklch(52% 0.105 223.128);
     --color-cyan-800: oklch(45% 0.085 224.283);
+    --color-sky-50: oklch(97.7% 0.013 236.62);
     --color-sky-100: oklch(95.1% 0.026 236.824);
     --color-sky-200: oklch(90.1% 0.058 230.902);
     --color-sky-300: oklch(82.8% 0.111 230.318);
     --color-sky-400: oklch(74.6% 0.16 232.661);
+    --color-sky-500: oklch(68.5% 0.169 237.323);
+    --color-sky-700: oklch(50% 0.134 242.749);
     --color-blue-50: oklch(97% 0.014 254.604);
     --color-blue-200: oklch(88.2% 0.059 254.128);
     --color-blue-500: oklch(62.3% 0.214 259.815);
@@ -1251,9 +1254,6 @@
   .rounded-\[16px\] {
     border-radius: 16px;
   }
-  .rounded-\[50\%\]\! {
-    border-radius: 50% !important;
-  }
   .rounded-\[100px\] {
     border-radius: 100px;
   }
@@ -2147,6 +2147,9 @@
   .text-secondary-foreground {
     color: var(--secondary-foreground);
   }
+  .text-sky-700 {
+    color: var(--color-sky-700);
+  }
   .text-slate-400 {
     color: var(--color-slate-400);
   }
@@ -2220,6 +2223,9 @@
   }
   .opacity-50 {
     opacity: 50%;
+  }
+  .opacity-70 {
+    opacity: 70%;
   }
   .opacity-80 {
     opacity: 80%;
@@ -3582,6 +3588,47 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+@keyframes autofillFlash {
+  0% {
+    background-color: var(--color-sky-100);
+    border-color: var(--color-sky-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, oklch(68.5% 0.169 237.323) 35%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 35%, transparent);
+    }
+  }
+  70% {
+    background-color: var(--color-sky-50);
+    border-color: var(--color-sky-400);
+    box-shadow: 0 0 0 3px color-mix(in srgb, oklch(68.5% 0.169 237.323) 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 15%, transparent);
+    }
+  }
+  100% {
+    background-color: white;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.autofill-highlight {
+  animation: autofillFlash 2s ease-out;
+}
+@keyframes autofillHint {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  10%, 80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.autofill-hint {
+  animation: autofillHint 3s ease-out forwards;
 }
 .my-slide-in-from-bottom {
   animation: slideFromBottom 0.4s ease-out forwards;

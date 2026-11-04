@@ -62,9 +62,9 @@
   <details-sidebar-content>
     <div class="px-4 py-4">
       <div class="flex items-center justify-between mb-[24px]">
-        <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-          ENERGIETECHNIK
-        </h2>
+      <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
+          {{instance.verbose_name}}
+      </h2>
 
         {% with hx_target="#form_"|add:internal_id %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as form_url %}
@@ -119,6 +119,7 @@
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
         {% for field_name in instances.0.custom_fields %}
+        {% with field=form.efficiency %} {% partial input-component %}{% endwith %}
         {% with field=form|get_value:field_name %} {% partial input-component %}{% endwith %}
         {% endfor %}
 
@@ -126,7 +127,6 @@
         {% partial input-component %}
         {% endwith %}
 
-        {% with field=form.efficiency %} {% partial input-component %}{% endwith %}
         {% with field=form.power_installed %}{% partial input-component %}{% endwith %}
         {% with field=form.power_min %}{% partial input-component %}{% endwith %}
         {% with field=form.power_max %}{% partial input-component %}{% endwith %}

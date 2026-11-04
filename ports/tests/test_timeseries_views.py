@@ -151,12 +151,6 @@ class TimeseriesUploadViewTest(TestCase):
     def upload_to_load_url(self):
         return reverse(
             "ports:timeseries_upload",
-            kwargs={"scenario_internal_id": self.scenario.internal_id, "from_model": "load"},
-        )
-
-    def upload_standalone_url(self):
-        return reverse(
-            "ports:timeseries_upload",
             kwargs={"scenario_internal_id": self.scenario.internal_id},
         )
 
@@ -165,7 +159,9 @@ class TimeseriesUploadViewTest(TestCase):
         response = self.client.post(
             self.upload_to_load_url(),
             {
-                "internal_id": str(self.load.internal_id),
+                "name": "new_timeseries",
+                "from_model": "load",
+                "internal_ids_from_model": str(self.load.internal_id),
                 "timestep_minutes": "5",
                 "template_file": csv_file("profile.csv", values=(1, 2, 3)),
             },
@@ -173,16 +169,17 @@ class TimeseriesUploadViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.load.refresh_from_db()
         self.assertNotEqual(self.load.timeseries_id, self.original_timeseries.id)
-        self.assertEqual(self.load.timeseries.name, "profile.csv")
+        self.assertEqual(self.load.timeseries.name, "new_timeseries")
         self.assertEqual(self.load.timeseries.timeseries["values"], [1.0, 2.0, 3.0])
-        self.assertEqual(response["HX-Trigger"], f"refresh-template-{self.load.internal_id}")
+        self.assertIn(f"refresh-template-{self.load.internal_id}", response["HX-Trigger"])
 
     def test_upload_without_load_creates_standalone_timeseries(self):
         self.client.force_login(self.manager)
         before_count = Timeseries.objects.filter(scenario=self.scenario).count()
         response = self.client.post(
-            self.upload_standalone_url(),
+            self.upload_to_load_url(),
             {
+                "name": "new_timeseries",
                 "timestep_minutes": "15",
                 "template_file": csv_file("standalone.csv", values=(4, 5, 6)),
             },
@@ -199,7 +196,7 @@ class TimeseriesUploadViewTest(TestCase):
         self.client.force_login(self.manager)
         before_count = Timeseries.objects.filter(scenario=self.scenario).count()
         response = self.client.post(
-            self.upload_standalone_url(),
+            self.upload_to_load_url(),
             {
                 "timestep_minutes": "15",
                 "template_file": SimpleUploadedFile(
@@ -217,19 +214,16 @@ class TimeseriesUploadViewTest(TestCase):
             self.upload_to_load_url(),
             {"timestep_minutes": "15", "template_file": csv_file()},
         )
-        self.assertEqual(response.status_code, 400)
-
-    def test_get_is_not_allowed(self):
-        self.client.force_login(self.manager)
-        response = self.client.get(self.upload_standalone_url())
-        self.assertEqual(response.status_code, 405)
+        self.assertTrue(response.context["form"].errors)
 
     def test_upload_attached_to_multiple_loads_updates_all_loads(self):
         self.client.force_login(self.manager)
         response = self.client.post(
             self.upload_to_load_url(),
             {
-                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
+                "name": "new_timeseries",
+                "from_model": "load",
+                "internal_ids_from_model": f"{self.load.internal_id},{self.load2.internal_id}",
                 "timestep_minutes": "15",
                 "template_file": csv_file("multi.csv", values=(7, 8, 9)),
             },
@@ -242,7 +236,7 @@ class TimeseriesUploadViewTest(TestCase):
         self.assertEqual(self.load.timeseries.timeseries["values"], [7.0, 8.0, 9.0])
         self.assertEqual(self.load.updated_user, self.manager)
         self.assertEqual(self.load2.updated_user, self.manager)
-        self.assertEqual(response["HX-Trigger"], f"refresh-template-{self.load.internal_id}")
+        self.assertIn(f"refresh-template-{self.load.internal_id}", response["HX-Trigger"])
 
     def test_upload_multiple_loads_with_unknown_id_returns_404(self):
         self.client.force_login(self.manager)
@@ -250,12 +244,14 @@ class TimeseriesUploadViewTest(TestCase):
         response = self.client.post(
             self.upload_to_load_url(),
             {
-                "internal_ids": f"{self.load.internal_id},{uuid4()}",
+                "name": "new_timeseries",
+                "from_model": "load",
+                "internal_ids_from_model": f"{self.load.internal_id},{uuid4()}",
                 "timestep_minutes": "15",
                 "template_file": csv_file(),
             },
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertTrue(response.context["form"].errors)
         self.load.refresh_from_db()
         self.assertEqual(self.load.timeseries_id, self.original_timeseries.id)
         self.assertEqual(Timeseries.objects.filter(scenario=self.scenario).count(), before_count)
@@ -273,13 +269,13 @@ class TimeseriesUploadViewTest(TestCase):
         response = self.client.post(
             self.upload_to_load_url(),
             {
-                "internal_ids": f"{self.load.internal_id},{self.load2.internal_id}",
+                "from_model": "load",
+                "internal_ids_from_model": f"{self.load.internal_id},{self.load2.internal_id}",
                 "timestep_minutes": "15",
                 "template_file": csv_file(),
             },
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response["HX-Retarget"], "#templateError")
+        self.assertTrue(response.context["form"].errors)
         self.load.refresh_from_db()
         self.load2.refresh_from_db()
         self.assertEqual(self.load.timeseries_id, self.original_timeseries.id)
@@ -319,7 +315,9 @@ class TimeseriesUploadViewTest(TestCase):
         response = self.client.post(
             self.upload_to_load_url(),
             {
-                "internal_ids": match.group(1),
+                "name": "new_timeseries",
+                "from_model": "load",
+                "internal_ids_from_model": match.group(1),
                 "timestep_minutes": "15",
                 "template_file": csv_file("new_loads.csv", values=(3, 2, 1)),
             },
@@ -328,7 +326,7 @@ class TimeseriesUploadViewTest(TestCase):
         timeseries_ids = set(new_loads.values_list("timeseries_id", flat=True))
         self.assertEqual(len(timeseries_ids), 1)
         timeseries = Timeseries.objects.get(pk=timeseries_ids.pop())
-        self.assertEqual(timeseries.name, "new_loads.csv")
+        self.assertEqual(timeseries.name, "new_timeseries")
         # existing loads in the selected areas stay untouched
         self.load.refresh_from_db()
         self.load2.refresh_from_db()

@@ -37,6 +37,7 @@ from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
 from .models import Solar
+from .models import SolarRadiation
 from .models import Timeseries
 from .models import update_scenario_post_save
 from .util import duplicate_scenario_with_permissions
@@ -141,7 +142,8 @@ def ScenarioItemFormFactory(
         exclude = exclude + ["area"]
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
-            field_classes[fk_f] = InternalIDModelChoiceField
+            if issubclass(ItemModel._meta.get_field(fk_f).related_model, ItemTemplate):
+                field_classes[fk_f] = InternalIDModelChoiceField
         BaseForm = modelform_factory(
             ItemModel,
             exclude=exclude,
@@ -229,7 +231,9 @@ def ScenarioItemFormFactory(
                     assert grid.scenario_id == scenario_id
                     # Delete old connection between grid and areas
                     Grid.areas.through.objects.filter(
-                        area__in=qs, grid__scenario_id=scenario_id, grid__carrier=grid.carrier
+                        area__in=qs,
+                        grid__scenario_id=scenario_id,
+                        grid__carrier=grid.carrier,
                     ).delete()
                     grid.areas.add(*qs)
 
@@ -369,7 +373,16 @@ class LoadForm(ScopedModelForm):
 
 class SolarForm(ScopedModelForm):
     def scope_querysets(self) -> None:
-        self.fields["profile"].queryset = self.own_or_current("profile", Load)
+        self.fields["profile"].queryset = SolarRadiation.objects.all()
+
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        area_m2 = instance.area.geom.transform(25832, clone=True).area
+        if area_m2 < instance.surface_area_installed:
+            self["surface_area_installed"].warnings = [
+                "Die Fläche mit installierter Photovoltaik überschreitet die Fläche auf der sich die PV Anlage befindet. Dies kann z.B. bei Fassaden Photovoltaik normal sein. Bitte Prüfe deine Angabe."
+            ]
+        return instance
 
 
 class GridForm(ScopedModelForm):
@@ -434,7 +447,10 @@ class AreaFormBase(ScopedModelForm):
             # textchoices expects choice_label:choice_value
             usage_choices = TextChoices(
                 "MultiUsageChoices",
-                {**{x[1]: x[0] for x in usage_choices.choices}, "Keine Anpassung vornehmen": ""},
+                {
+                    **{x[1]: x[0] for x in usage_choices.choices},
+                    "Keine Anpassung vornehmen": "",
+                },
             )
         else:
             self.fields["usage"].required = True

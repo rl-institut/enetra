@@ -99,6 +99,51 @@
     }
 }
 
+/* Highlight for inputs whose value was calculated automatically (e.g. solar power <-> area) */
+@keyframes autofillFlash {
+    0% {
+        background-color: var(--color-sky-100);
+        border-color: var(--color-sky-500);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 35%, transparent);
+    }
+
+    70% {
+        background-color: var(--color-sky-50);
+        border-color: var(--color-sky-400);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 15%, transparent);
+    }
+
+    100% {
+        background-color: white;
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+.autofill-highlight {
+    animation: autofillFlash 2s ease-out;
+}
+
+@keyframes autofillHint {
+    0% {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    10%,
+    80% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.autofill-hint {
+    animation: autofillHint 3s ease-out forwards;
+}
+
 .my-slide-in-from-bottom {
     animation: slideFromBottom 0.4s ease-out forwards;
 }

@@ -55,7 +55,7 @@
 
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-        ENERGIETECHNIK
+          {{instance.verbose_name}}
       </h2>
       {% with hx_target="#form_"|add:internal_id %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
@@ -89,15 +89,6 @@
           </c-select.index>
         </div>
 
-        <div class="flex flex-col gap-[8px]">
-          <label class="text-[14px] font-semibold text-[#1e293b]">Typ</label>
-          <input
-            type="text"
-            value="{{instance.verbose_name}}"
-            class="rounded border border-[#cbd5e1] bg-white px-[16px] py-2 text-[14px] text-[#64748b]"
-            disabled
-          />
-        </div>
 
 
 
@@ -123,9 +114,8 @@
 
             <c-field-required :field="field" />
           </label>
-          <div class="relative">
+          <div class="relative no-stepper">
             <c-input
-              type="text"
               :field="field"
               class="w-full rounded border border-[#cbd5e1] bg-white px-[16px] py-[12px] pr-[60px] pb-2 text-[14px] text-[#1e293b]"
             />
@@ -135,6 +125,7 @@
             >
           </div>
             <c-field-errors :field="field" />
+            <c-field-warnings :field="field" />
         </div>
         {% endpartialdef %}
 
@@ -144,6 +135,7 @@
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
         {% for field_name in instance.custom_fields %}
+
         {% with field=form|get_value:field_name  %} {% partial input-component %}{% endwith %}
         {% endfor %}
 
@@ -155,6 +147,18 @@
         {% with field=form.power_max %}{% partial input-component %}{% endwith %}
         {% with field=form.capex %}{% partial input-component %}{% endwith %}
         {% with field=form.opex %}{% partial input-component %}{% endwith %}
+
+        {% if instance.model_name == "solar" %}
+        <script>
+        var spec_power = document.getElementById("{{form.spec_power.auto_id}}");
+        var power_installed = document.getElementById("{{form.power_installed.auto_id}}");
+        var surface_area_installed = document.getElementById("{{form.surface_area_installed.auto_id}}");
+        addAutoCalcSolarPower(spec_power,power_installed, surface_area_installed);
+        </script>
+
+        {{form.warnings}}
+
+        {% endif %}
 
         <p class="text-center text-[14px] text-[#64748b]">
           Die Werte werden nur für diese Fläche übernommen.

@@ -18,8 +18,60 @@ from .models import Area
 from .models import Project
 from .models import Result
 from .models import Scenario
+from .models import SolarRadiation
 
 logger = logging.getLogger(__name__)
+
+
+def process_file_to_solar_radiation(file):
+    """Import timeseries data to SolarRadiation"""
+
+    import csv
+    import datetime
+    from pathlib import Path
+
+    file = Path("data/solar_radiation/Germany_Reference_PV_15min_Wm2.csv")
+    with open(file) as f:
+        reader = csv.DictReader(f)
+        time_col = None
+        val_col = None
+        for col in reader.fieldnames:
+            if "time" in col.lower():
+                time_col = col
+            elif "power" in col.lower():
+                val_col = col
+        if not (time_col and val_col):
+            raise ValueError("No column found for 'time' or 'power'")
+        f.seek(0)
+        k = iter(csv.DictReader(f))
+        row = next(k)
+
+        def toiso(x):
+            return datetime.datetime.fromisoformat(row[time_col])
+
+        start_time = datetime.datetime.fromisoformat(row[time_col])
+        prev_time = start_time
+        row = next(k)
+        next_time = datetime.datetime.fromisoformat(row[time_col])
+        f.seek(0)
+        values = []
+        timestep = next_time - prev_time
+        prev_time = next_time
+        consistent = True
+        for row in csv.DictReader(f):
+            values.append(row[val_col])
+            next_time = row[time_col]
+            if consistent and toiso(next_time) - toiso(prev_time) != timestep:
+                logger.warning(f"Timesteps are not consistent in file {file}")
+                consistent = False
+        SolarRadiation.all_objects.create(
+            name=file.stem,
+            timeseries=values,
+            timestep=timestep.total_seconds() / 60,
+            timeseries_start=start_time,
+        )
+
+    pass
 
 
 def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User):

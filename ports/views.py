@@ -952,7 +952,9 @@ class ObjectTemplatesView(View):
 
     def delete(self, request, *args, **kwargs):
         """Delete the instance, and replace the list item with a 'deleted' placeholder"""
+
         self.instance.delete()
+
         self.context["status"] = "deleted"
         response = self.details_render(
             self.request,
@@ -1093,8 +1095,6 @@ class DetailsView(View):
             "instances": self.instances,
             "electric_models": [m for m in apps.get_models() if issubclass(m, ElectricComponent)],
         }
-        if self.Model == Load:
-            context["upload_form"] = TimeseriesUploadForm()
 
         if issubclass(self.Model, ElectricComponent):
             template_model = get_template_model(self.Model)
@@ -1462,7 +1462,9 @@ class DetailsView(View):
             response["HX-Reselect"] = "unset"
             response["HX-Reswap"] = "innerHTML"
             return response
-        self.instance.delete()
+        with atomic():
+            DeletedItem.from_scenario_item(self.instance).save()
+            self.instance.delete()
         self.context["status"] = "deleted"
         response = self.details_render(
             self.request,
@@ -1600,14 +1602,13 @@ class DetailsView(View):
             if form.is_valid():
                 instance = form.save()
                 self.instance = instance
-                # are both needed?
                 self.context["instance"] = instance
 
-                # refresh the form, with the newly created instance.
-                self.Form = ScenarioItemFormFactory(
-                    self.Model, self.scenario, request.user, instance=instance
-                )
-                form = self.Form(data=request.POST, instance=instance)
+                #  refresh the form, with the newly created instance.
+                # this removes items such as timeseries which were selectable since they reflected the current state
+                # generally the users should only see timeseries which he has access to
+                form.scope_querysets()
+
                 self.context["form"] = form
 
                 self.context["success"] = "Erfolgreich gespeichert"
@@ -1898,10 +1899,9 @@ class ApiView(View):
 
         try:
             with atomic():
-                if getattr(self.instance, "safe_delete", None):
-                    self.instance.safe_delete()
-                else:
-                    self.instance.delete()
+                if isinstance(self.instance, ScenarioItem):
+                    DeletedItem.from_scenario_item(self.instance).save()
+                self.instance.delete()
             success = True
         except:  # noqa
             success = False
