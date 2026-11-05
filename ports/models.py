@@ -1123,31 +1123,29 @@ class AbstractHeatpump(models.Model):
     class HeatChoices(models.TextChoices):
         AIR = "air", "Luft"
         WATER = "water", "Wasser"
-        WASTE_AIR = "waste_air", "Abwärme"
-
-    class ModeChoices(models.IntegerChoices):
-        MONOVALENT = 1
-        BIVALENT = 2
 
     heatsource = models.CharField(
         choices=HeatChoices, blank=False, null=True, help_text=_("Wärmequelle der Wärmepumpe.")
     )
-    mode = models.IntegerField(
-        choices=ModeChoices,
+
+    efficiency = models.FloatField(  # override efficiency to allow values > 1
+        verbose_name=_("Leistungszahl (COP)"),
+        default=1.0,
         blank=False,
         null=True,
-        help_text=_("Betriebsart der Wärmepumpe (monovalent oder bivalent)."),
+        validators=[MinValueValidator(0)],
+        help_text=_("COP der Wärmepumpe. Muss ein Wert größer 0 sein."),
     )
 
     @classmethod
     def get_default_args(cls) -> dict:
-        return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
+        return {"heatsource": cls.HeatChoices.WATER}
 
     class Meta:
         abstract = True
 
 
-class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
+class HeatpumpTemplate(AbstractHeatpump, ElectricComponentTemplate):
     list_icon = "icon.heat_pump"
     icon = "icon.heat_pump"
 
@@ -1155,7 +1153,7 @@ class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
         verbose_name = _("Wärmepumpe Vorlage")
 
 
-class Heatpump(ElectricComponent, AbstractHeatpump):
+class Heatpump(AbstractHeatpump, ElectricComponent):
     list_icon = "icon.heat_pump"
     icon = "icon.heat_pump"
     template_model_name = HeatpumpTemplate.model_name()
