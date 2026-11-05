@@ -1129,7 +1129,7 @@ class AbstractHeatpump(models.Model):
     )
 
     efficiency = models.FloatField(  # override efficiency to allow values > 1
-        verbose_name=_("Effizienz"),
+        verbose_name=_("Leistungszahl (COP)"),
         default=1.0,
         blank=False,
         null=True,
