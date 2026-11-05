@@ -21,6 +21,11 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
       {% include "ports/partials/scenario_select.html" %}
+
+      <div id="grid-modal-container"
+        hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+        >
+      </div>
       {% comment %}
 
       <div
@@ -34,7 +39,6 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
     </div>
     <div class="flex-1 overflow-auto p-[16px]">
       <c-tabs.index variant='lined'>
-
       <c-tabs.tab>
       <c-slot name='label'>Flächen </c-slot>
       {% include 'ports/partials/flaechen_tab_panel.html' %}
@@ -44,7 +48,7 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
       {% include 'ports/partials/komponenten_tab_panel.html' %}
       </c-tabs.tab>
       <c-tabs.tab>
-      <c-slot name='label'>Allg.Rand-bedingungen</c-slot>
+      <c-slot name='label'>Allg. Rand-bedingungen</c-slot>
         {% include 'ports/partials/allg_randbed.html' %}
       </c-tabs.tab>
       </c-tabs.index>

@@ -1,8 +1,10 @@
 """
-Tests for Grid functionality: creation via the api_create endpoint (from a
+Tests for Grid functionality: creation via the details_create endpoint (from a
 single area), and attaching a grid to areas via the DetailsView post/multi_post
 paths (single area vs multi area selection).
 """
+
+from uuid import uuid4
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -49,9 +51,9 @@ class GridTestBase(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
 
-    def api_create_url(self, model_name="grid"):
+    def details_create_url(self, model_name="grid"):
         return reverse(
-            "ports:api_create",
+            "ports:details_create",
             kwargs={"scenario_internal_id": self.scenario.internal_id, "model": model_name},
         )
 
@@ -69,60 +71,65 @@ class GridTestBase(TestCase):
 
 
 class GridCreateFromAreaTest(GridTestBase):
-    """Creating a Grid from a single Area via ports:api_create."""
+    """Creating a Grid from a single Area via ports:details_create."""
 
     def test_create_grid_from_single_area(self):
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Grid 1",
             "carrier": Grid.CarrierChoices.ELECTRICITY,
             "feed_in": "on",
+            "area_internal_ids": str(self.area.internal_id),
         }
-        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload.get("success"))
 
         grid = Grid.objects.get(scenario=self.scenario, name="Grid 1")
         self.assertEqual(grid.carrier, Grid.CarrierChoices.ELECTRICITY)
         self.assertTrue(grid.feed_in)
         self.assertIn(self.area, grid.areas.all())
-        self.assertEqual(response.get("HX-Trigger"), f"refresh-{self.area.internal_id}")
+        self.assertIn(f"refresh-{self.area.internal_id}", response["HX-Trigger"])
 
     def test_create_grid_without_area(self):
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Orphan Grid",
             "carrier": Grid.CarrierChoices.GAS,
         }
-        response = self.client.post(url, data)
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json().get("success"))
+        self.assertTrue(Grid.objects.filter(scenario=self.scenario, name="Orphan Grid").exists())
 
     def test_create_grid_invalid_form(self):
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "",
             "carrier": "not-a-real-carrier",
+            "area_internal_ids": str(self.area.internal_id),
         }
-        response = self.client.post(url, data, QUERY_STRING=f"area={self.area.internal_id}")
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertFalse(payload.get("success"))
         self.assertFalse(Grid.objects.filter(scenario=self.scenario).exists())
 
     def test_create_grid_without_permission_is_rejected(self):
+        # Grant project-level "view" so the user clears DetailsView's own
+        # authorization gate, leaving the area-level check (the one actually
+        # under test here) as the thing that rejects the request.
         other_user = User.objects.create_user("otheruser", password="pass")
+        assign_perm("view", other_user, self.project)
         self.client.force_login(other_user)
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Grid by non-manager",
             "carrier": Grid.CarrierChoices.HEAT,
+            "area_internal_ids": str(self.area.internal_id),
         }
-        response = self.client.post(url, data, QUERY_STRING=f"area={self.area.internal_id}")
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 403)
-        payload = response.json()
-        self.assertFalse(payload.get("success"))
         self.assertFalse(
             Grid.objects.filter(scenario=self.scenario, name="Grid by non-manager").exists()
         )
@@ -293,7 +300,7 @@ class GridGetInitialSelectionTest(GridTestBase):
         response = self.client.get(url, {"internal_ids": internal_ids})
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertEqual(form.data.get("grid_electricity"), self.grid)
+        self.assertEqual(form.initial.get("grid_electricity"), self.grid)
 
     def test_get_area_multi_mixed_grid_not_returned(self):
         # Areas have different grids of the same carrier -> mixed value,
@@ -305,7 +312,7 @@ class GridGetInitialSelectionTest(GridTestBase):
         response = self.client.get(url, {"internal_ids": internal_ids})
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertNotIn("grid_electricity", form.data)
+        self.assertNotIn("grid_electricity", form.initial)
 
 
 class GridRemoveCarrierTest(GridTestBase):
@@ -387,12 +394,12 @@ class GridRemoveCarrierTest(GridTestBase):
 
 class GridAreaAuthorizationTest(TestCase):
     """
-    ApiView.create (grid creation) and ApiView.remove_carrier are gated by
-    scenario-level "details" authorization, but the areas they mutate are
-    supplied directly in the request body (?area=... / area_internal_ids).
-    A user with scenario access but no area-level "details" permission for
-    a specific area must not be able to sneak that area's internal_id into
-    either request and have it mutated anyway.
+    DetailsView.create (grid creation) and ApiView.remove_carrier are gated by
+    project-level authorization, but the areas they mutate are supplied
+    directly in the request body (area_internal_ids). A user with scenario
+    access but no area-level "details" permission for a specific area must
+    not be able to sneak that area's internal_id into either request and have
+    it mutated anyway.
     """
 
     @classmethod
@@ -406,10 +413,11 @@ class GridAreaAuthorizationTest(TestCase):
         cls.project_group, _ = Group.objects.get_or_create(name=cls.project.group_name())
         cls.project_group.user_set.add(cls.owner)
         cls.project_group.user_set.add(cls.outsider)
-        # Grant scenario-level "details" so ApiView.dispatch's scenario check
-        # passes for the outsider; area-level "details" is deliberately
+        # Grant project-level "view" so DetailsView.dispatch's own authorization
+        # gate passes for the outsider; area-level "details" is deliberately
         # withheld, which is the permission actually being tested here.
-        assign_perm("details", cls.project_group, cls.scenario)
+        assign_perm("view", cls.project_group, cls.project)
+        assign_perm("details", cls.project_group, cls.project)
 
         cls.area = Area.objects.create(
             scenario=cls.scenario,
@@ -427,9 +435,9 @@ class GridAreaAuthorizationTest(TestCase):
         )
         cls.grid.areas.add(cls.area)
 
-    def api_create_url(self):
+    def details_create_url(self):
         return reverse(
-            "ports:api_create",
+            "ports:details_create",
             kwargs={"scenario_internal_id": self.scenario.internal_id, "model": "grid"},
         )
 
@@ -441,12 +449,14 @@ class GridAreaAuthorizationTest(TestCase):
 
     def test_create_grid_rejects_area_without_area_permission(self):
         self.client.force_login(self.outsider)
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Sneaked-in Grid",
             "carrier": Grid.CarrierChoices.GAS,
+            "area_internal_ids": str(self.area.internal_id),
         }
-        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertFalse(
             Grid.objects.filter(scenario=self.scenario, name="Sneaked-in Grid").exists()
         )
@@ -474,16 +484,19 @@ class GridAreaAuthorizationTest(TestCase):
         collaborator = User.objects.create_user("grid_perm_collaborator", password="pass")
         collaborator_group, _ = Group.objects.get_or_create(name="Project Collaborators Grid")
         collaborator_group.user_set.add(collaborator)
+        assign_perm("view", collaborator_group, self.project)
         assign_perm("details", collaborator_group, self.project)
         assign_perm("details", collaborator_group, self.area)
 
         self.client.force_login(collaborator)
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Collaborator Grid",
             "carrier": Grid.CarrierChoices.GAS,
+            "area_internal_ids": str(self.area.internal_id),
         }
-        response = self.client.post(url, data, QUERY_STRING=f"areas={self.area.internal_id}")
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
             Grid.objects.filter(scenario=self.scenario, name="Collaborator Grid").exists()
@@ -491,33 +504,20 @@ class GridAreaAuthorizationTest(TestCase):
 
 
 class GridCreateFromMultiAreaTest(GridTestBase):
-    """
-    Creating a Grid from a multi-area selection via ports:api_create using
-    ?areas=<id1>,<id2>. RED tests: these currently fail because of bugs in
-    ApiView.create() on the multi-area path (see review of feature/grids):
-      - `areas_internal_id = [area_internal_id] or area_internal_ids` references
-        undefined names -> NameError
-      - `?areas=` is read as a raw comma-joined string, never split into a list
-      - `Grid.areas.through.objects.filter(area_in=...)` -> invalid lookup, should
-        be `area__in=`
-      - `instance.areas.add(area_or_areas)` passes a QuerySet instead of
-        unpacking it -> TypeError
-    """
+    """Creating a Grid from a multi-area selection via ports:details_create."""
 
     def test_create_grid_from_multiple_areas(self):
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Multi Area Grid",
             "carrier": Grid.CarrierChoices.ELECTRICITY,
             "feed_in": "on",
+            "area_internal_ids": f"{self.area.internal_id},{self.area2.internal_id}",
         }
-        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
-        response = self.client.post(url, data, QUERY_STRING=query_string)
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload.get("success"), payload)
-
         grid = Grid.objects.get(scenario=self.scenario, name="Multi Area Grid")
         self.assertIn(self.area, grid.areas.all())
         self.assertIn(self.area2, grid.areas.all())
@@ -531,19 +531,17 @@ class GridCreateFromMultiAreaTest(GridTestBase):
         )
         existing_grid.areas.add(self.area, self.area2)
 
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Replacement Grid",
             "carrier": Grid.CarrierChoices.ELECTRICITY,
             "feed_in": "on",
+            "area_internal_ids": f"{self.area.internal_id},{self.area2.internal_id}",
         }
-        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
-        response = self.client.post(url, data, QUERY_STRING=query_string)
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload.get("success"), payload)
-
         new_grid = Grid.objects.get(scenario=self.scenario, name="Replacement Grid")
         self.assertIn(self.area, new_grid.areas.all())
         self.assertIn(self.area2, new_grid.areas.all())
@@ -554,15 +552,17 @@ class GridCreateFromMultiAreaTest(GridTestBase):
 
     def test_create_grid_from_multiple_areas_rejects_without_area_permission(self):
         outsider = User.objects.create_user("multi-outsider", password="pass")
+        assign_perm("view", outsider, self.project)
         self.client.force_login(outsider)
 
-        url = self.api_create_url()
+        url = self.details_create_url()
         data = {
+            "internal_id": str(uuid4()),
             "name": "Sneaked-in Multi Grid",
             "carrier": Grid.CarrierChoices.GAS,
+            "area_internal_ids": f"{self.area.internal_id},{self.area2.internal_id}",
         }
-        query_string = f"areas={self.area.internal_id},{self.area2.internal_id}"
-        response = self.client.post(url, data, QUERY_STRING=query_string)
+        response = self.client.post(url, data, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(

@@ -1,0 +1,27 @@
+{% load widget_tweaks %}
+<c-slot name='label'>Profil</c-slot>
+<div class="py-4 px-0">
+
+    <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+            <select class="bg-white border border-[#cbd5e1] rounded-2 px-4 text-[#1e293b] cursor-pointer py-2 text-sm">
+                <option>Klimadaten</option>
+            </select>
+        </div>
+
+        <form hx-encoding="multipart/form-data" class="flex flex-col gap-3">
+          {% include "ports/partials/timeseries_upload.html" with upload_form=profile_upload_form scenario=scenario instance=None %}
+        </form>
+
+        <div id="profil-list" class="flex flex-col border border-[#cbd5e1] rounded-2 mt-4">
+            {% for ts in profile_timeseries %}
+            {% include "ports/partials/randbed_profil_list.html" %}
+            {% empty %}
+            <div class="p-4 rounded-2 bg-white text-sm text-[#64748b]">Keine Zeitreihen vorhanden</div>
+            {% endfor %}
+        </div>
+        <div id="rename-timeseries-modal-container"
+            hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+        ></div>
+    </div>
+</div>

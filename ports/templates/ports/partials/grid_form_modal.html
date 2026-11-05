@@ -1,0 +1,64 @@
+{% comment %}
+Shared modal body for creating AND editing a Grid (Netzanschluss). The caller owns
+everything that differs between the two (title, submit url/label, dialog id) -
+this partial only renders the field loop + buttons, so both flows stay in sync.
+{% endcomment %}
+<c-modal closedby='any' id="{{ dialog_id }}">
+  <div class="relative flex w-full shrink-0 content-stretch items-center justify-between mb-[16px]">
+    <p class="relative shrink-0 font-['Inter:Regular',sans-serif] text-[20px] leading-[normal] font-normal text-[#1e293b] not-italic">
+      {{ title }}
+    </p>
+    <button type="button"
+            commandfor="{{ dialog_id }}"
+            command="close"
+            class="relative size-[24px] shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-opacity hover:opacity-60">
+      <c-icon.close />
+    </button>
+  </div>
+  <form id="{{ dialog_id }}-form"
+        class="flex flex-col gap-[16px]">
+     {% for field in form.hidden_fields %}
+    {{field}}
+     {% endfor %}
+    <input type="hidden" name="area_internal_ids" value="{{ area_internal_ids }}">
+
+     {% for field in form.visible_fields %}
+     <c-form-field :field="field" />
+     {% endfor %}
+    <div class="htmx-indicator-inherited bg-red-500 loader" id="{{ dialog_id }}-indicator"></div>
+    <c-button
+      type='submit'
+      :hx-post="{{ submit_url }}"
+      hx-target="closest dialog"
+      hx-indicator="closest form"
+      hx-validate="true"
+      hx-select="dialog > *"
+      hx-disabled-elt="this"
+      hx-swap="innerHTML"
+      class="bg-[#0e7490] [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 justify-center px-4 py-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-base disabled:bg-gray-500 disabled:cursor-default"
+      x-cloak
+      x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, 2000)"
+    >
+        <p x-show="show">
+          {% if request.method == "GET"  %}
+          Speichern
+          {% elif request.method == "POST" and form.errors %}
+          Fehlgeschlagen
+          {% else %}
+          Gespeichert
+          {% endif %}
+        </p>
+        <p x-show="!show">
+          Speichern
+        </p>
+    </c-button>
+    <button type="button"
+            commandfor="{{ dialog_id }}"
+            command="close"
+            class="bg-white content-stretch flex gap-[8px] items-center justify-center px-[16px] py-[8px] relative rounded-[100px] shrink-0 w-full border border-[#cbd5e1] border-solid cursor-pointer hover:bg-[#f8fafc] transition-colors">
+      <p class="font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#1e293b] text-[14px]">
+        Abbrechen
+      </p>
+    </button>
+  </form>
+</c-modal>

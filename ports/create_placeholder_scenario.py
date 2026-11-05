@@ -9,6 +9,7 @@ from django.contrib.gis.geos import Polygon
 from guardian.shortcuts import assign_perm
 
 from .models import Area
+from .models import EnergyCost
 from .models import Generator
 from .models import Grid
 from .models import Heating
@@ -41,6 +42,7 @@ def create_scenario() -> Scenario:
     s = Scenario.objects.create(
         name="TestScenario", internal_id=_uid, manager=user1, project=new_project
     )
+    EnergyCost.get_or_create_for_scenario(s)
     # Group might exist already, since developer might switch back and force between migrations states
     old_group = Group.objects.filter(name=new_project.group_name()).first()
     if old_group:
@@ -143,12 +145,12 @@ def create_scenario() -> Scenario:
         timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
     )
-    load1 = Load.objects.create(scenario=s, name="Some Load 1999", area=area1, template=template2)
+    load1 = Load.objects.create(scenario=s, name="Eine Last", area=area1, timeseries=template2)
     grid_el = Grid.objects.create(
         scenario=s,
         name="electric grid",
         carrier=Grid.CarrierChoices.ELECTRICITY,
-        timeseries=load1,
+        load=load1,
     )
     grid_pv = Grid.objects.create(
         scenario=s,

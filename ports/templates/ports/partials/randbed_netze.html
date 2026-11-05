@@ -1,0 +1,72 @@
+{% load display %}
+{% comment %}
+ the id follows the same structure as the list-items so the delete functionality works as intended
+{% endcomment %}
+
+<c-accordion.item  :id="button-list-item-{{grid.internal_id}}"
+    hx-swap-oob='true'
+
+>
+    <c-accordion.trigger :value='value' class='font-semibold cursor-pointer rounded px-2 mb-2 bg-gray-100 shadow-sm' >{{grid.name}}</c-accordion.trigger>
+    <c-accordion.content :value='value' class='px-2'>
+        <div class="flex flex-col gap-2">
+            <p class="text-[#64748b] text-sm">Netzanschluss</p>
+            <p class="text-[#64748b] text-sm">
+                <span class="text-[#0e7490] font-semibold">Kapazität:</span> {{grid|display:"power_max"}}
+            </p>
+            {% if grid.load %}
+            <p class="text-[#64748b] text-sm">
+                <span class="text-[#0e7490] font-semibold">Lastzeitreihe:</span> {{grid|display:"load"}}
+            </p>
+            {% endif %}
+            <p class="text-[#64748b] text-sm">
+                <span class="text-[#0e7490] font-semibold">Typ:</span> {{grid.get_carrier_display}}
+            </p>
+            {% if grid.connected_to %}
+                <p class="text-[#64748b] text-sm">
+                    <span class="text-[#0e7490] font-semibold">Angeschlossen an:</span> {{grid.connected_to.verbose}}
+                </p>
+            {% endif %}
+            <p class="text-[#64748b] text-sm">
+                <c-expand.index variant='custom'>
+                    <c-slot name='title'><span class="text-[#0e7490] font-semibold cursor-pointer">Flächen anzeigen</span> </c-slot>
+                    <ul>
+                        {% for area in grid.areas.all %}
+                        <li>{{area.name}}</li>
+                        {% endfor %}
+                    </ul>
+                </c-expand.index>
+            </p>
+            <p class="text-[#64748b] text-sm">
+                <span class="text-[#0e7490] font-semibold">Netzbetreiber:</span> MUSS IMPLENTIERT WERDEN
+            </p>
+            <div class="flex justify-end mt-2">
+                <button type='button'
+                    hx-get="{% url "ports:details" model="grid" scenario_internal_id=scenario.internal_id %}?internal_id={{grid.internal_id}}"
+                    hx-swap="innerHTML"
+                    hx-target="#grid-modal-container"
+                    hx-select="unset"
+                    class="text-[#0e7490] font-semibold text-sm hover:opacity-80 transition-opacity">
+                    Bearbeiten
+                </button>
+            </div>
+            <div class="flex justify-end mt-2">
+            {% url 'ports:details' scenario_internal_id=scenario.internal_id model='grid'  as delete_url %}
+            <c-button
+                variant="destructive"
+                type='button'
+                :hx-delete="{{ delete_url }}?internal_id={{ grid.internal_id }}"
+                hx-confirm="Willst du {{grid.name}} wirklich löschen?"
+                class="select-none [&>div]:flex [&>div]:items-center p-3 [&>div]:gap-3 text-sm! "
+                x-cloak >
+                <i data-lucide='trash-2' class='w-4 h-4 shrink-0'></i>Netzanschluss löschen<span class='htmx-indicator loader align-middle'></span>
+            </c-button>
+            </div>
+
+        </div>
+    </c-accordion.content>
+</c-accordion.item>
+<div id="grid-{{grid.internal_id}}-modal-container"
+hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+>
+</div>

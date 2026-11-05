@@ -1,0 +1,52 @@
+<c-modal id="rename-timeseries-modal" closedby="any">
+  <div class="flex items-center justify-between">
+    <h2 class="text-slate-800 text-lg font-semibold">Zeitreihe umbenennen</h2>
+    <button type="button"
+      commandfor="rename-timeseries-modal" command="close"
+      class="size-6 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:opacity-60 transition-opacity border-0 bg-transparent cursor-pointer p-0">
+      <c-icon.close />
+    </button>
+  </div>
+  <form class="flex flex-col gap-4">
+    {% for field in form.hidden_fields %}
+    {{ field }}
+    {% endfor %}
+    {% for field in form.visible_fields %}
+    <c-form-field :field="field" />
+    {% endfor %}
+    {% url 'ports:timeseries_rename' scenario_internal_id=scenario.internal_id internal_id=ts.internal_id as rename_url %}
+    <c-button
+      type="button"
+      :hx-post="rename_url"
+      hx-include="closest form"
+      hx-target="closest dialog"
+      hx-select="dialog > *"
+      hx-swap="innerHTML"
+      hx-indicator="closest form"
+      hx-disabled-elt="this"
+      class="bg-[#0e7490] flex items-center justify-center gap-2 p-3 rounded-full w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors text-white font-bold text-sm"
+      x-cloak
+      x-data="{show:true}" @click="show=false" x-init="setTimeout(()=>show=false, 2000)"
+    >
+      <p x-show="show">
+        {% if request.method == "GET" %}
+        Speichern
+        {% elif request.method == "POST" and form.errors %}
+        Fehlgeschlagen
+        {% else %}
+        Gespeichert
+        {% endif %}
+      </p>
+      <p x-show="!show">
+        Speichern
+      </p>
+    </c-button>
+    <button type="button" commandfor="rename-timeseries-modal" command="close"
+      class="bg-white flex gap-2 items-center justify-center px-4 py-2 rounded-full w-full border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors text-slate-800 text-sm">
+      Abbrechen
+    </button>
+  </form>
+</c-modal>
+{% if request.method == "POST" and not form.errors %}
+{% include "ports/partials/randbed_profil_list.html" with ts=ts %}
+{% endif %}

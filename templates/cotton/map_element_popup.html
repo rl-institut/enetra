@@ -1,4 +1,4 @@
-
+{% load display %}
 <c-vars instance ></c-vars>
 <div style="display: flex;
 align-items: center;
@@ -55,10 +55,10 @@ margin-bottom: 8px"
         {% partial "key-value-row" %}
         {% endwith %}
 
-        {% with key="Kapazität" value=instance.capacity_verbose  %}
+        {% with key="Kapazität" value=instance|display:"power_kw"  %}
         {% partial "key-value-row" %}
         {% endwith %}
-        {% with key="Effizienz" value=instance.efficiency_verbose  %}
+        {% with key="Effizienz" value=instance|display:"efficiency"  %}
         {% partial "key-value-row" %}
         {% endwith %}
     {% endif %}

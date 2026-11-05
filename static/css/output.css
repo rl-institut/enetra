@@ -402,6 +402,9 @@
   .z-\[99999\] {
     z-index: 99999;
   }
+  .row-span-3 {
+    grid-row: span 3 / span 3;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -583,10 +586,6 @@
     width: 12px;
     height: 12px;
   }
-  .size-\[14px\] {
-    width: 14px;
-    height: 14px;
-  }
   .size-\[16px\] {
     width: 16px;
     height: 16px;
@@ -650,6 +649,9 @@
   .h-30 {
     height: calc(var(--spacing) * 30);
   }
+  .h-48 {
+    height: calc(var(--spacing) * 48);
+  }
   .h-64 {
     height: calc(var(--spacing) * 64);
   }
@@ -664,9 +666,6 @@
   }
   .h-\[12px\] {
     height: 12px;
-  }
-  .h-\[14px\] {
-    height: 14px;
   }
   .h-\[16px\] {
     height: 16px;
@@ -811,9 +810,6 @@
   }
   .w-\[12px\] {
     width: 12px;
-  }
-  .w-\[14px\] {
-    width: 14px;
   }
   .w-\[16px\] {
     width: 16px;
@@ -1011,6 +1007,9 @@
   .cursor-default {
     cursor: default;
   }
+  .cursor-help {
+    cursor: help;
+  }
   .cursor-not-allowed {
     cursor: not-allowed;
   }
@@ -1043,6 +1042,9 @@
   }
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grid-rows-subgrid {
+    grid-template-rows: subgrid;
   }
   .flex-col {
     flex-direction: column;
@@ -1122,9 +1124,6 @@
   .gap-\[4px\] {
     gap: 4px;
   }
-  .gap-\[6px\] {
-    gap: 6px;
-  }
   .gap-\[8px\] {
     gap: 8px;
   }
@@ -1136,6 +1135,9 @@
   }
   .gap-\[24px\] {
     gap: 24px;
+  }
+  .gap-x-6 {
+    column-gap: calc(var(--spacing) * 6);
   }
   .gap-x-12 {
     column-gap: calc(var(--spacing) * 12);
@@ -1539,9 +1541,6 @@
   .bg-popover {
     background-color: var(--popover);
   }
-  .bg-primary {
-    background-color: var(--primary);
-  }
   .bg-red-50 {
     background-color: var(--color-red-50);
   }
@@ -1767,17 +1766,14 @@
   .pr-6 {
     padding-right: calc(var(--spacing) * 6);
   }
+  .pr-16 {
+    padding-right: calc(var(--spacing) * 16);
+  }
   .pr-\[60px\] {
     padding-right: 60px;
   }
   .pr-\[70px\] {
     padding-right: 70px;
-  }
-  .pr-\[80px\] {
-    padding-right: 80px;
-  }
-  .pr-\[90px\] {
-    padding-right: 90px;
   }
   .pb-0 {
     padding-bottom: calc(var(--spacing) * 0);
@@ -1870,6 +1866,10 @@
   .text-sm {
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+  .text-sm\! {
+    font-size: var(--text-sm) !important;
+    line-height: var(--tw-leading, var(--text-sm--line-height)) !important;
   }
   .text-xl {
     font-size: var(--text-xl);
@@ -2125,9 +2125,6 @@
   }
   .text-primary {
     color: var(--primary);
-  }
-  .text-primary-foreground {
-    color: var(--primary-foreground);
   }
   .text-red-400 {
     color: var(--color-red-400);
@@ -2549,6 +2546,12 @@
       border-bottom-width: 1px;
     }
   }
+  .last\:border-b-0 {
+    &:last-child {
+      border-bottom-style: var(--tw-border-style);
+      border-bottom-width: 0px;
+    }
+  }
   .hover\:bg-\[\#0c647a\] {
     &:hover {
       @media (hover: hover) {
@@ -2661,16 +2664,6 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--muted);
-      }
-    }
-  }
-  .hover\:bg-primary\/90 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--primary);
-        @supports (color: color-mix(in lab, red, red)) {
-          background-color: color-mix(in oklab, var(--primary) 90%, transparent);
-        }
       }
     }
   }
@@ -3333,6 +3326,11 @@
       line-height: var(--tw-leading, var(--text-xs--line-height));
     }
   }
+  .\[\&\:\:-webkit-details-marker\]\:hidden {
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
   .\[\&\:has\(\[data-template-value\]\)\]\:border-2 {
     &:has([data-template-value]) {
       border-style: var(--tw-border-style);
@@ -3517,6 +3515,14 @@
     }
   }
 }
+.no-stepper input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.no-stepper input[type="number"]::-webkit-outer-spin-button, .no-stepper input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .map-label-icon {
   background: transparent !important;
   border: none !important;
@@ -3627,7 +3633,7 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.177 0.105 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);

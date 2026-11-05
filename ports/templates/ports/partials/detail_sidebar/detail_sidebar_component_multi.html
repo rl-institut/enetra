@@ -76,11 +76,12 @@
         <div class="flex flex-col gap-[8px]">
           <label class="text-[14px] font-semibold text-[#1e293b]"
           >Komponente aus Vorlage</label>
-          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET.template}}">
+          {% constant "USE_TEMPLATE" as use_template %}
+          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET|get_value_or_none:use_template|default:''}}">
             <c-select.button selectValue="">------</c-select.button>
             {% for template in templates %}
             <c-select.button selectValue="{{template.internal_id}}"
-              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}?template={{template.internal_id}}"
+              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}?{{use_template}}={{template.internal_id}}"
               hx-vals='{"internal_ids": "{{internal_ids}}"}'
               hx-target="#detailSidebar"
               hx-select="unset"

@@ -52,6 +52,9 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     });
 })
 
+
+
+
 // Cotton list items used to be individual Alpine components (x-data + x-effect per row) just to
 // dispatch these window events when (de)selected.Now the (c-list.index) delegates all input
 // handling to a single listener and calls this helper directly instead.
@@ -83,10 +86,22 @@ function hideOtherDropDown(selector) {
 };
 
 
-// make child of div selects of class select2 select2 elements
+// make child selects of a div with class=="make-select2" select2 elements
 document.addEventListener("htmx:afterSettle", (event) => {
     // fires on the swapped in elements. Search these elements for select2
     const root = event.target;
+    initSelect2(root);
+}
+);
+
+// make child selects of a div with class=="make-select2" select2 elements
+document.addEventListener("DOMContentLoaded", () => {
+    const root = document;
+    initSelect2(root);
+}
+);
+
+function initSelect2(root) {
     const els = [...root.querySelectorAll('.make-select2')];
     if (root.matches?.('.make-select2')) els.unshift(root);   // root itself may match
     els.forEach(el => {
@@ -94,9 +109,8 @@ document.addEventListener("htmx:afterSettle", (event) => {
         const select_el = el.querySelector(':scope > select');
         $(select_el)?.select2({ width: "100%" })
     });
-}
-);
 
+}
 
 // give some functionality to c-list.items. since there might be hundreds, beeing efficient here improves render times
 // this makes list items disptach the appropriate getdetails event as well as listen to select events
@@ -119,7 +133,6 @@ document.addEventListener("htmx:afterSwap", (event) => {
 })
 
 document.addEventListener("htmx:oobBeforeSwap", (event) => {
-    console.log( 'added func')
     const el = event.target;
     var list_items;
     if (el.classList.contains("cotton-list-item")) {
@@ -143,3 +156,10 @@ function addListItemFunctionality(el) {
     window.addEventListener("select-instance-" + internal_id, () => { el.click(); })
     el._added_list_item_func = true
 }
+
+document.addEventListener('alpine:init', () => {
+    Alpine.store('templates', {
+        values: {},
+        urls: {},
+    });
+})
