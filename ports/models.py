@@ -1032,6 +1032,9 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
 class AbstractGenerator(models.Model):
     """Transforms fuel into electricity"""
 
+    list_icon = "icon.generator"
+    icon = "icon.generator"
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
@@ -1051,16 +1054,12 @@ class AbstractGenerator(models.Model):
         abstract = True
 
 
-class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
-    list_icon = "icon.generator"
-
+class GeneratorTemplate(AbstractGenerator, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Generator Vorlage")
 
 
-class Generator(ElectricComponent, AbstractGenerator):
-    list_icon = "icon.generator"
-    icon = "icon.generator"
+class Generator(AbstractGenerator, ElectricComponent):
     template_model_name = GeneratorTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1069,6 +1068,9 @@ class Generator(ElectricComponent, AbstractGenerator):
 
 class AbstractHeating(models.Model):
     """Transforms energy source to heat"""
+
+    list_icon = "icon.heating"
+    icon = "icon.heating"
 
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
@@ -1090,17 +1092,12 @@ class AbstractHeating(models.Model):
         abstract = True
 
 
-class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
-    list_icon = "icon.heating"
-    icon = "icon.heating"
-
+class HeatingTemplate(AbstractHeating, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Heizung Vorlage")
 
 
-class Heating(ElectricComponent, AbstractHeating):
-    list_icon = "icon.heating"
-    icon = "icon.heating"
+class Heating(AbstractHeating, ElectricComponent):
     template_model_name = HeatingTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1110,10 +1107,22 @@ class Heating(ElectricComponent, AbstractHeating):
 class AbstractCHP(models.Model):
     """Combined heat and power (Blockheizkraftwerk)"""
 
+    list_icon = "icon.chp"
+    icon = "icon.chp"
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
         GAS = "gas", "Gas"
+
+    # override of electric components efficiency
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
     carrier = models.CharField(
         verbose_name=_("Energieträger"),
@@ -1141,30 +1150,23 @@ class AbstractCHP(models.Model):
         abstract = True
 
 
-class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
-    list_icon = "icon.chp"
-    icon = "icon.chp"
-
+class CHPTemplate(AbstractCHP, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
 
-    # override of electric components efficiency which would be used otherwise
-    efficiency = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
-        validators=[MinValueValidator(0), MaxValueValidator(2)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
 
-
-class CHP(ElectricComponent, AbstractCHP):
-    list_icon = "icon.chp"
-    icon = "icon.chp"
+class CHP(AbstractCHP, ElectricComponent):
     template_model_name = CHPTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung")
+
+
+class AbstractFuelCell(models.Model):
+    """Transform H2 into electricity"""
+
+    list_icon = "icon.fuelcell"
+    icon = "icon.fuelcell"
 
     # override of electric components efficiency which would be used otherwise
     efficiency = models.FloatField(
@@ -1173,10 +1175,6 @@ class CHP(ElectricComponent, AbstractCHP):
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
     )
-
-
-class AbstractFuelCell(models.Model):
-    """Transform H2 into electricity"""
 
     power_to_heat_ratio = models.FloatField(
         verbose_name=_("Stromkennzahl"),
@@ -1190,42 +1188,23 @@ class AbstractFuelCell(models.Model):
         abstract = True
 
 
-class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
-    list_icon = "icon.fuelcell"
-    icon = "icon.fuelcell"
-
+class FuelCellTemplate(AbstractFuelCell, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Brennstoffzelle Vorlage")
 
-    # override of electric components efficiency which would be used otherwise
-    efficiency = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
 
-
-class FuelCell(ElectricComponent, AbstractFuelCell):
-    list_icon = "icon.fuelcell"
-    icon = "icon.fuelcell"
+class FuelCell(AbstractFuelCell, ElectricComponent):
     template_model_name = FuelCellTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Brennstoffzelle")
 
-    # override of electric components efficiency which would be used otherwise
-    efficiency = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
-
 
 class AbstractElectrolyzer(models.Model):
     """Transform electricity into H2"""
 
+    list_icon = "icon.electrolyzer"
+    icon = "icon.electrolyzer"
     # carrier is always electricity
     efficiency_thermal = models.FloatField(
         verbose_name=_("Thermische Effizienz"),
@@ -1238,17 +1217,15 @@ class AbstractElectrolyzer(models.Model):
         abstract = True
 
 
-class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
-    list_icon = "icon.electrolyzer"
-    icon = "icon.electrolyzer"
-
+class ElectrolyzerTemplate(
+    AbstractElectrolyzer,
+    ElectricComponentTemplate,
+):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Elektrolyseur Vorlage")
 
 
-class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
-    list_icon = "icon.electrolyzer"
-    icon = "icon.electrolyzer"
+class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
     template_model_name = ElectrolyzerTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1257,6 +1234,9 @@ class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
 
 class AbstractHeatpump(models.Model):
     """Transform electricity into heat"""
+
+    list_icon = "icon.heat_pump"
+    icon = "icon.heat_pump"
 
     # carrier is always electricity
     class HeatChoices(models.TextChoices):
@@ -1289,17 +1269,15 @@ class AbstractHeatpump(models.Model):
         abstract = True
 
 
-class HeatpumpTemplate(ElectricComponentTemplate, AbstractHeatpump):
-    list_icon = "icon.heat_pump"
-    icon = "icon.heat_pump"
-
+class HeatpumpTemplate(
+    AbstractHeatpump,
+    ElectricComponentTemplate,
+):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Wärmepumpe Vorlage")
 
 
-class Heatpump(ElectricComponent, AbstractHeatpump):
-    list_icon = "icon.heat_pump"
-    icon = "icon.heat_pump"
+class Heatpump(AbstractHeatpump, ElectricComponent):
     template_model_name = HeatpumpTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1311,6 +1289,9 @@ class AbstractSolar(models.Model):
     The profile is the 'Einstrahlungsprofil' for the plane of the pv module,
     e.g. 30˚ Incline towards south, with the locale sun radiation power.
     """
+
+    list_icon = "icon.solar"
+    icon = "icon.solar"
 
     profile = models.ForeignKey(
         "SolarRadiation",
@@ -1374,17 +1355,12 @@ class AbstractSolar(models.Model):
         abstract = True
 
 
-class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
-    list_icon = "icon.solar"
-    icon = "icon.solar"
-
+class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Solaranlage Vorlage")
 
 
-class Solar(ElectricComponent, AbstractSolar):
-    list_icon = "icon.solar"
-    icon = "icon.solar"
+class Solar(AbstractSolar, ElectricComponent):
     template_model_name = SolarTemplate.model_name()
 
     class Meta(ElectricComponentTemplate.Meta):
@@ -1480,12 +1456,12 @@ class AbstractStorage(models.Model):
         abstract = True
 
 
-class StorageTemplate(ItemTemplate, AbstractStorage):
+class StorageTemplate(AbstractStorage, ItemTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Speicher Vorlage")
 
 
-class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
+class Storage(AbstractStorage, ScenarioItem):  # order important (Meta)
     area = models.ForeignKey(
         Area,
         on_delete=models.CASCADE,
@@ -1493,7 +1469,7 @@ class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
     )
     template_model_name = StorageTemplate.model_name()
 
-    class Meta(ElectricComponent.Meta):
+    class Meta(ScenarioItem.Meta):
         verbose_name = _("Speicher")
 
 
