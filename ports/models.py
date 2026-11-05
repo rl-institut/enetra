@@ -1121,6 +1121,13 @@ class AbstractCHP(models.Model):
         help_text=_("Energieträger, der von der Kraft-Wärme-Kopplung genutzt wird."),
     )
 
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
+    )
+
     @classmethod
     def get_default_args(cls) -> dict:
         return {"carrier": cls.CarrierChoices.GAS}
@@ -1141,18 +1148,13 @@ class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
 
+    # override of electric components efficiency which would be used otherwise
     efficiency = models.FloatField(
         verbose_name=_("Thermische Effizienz"),
         default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
-
-    power_to_heat_ratio = models.FloatField(
-        verbose_name=_("Stromkennzahl"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
 
@@ -1164,6 +1166,7 @@ class CHP(ElectricComponent, AbstractCHP):
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung")
 
+    # override of electric components efficiency which would be used otherwise
     efficiency = models.FloatField(
         verbose_name=_("Thermische Effizienz"),
         default=1.0,
@@ -1171,22 +1174,16 @@ class CHP(ElectricComponent, AbstractCHP):
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
     )
 
-    power_to_heat_ratio = models.FloatField(
-        verbose_name=_("Stromkennzahl"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
-    )
-
 
 class AbstractFuelCell(models.Model):
     """Transform H2 into electricity"""
 
-    # carrier is always hydrogen
-    efficiency_thermal = models.FloatField(
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
         default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+        # https://de.wikipedia.org/wiki/Stromkennzahl for fuel cell up to 3
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
     class Meta:
@@ -1200,6 +1197,14 @@ class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Brennstoffzelle Vorlage")
 
+    # override of electric components efficiency which would be used otherwise
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+
 
 class FuelCell(ElectricComponent, AbstractFuelCell):
     list_icon = "icon.fuelcell"
@@ -1208,6 +1213,14 @@ class FuelCell(ElectricComponent, AbstractFuelCell):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Brennstoffzelle")
+
+    # override of electric components efficiency which would be used otherwise
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
 
 class AbstractElectrolyzer(models.Model):
@@ -1388,11 +1401,13 @@ class AbstractStorage(models.Model):
 
     carrier = models.CharField(
         choices=CarrierChoices,
+        verbose_name=_("Energieträger"),
         null=True,
         blank=False,
         help_text=_("Energieträger des Speichers."),
     )
     efficiency_load = models.FloatField(
+        verbose_name=_("Lade-Effizienz"),
         default=1.0,
         null=True,
         blank=False,
@@ -1400,6 +1415,7 @@ class AbstractStorage(models.Model):
         help_text=_("Wirkungsgrad beim Beladen. Muss ein Wert zwischen 0 und 1 sein."),
     )
     efficiency_store = models.FloatField(
+        verbose_name=_("Entlade-Effizienz"),
         default=1.0,
         null=True,
         blank=False,
@@ -1408,6 +1424,7 @@ class AbstractStorage(models.Model):
     )
     # capacity: unit depends on carrier. kWh for electricity and heat, liters for H2
     capacity_installed = models.FloatField(
+        verbose_name=_("Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
@@ -1417,21 +1434,23 @@ class AbstractStorage(models.Model):
         ),
     )
     capacity_min = models.FloatField(
+        verbose_name=_("Mindest-Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Minimale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+            "Minimale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein. Dieser Wert wird nur bei Optimierungen genutzt."
         ),
     )
     capacity_max = models.FloatField(
+        verbose_name=_("Maximal-Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Maximale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+            "Maximale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein. Dieser Wert wird nur bei Optimierungen genutzt."
         ),
     )
     capex = models.FloatField(

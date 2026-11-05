@@ -16,7 +16,7 @@ this partial only renders the field loop + buttons, so both flows stay in sync.
     </button>
   </div>
   <form id="{{ dialog_id }}-form"
-        class="flex flex-col gap-[16px]">
+        class="flex flex-col gap-[16px] no-stepper">
      {% for field in form.hidden_fields %}
     {{field}}
      {% endfor %}

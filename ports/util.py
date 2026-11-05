@@ -155,7 +155,7 @@ def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User
 def duplicate_project(project: Project):
     # deepcopy may reassign the instance pk in memory, so resolve the old group first
     old_group = Group.objects.filter(name=project.group_name()).first()
-    new_project, _ = deepcopy(project, exclude_models={User, Result}, max_depth=2)
+    new_project, _ = deepcopy(project, exclude_models={User, Result, SolarRadiation}, max_depth=2)
 
     # Authorization is not directly linked through foreign keys but through foreign_objects
     # Therefore the group is not deepcopied. Maybe make the group part of the object?
@@ -201,7 +201,9 @@ def duplicate_scenario(scenario: Scenario, user: User, suffix=" (Dupliziert)"):
     Group permissions should not be transferred in cases of scenario duplication for a new project
     The previous group should not be authorized to view a scenario or its items from a different project
     """
-    new_scenario, _ = deepcopy(scenario, exclude_models={User, Project, Result}, max_depth=1)
+    new_scenario, _ = deepcopy(
+        scenario, exclude_models={User, Project, Result, SolarRadiation}, max_depth=1
+    )
     new_scenario.name += suffix
     new_scenario.manager = user
     new_scenario.save()

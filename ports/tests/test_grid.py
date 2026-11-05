@@ -568,3 +568,55 @@ class GridCreateFromMultiAreaTest(GridTestBase):
         self.assertFalse(
             Grid.objects.filter(scenario=self.scenario, name="Sneaked-in Multi Grid").exists()
         )
+
+
+class GridConnectModalTest(GridTestBase):
+    """'+ Anschluss' modal inside the area sidebar form: offers only unconnected carriers."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.elec = Grid.objects.create(
+            scenario=cls.scenario, name="Strom A", carrier=Grid.CarrierChoices.ELECTRICITY
+        )
+        cls.gas = Grid.objects.create(
+            scenario=cls.scenario, name="Gas A", carrier=Grid.CarrierChoices.GAS
+        )
+        cls.elec.areas.add(cls.area)
+
+    def get_sidebar(self, **params):
+        return self.client.get(self.details_url(), params, HTTP_HX_REQUEST="true")
+
+    def test_single_modal_offers_only_unconnected_carriers(self):
+        response = self.get_sidebar(internal_id=str(self.area.internal_id))
+        content = response.content.decode()
+        modal = content[content.index(f'id="grid-connect-modal-{self.area.internal_id}"') :]
+        self.assertIn("'grid_gas': 1", modal)
+        self.assertNotIn("'grid_electricity'", modal)
+        # grid fields are rendered once (sidebar or modal), types without grids have no input
+        self.assertNotContains(response, 'name="grid_diesel"')
+        for carrier in [Grid.CarrierChoices.ELECTRICITY, Grid.CarrierChoices.GAS]:
+            self.assertContains(response, f'name="grid_{carrier}"', count=1)
+
+    def test_multi_sidebar_shows_only_shared_grids(self):
+        self.elec.areas.add(self.area2)
+        response = self.get_sidebar(
+            internal_ids=f"{self.area.internal_id},{self.area2.internal_id}"
+        )
+        content = response.content.decode()
+        split_at = content.index('id="grid-connect-modal-')
+        sidebar, modal = content[:split_at], content[split_at:]
+        self.assertIn('name="grid_electricity"', sidebar)
+        self.assertNotIn('name="grid_gas"', sidebar)
+        self.assertIn("'grid_gas': 1", modal)
+
+    def test_save_from_modal_connects_grid_and_keeps_existing(self):
+        # same post as the modal's "Speichern": the bulk area form with one grid field
+        data = {
+            "internal_ids": f"{self.area.internal_id},{self.area2.internal_id}",
+            "grid_gas": str(self.gas.internal_id),
+        }
+        response = self.client.post(self.details_url(), data, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(self.gas.areas.all(), [self.area, self.area2])
+        self.assertIn(self.area, self.elec.areas.all())

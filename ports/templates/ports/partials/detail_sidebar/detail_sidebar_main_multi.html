@@ -37,8 +37,6 @@
         Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht, um die Änderungen sehen zu können.
         </c-alert>
       </div>
-
-
     {% if errors %}
     Errors
     {{ errors }}
@@ -67,13 +65,13 @@
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as form_url %}
         {% include "ports/partials/detail_item_ellipsis.html" with instance=instances.0 scenario=scenario hx_target=hx_target form_url=form_url %}
       {% endwith %}
-    </div>
-      </div>
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
+    </div>
+      </div>
         {{form.non_field_errors}}
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
@@ -163,21 +161,20 @@
             </button>
             {% endpartialdef %}
 
+            {% constant "GRID_FIELD_PREFIX" as GRID_PREFIX %}
             {% for field in form %}
-            {% if 'grid' in field.name %}
+            {% if GRID_PREFIX in field.name and field.value %}
             {% partial grid_select %}
             {% endif %}
             {% endfor %}
 
             <button type="button"
-                    hx-get="{% url "ports:details_create" model='grid' scenario_internal_id=scenario.internal_id %}"
-                    hx-vals='{"area_internal_ids": "{{ internal_ids }}"}'
-                    hx-swap="innerHTML"
-                    hx-target="#grid-modal-container"
-                    hx-select="unset"
+                    commandfor="grid-connect-modal-{{ internal_id }}"
+                    command="show-modal"
                     class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
               + Anschluss
             </button>
+            {% include "ports/partials/detail_sidebar/grid_connect_modal.html" with dialog_id="grid-connect-modal-"|add:internal_id form_id="form_"|add:internal_id area_internal_ids=internal_ids %}
 
           </div>
           </netzanschluss>

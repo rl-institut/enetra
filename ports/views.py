@@ -55,6 +55,7 @@ from . import models  # needed to get all component classes
 from . import tasks
 from .authorization import has_area_authorization_from_uuids
 from .authorization import has_authorization
+from .constants import SET_FIELD_PREFIX
 from .constants import USE_TEMPLATE
 from .create_placeholder_scenario import create_scenario as create_placeholder_scenario
 from .forms import AreaItemFormFactory
@@ -1253,6 +1254,11 @@ class DetailsView(View):
         else:
             raise NotImplementedError("No template defined for this Model")
 
+        # set form via get request queryparams
+        for key, value in self.request.GET.dict().items():
+            if key.startswith(SET_FIELD_PREFIX):
+                initial[key[len(SET_FIELD_PREFIX) :]] = value
+
         template_data = {}
         if template_internal_id := request.GET.get(USE_TEMPLATE):
             template_data = generate_template_data(
@@ -1285,8 +1291,8 @@ class DetailsView(View):
         """
         context = {}
         create_context = {
-            "title": "Netzanschluss erstellen",
-            "submit_label": "Anschluss erstellen",
+            "title": "Neues Netz erstellen",
+            "submit_label": "Netz erstellen",
             "submit_url": reverse(
                 "ports:details_create",
                 kwargs={
@@ -1299,8 +1305,8 @@ class DetailsView(View):
             context |= create_context
         else:
             context |= {
-                "title": "Netzanschluss bearbeiten",
-                "submit_label": "Anschluss bearbeiten",
+                "title": "Netz bearbeiten",
+                "submit_label": "Netz speichern",
                 "submit_url": reverse(
                     "ports:details",
                     kwargs={
@@ -1342,7 +1348,14 @@ class DetailsView(View):
             return HttpResponse()
         elif self.Model == Grid:
             # validate the form if posted and create context for grid_modal
-            form = self.Form(data=request.POST if request.method == "POST" else None)
+            initial = {}
+            # set form via get request queryparams
+            for key, value in self.request.GET.dict().items():
+                if key.startswith(SET_FIELD_PREFIX):
+                    initial[key[len(SET_FIELD_PREFIX) :]] = value
+            form = self.Form(
+                initial=initial, data=request.POST if request.method == "POST" else None
+            )
             form_valid = form.is_valid()
             grid_context = self.get_grid_create_context(request, None)
             if request.method == "POST" and form_valid:

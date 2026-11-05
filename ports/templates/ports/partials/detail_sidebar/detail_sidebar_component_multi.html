@@ -7,10 +7,6 @@
   <div class="htmx-indicator bg-red-500 loader"></div>
   <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
 
-  {% for item in instances  %}
-  {{item.name}}
-
-  {% endfor %}
   <div
     x-data="{show:false }"
     class="animate-in fade-in duration-1000"
@@ -46,7 +42,8 @@
           >Zurück zu ausgewählten Flächen</span
         >
       </button>
-
+      {% else %}
+      <div></div>
       {% endif %}
       <button
         type='button'
@@ -61,10 +58,14 @@
 
   <details-sidebar-content>
     <div class="px-4 py-4">
-      <div class="flex items-center justify-between mb-[24px]">
-      <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-          {{instance.verbose_name}}
+      <div class="flex items-start justify-between mb-2">
+      <div class="flex flex-col">
+      <h2 class="text-xl font-bold text-[#1e293b] cursor-help"
+          title="{% for item in instances %}{{item.name}}{% if not forloop.last %}&#013;{% endif %}{% endfor %}">
+          {{instances.0.verbose_name}}
       </h2>
+        <p class="text-sm">Mehrere ausgewählt</p>
+      </div>
 
         {% with hx_target="#form_"|add:internal_id %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as form_url %}
@@ -93,17 +94,6 @@
             {% endfor %}
           </c-select.index>
         </div>
-
-        <div class="flex flex-col gap-[8px]">
-          <label class="text-[14px] font-semibold text-[#1e293b]">Typ</label>
-          <input
-            type="text"
-            value="{{instances.0.verbose_name}}"
-            class="rounded border border-[#cbd5e1] bg-white px-[16px] py-2 text-[14px] text-[#64748b]"
-            disabled
-          />
-        </div>
-
 
 
          {% partialdef input-component %}

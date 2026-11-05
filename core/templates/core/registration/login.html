@@ -56,7 +56,7 @@
           <div class="flex flex-col gap-1.5" x-data="{ show: false }">
             <div class="flex items-center justify-between">
               <label class="text-sm font-semibold text-slate-800">Passwort</label>
-              <a href="forgot-password.html" class="text-xs text-cyan-700 hover:underline">Passwort vergessen?</a>
+              <a href="{% url 'core:forgot_password' %}" class="text-xs text-cyan-700 hover:underline">Passwort vergessen?</a>
             </div>
             <div class="h-10 bg-white px-4 rounded-[3px] outline outline-1 outline-offset-[-1px] outline-slate-400 flex items-center gap-2">
               <c-input :field=form.password x-bind::type="show ? 'text' : 'password'" placeholder="••••••••" class="text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none w-full" />

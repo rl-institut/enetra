@@ -102,15 +102,15 @@
 /* Highlight for inputs whose value was calculated automatically (e.g. solar power <-> area) */
 @keyframes autofillFlash {
     0% {
-        background-color: var(--color-sky-100);
-        border-color: var(--color-sky-500);
-        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 35%, transparent);
+        background-color: var(--color-cyan-100);
+        border-color: var(--color-cyan-500);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-cyan-500) 35%, transparent);
     }
 
     70% {
-        background-color: var(--color-sky-50);
-        border-color: var(--color-sky-400);
-        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-sky-500) 15%, transparent);
+        background-color: var(--color-cyan-50);
+        border-color: var(--color-cyan-400);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-cyan-500) 15%, transparent);
     }
 
     100% {

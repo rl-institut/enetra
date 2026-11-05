@@ -183,7 +183,7 @@ function addAutoCalcSolarPower(el_spec_power, el_power_installed, el_surface_are
         const anchor = el.closest(".relative") ?? el;
         anchor.parentElement.querySelector(":scope > .autofill-hint")?.remove();
         const hint = document.createElement("p");
-        hint.className = "autofill-hint text-[12px] text-sky-700";
+        hint.className = "autofill-hint text-[12px] text-cyan-700";
         hint.setAttribute("role", "status");
         hint.textContent = `↻ Automatisch berechnet aus „${labelOf(source_el)}“`;
         hint.addEventListener("animationend", () => hint.remove(), { once: true });
