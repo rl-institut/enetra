@@ -116,6 +116,7 @@ def TemplateFormFactory(ItemModel: type[ItemTemplate]):
 def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, **kwargs):
     # TODO:
     # FIXME:: Add authorization, e.g. pass User and only allow queries on permissed elements
+    scenario = kwargs["scenario"]
     exclude = ["manager", "scenario", "updated_user", "description"]
     fk_fields = [f.name for f in ItemModel._meta.get_fields() if isinstance(f, ForeignKey)]
     if ItemModel == Area:
@@ -145,7 +146,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
         for gtype in Grid.CarrierChoices:
             BaseForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
                 queryset=Grid.objects.filter(
-                    scenario=kwargs["scenario"],
+                    scenario=scenario,
                     carrier=gtype,
                 ),
                 label=gtype.label + "-Netz",
@@ -154,7 +155,12 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
             )
 
     elif ItemModel == Load or issubclass(ItemModel, ElectricComponent):
+        # TODO: Storage has capex field, but is not ElectricComponent
         exclude = exclude + ["area"]
+        if scenario.is_baseline_scenario():
+            # show capex, opex, power_min and power_max only for non-baseline scenarios
+            exclude += ["capex", "opex", "power_min", "power_max"]
+
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
             field_classes[fk_f] = InternalIDModelChoiceField
@@ -180,7 +186,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
 
     class BulkForm(BaseForm):
         internal_ids = UUIDMultipleChoiceField(
-            queryset=ItemModel.objects.filter(scenario=kwargs["scenario"]),
+            queryset=ItemModel.objects.filter(scenario=scenario),
             # widget=MultipleHiddenInput
         )
 
@@ -241,7 +247,7 @@ def ScenarioItemFormFactory(ItemModel: type[ScenarioItem], multi: bool = False, 
     for gtype in Grid.CarrierChoices:
         BulkForm.base_fields["grid_" + gtype] = InternalIDModelChoiceField(
             queryset=Grid.objects.filter(
-                scenario=kwargs["scenario"],
+                scenario=scenario,
                 carrier=gtype,
             ),
             label=gtype.label + "-Netz",
