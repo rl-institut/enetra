@@ -13,6 +13,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
@@ -158,6 +159,10 @@ class Scenario(models.Model):
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
+
+    def is_baseline_scenario(self):
+        # the first scenario in a project is by definition the baseline scenario
+        return self.project.scenario_set.order_by("id").first() == self
 
 
 class ItemTemplate(models.Model):
@@ -781,14 +786,6 @@ class ElectricComponentTemplate(ItemTemplate):
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Wirkungsgrad der Komponente. Muss ein Wert zwischen 0 und 1 sein."),
     )
-    power_installed = models.FloatField(
-        verbose_name=_("Installierte Leistung"),
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0)],
-        help_text=_("Installierte Leistung der Komponente in kW. Muss größer oder gleich 0 sein."),
-    )  # kWh
     power_min = models.FloatField(
         verbose_name=_("Minimale Leistung"),
         default=None,
@@ -827,6 +824,23 @@ class ElectricComponentTemplate(ItemTemplate):
     class Meta:
         abstract = True  # abstract table
 
+    def clean(self):
+        # parent clean for default field validation
+        super().clean()
+        # check that power_max is not lower than power_min (if both are set)
+        if (
+            self.power_min is not None
+            and self.power_max is not None
+            and self.power_min > self.power_max
+        ):
+            raise ValidationError(
+                {
+                    "power_max": _(
+                        "Minimale Leistung muss kleiner oder gleich der maximalen Leistung sein"
+                    )
+                }
+            )
+
     def power_kw_verbose(self):
         if not self.power_kw:
             return "Keine Angabe"
@@ -836,11 +850,6 @@ class ElectricComponentTemplate(ItemTemplate):
         if not self.efficiency:
             return "Keine Angabe"
         return f"{(self.efficiency * 100):.2f} %"
-
-    def power_installed_verbose(self):
-        if not self.power_installed:
-            return "Keine Angabe"
-        return f"{self.power_installed} kW"
 
     def power_min_verbose(self):
         if not self.power_min:
