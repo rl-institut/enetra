@@ -55,7 +55,7 @@
 
     <div class="flex items-center justify-between mb-[24px]">
       <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
-        ENERGIETECHNIK
+        {{instance.verbose_name}}
       </h2>
       {% with hx_target="#form_"|add:internal_id %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.model_name  as form_url %}
@@ -87,18 +87,6 @@
             {% endfor %}
           </c-select.index>
         </div>
-
-        <div class="flex flex-col gap-[8px]">
-          <label class="text-[14px] font-semibold text-[#1e293b]">Typ</label>
-          <input
-            type="text"
-            value="{{instance.verbose_name}}"
-            class="rounded border border-[#cbd5e1] bg-white px-[16px] py-2 text-[14px] text-[#64748b]"
-            disabled
-          />
-        </div>
-
-
 
         {% partialdef input-component %}
         {% if field %}
