@@ -18,15 +18,41 @@ class Migration(migrations.Migration):
     ]
     operations = [
         migrations.RunPython(remove_solar_profile, migrations.RunPython.noop),
-        migrations.AlterField(
-            model_name='area',
-            name='geom',
-            field=django.contrib.gis.db.models.fields.PolygonField(geography=True, help_text='Geometrie der Fläche.', null=True, srid=4326),
-        ),
-        migrations.AlterField(
-            model_name='scenario',
-            name='geom',
-            field=django.contrib.gis.db.models.fields.PolygonField(blank=True, default=None, geography=True, help_text='Geografische Ausdehnung des Szenarios.', null=True, srid=4326),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        "ALTER TABLE ports_area ALTER COLUMN geom "
+                        "TYPE geography(Polygon,4326) USING geom::geography(Polygon,4326);"
+                    ),
+                    reverse_sql=(
+                        "ALTER TABLE ports_area ALTER COLUMN geom "
+                        "TYPE geometry(Polygon,4326) USING geom::geometry(Polygon,4326);"
+                    ),
+                ),
+                migrations.RunSQL(
+                    sql=(
+                        "ALTER TABLE ports_scenario ALTER COLUMN geom "
+                        "TYPE geography(Polygon,4326) USING geom::geography(Polygon,4326);"
+                    ),
+                    reverse_sql=(
+                        "ALTER TABLE ports_scenario ALTER COLUMN geom "
+                        "TYPE geometry(Polygon,4326) USING geom::geometry(Polygon,4326);"
+                    ),
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='area',
+                    name='geom',
+                    field=django.contrib.gis.db.models.fields.PolygonField(geography=True, help_text='Geometrie der Fläche.', null=True, srid=4326),
+                ),
+                migrations.AlterField(
+                    model_name='scenario',
+                    name='geom',
+                    field=django.contrib.gis.db.models.fields.PolygonField(blank=True, default=None, geography=True, help_text='Geografische Ausdehnung des Szenarios.', null=True, srid=4326),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='solar',
