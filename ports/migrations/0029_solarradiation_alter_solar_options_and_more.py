@@ -60,6 +60,11 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
+        migrations.AlterField(
+            model_name='area',
+            name='usage',
+            field=models.CharField(blank=True, choices=[('pv', 'Photovoltaik'), ('parking', 'Parkfläche'), ('green', 'Grünfläche'), ('office', 'Büro'), ('storage', 'Lager')], default=None, help_text='Nutzung der Fläche.', null=True),
+        ),
         migrations.CreateModel(
             name='SolarRadiation',
             fields=[
