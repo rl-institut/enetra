@@ -330,14 +330,15 @@ def get_related_items(
 
     Optimization to join fields with same related model is not used.
     """
-    if _depth == 0:
-        itype = type(instances[0])
-        for i in instances[1:]:
-            assert isinstance(i, itype), "Instances must have the same type"
     excluded_models = excluded_models or set()
     field_filter = field_filter or (lambda x: False)
     if not instances or (max_depth is not None and _depth >= max_depth):
         return []
+
+    if _depth == 0:
+        itype = type(instances[0])
+        for i in instances[1:]:
+            assert isinstance(i, itype), "Instances must have the same type"
     gathered: set = _gathered or set(instances)
     new = []
     for field in instances[0]._meta.get_fields():
