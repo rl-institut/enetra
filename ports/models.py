@@ -223,8 +223,6 @@ class ItemTemplate(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
             self.updated_user = self.manager
-        if self.pk:
-            self.updated_at = timezone.now()
 
         return super().save(*args, **kwargs)
 
@@ -491,7 +489,7 @@ class Area(ScenarioItem):
         OPEN = "open", "Freifläche"
 
     class OpenUsageChoices(models.TextChoices):
-        PV = "pv", "Photovolatik"
+        PV = "pv", "Photovoltaik"
         PARKING = "parking", "Parkfläche"
         GREEN = "green", "Grünfläche"
 
@@ -1298,7 +1296,7 @@ class AbstractSolar(models.Model):
         help_text=_(
             "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch wenn eine Fläche mit installierte Photovoltaik angegeben ist."
         ),
-    )  # kW/m^2
+    )  # W/m^2
 
     surface_area_installed = models.FloatField(
         default=None,
