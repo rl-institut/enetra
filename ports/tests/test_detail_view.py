@@ -35,6 +35,7 @@ class DetailsViewBase(TestCase):
         cls.user = User.objects.create_user("testuser", password="pass", is_superuser=True)
 
         cls.project = Project.objects.create(name="Test Projekt")
+        cls.baseline = Scenario.objects.create(name="Baseline", project=cls.project)
         cls.scenario = Scenario.objects.create(name="Test Scenario", project=cls.project)
         Group.objects.get_or_create(name=cls.project.group_name())
 
@@ -357,6 +358,149 @@ class DetailsViewPostTest(DetailsViewBase):
         self.assertEqual(self.generator2.carrier, Generator.CarrierChoices.OIL)
         self.assertAlmostEqual(self.generator.efficiency, 0.85)
         self.assertAlmostEqual(self.generator2.efficiency, 0.85)
+
+    def test_post_power_min(self):
+        # test that power_min is not higher than power_max if both are set
+        # power_min and power_max can not be posted for baseline scenarios
+        url = self.details_url("generator")
+
+        # single component
+        internal_id = str(self.generator.internal_id)
+        data = {
+            "internal_id": internal_id,
+            "internal_ids": internal_id,
+            "name": self.generator.name,
+            "carrier": Generator.CarrierChoices.OIL,
+            "efficiency": "0.85",
+            "power_min": "",
+            "power_max": "",
+        }
+
+        # power_min None, power_max None => success
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+
+        # power_min None, power_max set => success
+        data.update({"power_max": 10})
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertIsNone(self.generator.power_min)
+        self.assertEqual(self.generator.power_max, 10)
+
+        # power_min set, power_max None => success
+        data.update({"power_min": 2, "power_max": ""})
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 2)
+        self.assertIsNone(self.generator.power_max)
+
+        # power_min < power_max => success
+        data.update({"power_min": 1, "power_max": 8})
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 1)
+        self.assertEqual(self.generator.power_max, 8)
+
+        # power_min == power_max => success
+        data.update({"power_min": 20, "power_max": 20})
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 20)
+        self.assertEqual(self.generator.power_max, 20)
+
+        # power_min > power_max => not success
+        data.update({"power_min": 100, "power_max": 1})
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert not response.context.get("success")
+        assert response.context.get("errors")
+        assert "power_max" in response.context["errors"][1]
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 20)  # unchanged
+        self.assertEqual(self.generator.power_max, 20)
+
+        # from different posts
+        data.update({"power_min": "", "power_max": 7})
+        self.client.post(url, data)
+        self.generator.refresh_from_db()
+        self.assertIsNone(self.generator.power_min)
+        self.assertEqual(self.generator.power_max, 7)
+
+        data["power_min"] = 11
+        data.pop("power_max")
+
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert not response.context.get("success")
+        assert response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertIsNone(self.generator.power_min)
+        self.assertEqual(self.generator.power_max, 7)  # unchanged
+
+        data["power_min"] = 4
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 4)
+        self.assertEqual(self.generator.power_max, 7)  # unchanged
+
+        # multi-component
+        internal_ids = f"{self.generator.internal_id},{self.generator2.internal_id}"
+
+        # power_min < power_max => success
+        response = self.client.post(
+            url,
+            {
+                "internal_ids": internal_ids,
+                "power_min": 3,
+                "power_max": 4,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        assert response.context.get("success")
+        assert not response.context.get("errors")
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 3)
+        self.assertEqual(self.generator.power_max, 4)
+        self.generator2.refresh_from_db()
+        self.assertEqual(self.generator2.power_min, 3)
+        self.assertEqual(self.generator2.power_max, 4)
+
+        # power_min > power_max => not success
+        response = self.client.post(
+            url,
+            {
+                "internal_ids": internal_ids,
+                "power_min": 9,
+                "power_max": 5,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        assert not response.context.get("success")
+        assert response.context.get("errors")
+        # unchanged
+        self.generator.refresh_from_db()
+        self.assertEqual(self.generator.power_min, 3)
+        self.assertEqual(self.generator.power_max, 4)
+        self.generator2.refresh_from_db()
+        self.assertEqual(self.generator2.power_min, 3)
+        self.assertEqual(self.generator2.power_max, 4)
 
 
 class DetailsViewDeleteTest(DetailsViewBase):

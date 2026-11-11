@@ -140,6 +140,10 @@ def ScenarioItemFormFactory(
             form = ScopedModelForm
 
         exclude = exclude + ["area"]
+        if scenario.is_baseline_scenario():
+            # show capex, opex, power_min and power_max only for non-baseline scenarios
+            exclude += ["capex", "opex", "power_min", "power_max"]
+
         field_classes = {}
         for fk_f in filter(lambda x: x not in exclude, fk_fields):
             if issubclass(ItemModel._meta.get_field(fk_f).related_model, ItemTemplate):

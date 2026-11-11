@@ -94,9 +94,7 @@
             {% endfor %}
           </c-select.index>
         </div>
-
-
-         {% partialdef input-component %}
+        {% partialdef input-component %}
             {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" %}
         {% endpartialdef %}
 
@@ -117,7 +115,6 @@
         {% partial input-component %}
         {% endwith %}
 
-        {% with field=form.power_installed %}{% partial input-component %}{% endwith %}
         {% with field=form.power_min %}{% partial input-component %}{% endwith %}
         {% with field=form.power_max %}{% partial input-component %}{% endwith %}
         {% with field=form.capex %}{% partial input-component %}{% endwith %}

@@ -14,6 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
@@ -41,7 +42,6 @@ UNITS = {
     "power_kw": "kW",
     "efficiency": "[-]",
     "efficiency_thermal": "[-]",
-    "power_installed": "kW",
     "power_min": "kW",
     "power_max": "kW",
     "capex": "€",
@@ -158,6 +158,10 @@ class Scenario(models.Model):
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
+
+    def is_baseline_scenario(self):
+        # the first scenario in a project is by definition the baseline scenario
+        return self.project.scenario_set.order_by("id").first() == self
 
 
 class ItemTemplate(models.Model):
@@ -885,14 +889,6 @@ class ElectricComponentTemplate(ItemTemplate):
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Wirkungsgrad der Komponente. Muss ein Wert zwischen 0 und 1 sein."),
     )
-    power_installed = models.FloatField(
-        verbose_name=_("Installierte Leistung"),
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0)],
-        help_text=_("Installierte Leistung der Komponente in kW. Muss größer oder gleich 0 sein."),
-    )  # kWh
     power_min = models.FloatField(
         verbose_name=_("Minimale Leistung"),
         default=None,
@@ -931,12 +927,29 @@ class ElectricComponentTemplate(ItemTemplate):
     class Meta:
         abstract = True  # abstract table
 
-    # power_kw, power_installed, power_min, power_max, capex, opex all use the
+    # power_kw, power_min, power_max, capex, opex all use the
     # UNITS-based default from ItemTemplate.display_value()
     # efficiency needs the fraction -> percentage conversion, so it gets an explicit formatter.
     display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
         "efficiency": lambda v: number_format(v * 100, 2) + " %",
     }
+
+    def clean(self):
+        # parent clean for default field validation
+        super().clean()
+        # check that power_max is not lower than power_min (if both are set)
+        if (
+            self.power_min is not None
+            and self.power_max is not None
+            and self.power_min > self.power_max
+        ):
+            raise ValidationError(
+                {
+                    "power_max": _(
+                        "Minimale Leistung muss kleiner oder gleich der maximalen Leistung sein"
+                    )
+                }
+            )
 
     def custom_fields(self):
         generic_field_names = {f.name for f in ElectricComponentTemplate._meta.get_fields()}
@@ -1218,11 +1231,6 @@ class AbstractHeatpump(models.Model):
     class HeatChoices(models.TextChoices):
         AIR = "air", "Luft"
         WATER = "water", "Wasser"
-        WASTE_AIR = "waste_air", "Abwärme"
-
-    class ModeChoices(models.IntegerChoices):
-        MONOVALENT = 1
-        BIVALENT = 2
 
     heatsource = models.CharField(
         choices=HeatChoices,
@@ -1230,16 +1238,19 @@ class AbstractHeatpump(models.Model):
         null=True,
         help_text=_("Wärmequelle der Wärmepumpe."),
     )
-    mode = models.IntegerField(
-        choices=ModeChoices,
+
+    efficiency = models.FloatField(  # override efficiency to allow values > 1
+        verbose_name=_("Leistungszahl (COP)"),
+        default=1.0,
         blank=False,
         null=True,
-        help_text=_("Betriebsart der Wärmepumpe (monovalent oder bivalent)."),
+        validators=[MinValueValidator(0)],
+        help_text=_("COP der Wärmepumpe. Muss ein Wert größer 0 sein."),
     )
 
     @classmethod
     def get_default_args(cls) -> dict:
-        return {"heatsource": cls.HeatChoices.WATER, "mode": cls.ModeChoices.MONOVALENT}
+        return {"heatsource": cls.HeatChoices.WATER}
 
     class Meta:
         abstract = True
@@ -1289,16 +1300,6 @@ class AbstractSolar(models.Model):
         ),
     )  # kW/m^2
 
-    power_installed = models.FloatField(
-        verbose_name=_("Installierte Leistung"),
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0)],
-        help_text=_(
-            "Installierte Leistung der Komponente in kW. Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die Fläche mit installierter Photovolatik automatisch."
-        ),
-    )
     surface_area_installed = models.FloatField(
         default=None,
         verbose_name="Fläche mit installierter Photovoltaik",
