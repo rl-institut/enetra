@@ -1096,14 +1096,6 @@ class FuelCell(ElectricComponent, AbstractFuelCell):
 class AbstractElectrolyzer(models.Model):
     """Transform electricity into H2"""
 
-    # carrier is always electricity
-    efficiency_thermal = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
-
     class Meta:
         abstract = True
 
