@@ -169,7 +169,7 @@ def db_to_energysystem(scenario, started_at, **kwargs):
             electrolyzer,
             Grid.CarrierChoices.ELECTRICITY,
             Grid.CarrierChoices.H2,
-            electrolyzer.efficiency_thermal,
+            electrolyzer.efficiency,
         )
     for heatpump in scenario.heatpump_set.all():
         # electricity -> heat
