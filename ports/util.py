@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from collections.abc import Iterable
 
 from django.apps.registry import apps
@@ -8,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
 from django.db.models import Q
 from guardian.shortcuts import assign_perm
@@ -18,6 +20,7 @@ from .models import Area
 from .models import Project
 from .models import Result
 from .models import Scenario
+from .models import ScenarioItem
 from .models import SolarRadiation
 
 logger = logging.getLogger(__name__)
@@ -28,9 +31,7 @@ def process_file_to_solar_radiation(file):
 
     import csv
     import datetime
-    from pathlib import Path
 
-    file = Path("data/solar_radiation/Germany_Reference_PV_15min_Wm2.csv")
     with open(file) as f:
         reader = csv.DictReader(f)
         time_col = None
@@ -47,23 +48,30 @@ def process_file_to_solar_radiation(file):
         row = next(k)
 
         def toiso(x):
-            return datetime.datetime.fromisoformat(row[time_col])
+            return datetime.datetime.fromisoformat(x)
 
-        start_time = datetime.datetime.fromisoformat(row[time_col])
+        start_time = toiso(row[time_col])
         prev_time = start_time
         row = next(k)
-        next_time = datetime.datetime.fromisoformat(row[time_col])
+        next_time = toiso(row[time_col])
         f.seek(0)
         values = []
         timestep = next_time - prev_time
         prev_time = next_time
         consistent = True
         for row in csv.DictReader(f):
-            values.append(row[val_col])
-            next_time = row[time_col]
-            if consistent and toiso(next_time) - toiso(prev_time) != timestep:
+            try:
+                values.append(float(row[val_col]))
+            except ValueError as e:
+                raise ValueError(
+                    f"{file} has a value of {row[val_col]} which is not numeric"
+                ) from e
+
+            next_time = toiso(row[time_col])
+            if consistent and next_time - prev_time != timestep:
                 logger.warning(f"Timesteps are not consistent in file {file}")
                 consistent = False
+            prev_time = next_time
         SolarRadiation.all_objects.create(
             name=file.stem,
             timeseries=values,
@@ -280,3 +288,100 @@ def throttle(func, cooldown, unique_id) -> None:
     if last_call is None or now - last_call > cooldown:
         func()
         _cache[unique_id] = time.time()
+
+
+def get_related_items(
+    instances: list[models.Model],
+    excluded_models: None | set = None,
+    field_filter: Callable | None = None,
+    max_depth=None,
+    _depth=0,
+    _gathered: None | set = None,
+    _prev_field=None,
+) -> list[models.Model]:
+    """Get all related items.
+
+    Instance with a type inside excluded models are not returned.
+    Related instances via field where the callable field_filter(field) returns True are ignored.
+    Search depth/ steps of relations can be limited to max_depth.
+    Queries are fastest when starting from a Parent Node
+
+    Iterate each model. Query related instances for all new objects in a second loop.
+    This breadth first approach is faster than going dfs since outer queries are more efficient.
+
+    Forward ForeignKey lookups are skipped when the remote_field was used to get the object.
+    e.g. First Query on the scenario instance which has a (auto_created and not concrete) field called "area"
+    Area.objects.filter(scenario_id__in=[1])
+    --> returns Area 1,2,3
+    then later these areas are searched with their (not auto_created and concrete) field "scenario"
+    since those are the same fields the second lookup
+    (Scenario.objects.filter(area_id__in=[1,2,3]))
+    can be skipped
+
+    The other way around this should not happen, e.g.
+    get_related_items([Area.objects.get(id=1)])
+    returns Scenario with id=1, fetching the related objects on Scenario should fetch the Siblings of Area with id=1
+    e.g.
+    Area with id in (1,2,3)
+    In this case the field which was used to find the scenario was the field scenario on Area which is a not auto_created (we defined it explicitly) and concrete (its a real db column)
+
+    This function with some custom filters can be used to determine which instances are delete via Cascade
+    see: get_items_to_be_deleted
+
+    Optimization to join fields with same related model is not used.
+    """
+    if _depth == 0:
+        itype = type(instances[0])
+        for i in instances[1:]:
+            assert isinstance(i, itype), "Instances must have the same type"
+    excluded_models = excluded_models or set()
+    field_filter = field_filter or (lambda x: False)
+    if not instances or (max_depth is not None and _depth >= max_depth):
+        return []
+    gathered: set = _gathered or set(instances)
+    new = []
+    for field in instances[0]._meta.get_fields():
+        if not field.is_relation or not field.remote_field:
+            continue
+        if field.related_model in excluded_models:
+            continue
+        if field_filter(field) or (
+            _prev_field
+            and _prev_field.auto_created
+            and not _prev_field.concrete
+            and field == _prev_field.remote_field
+        ):
+            continue
+        f = {f"{field.remote_field.name}__in": {x.pk for x in instances}}
+        # Only load the shared ScenarioItem columns, skip model specific ones (geom, efficiency, ...)
+        if issubclass(field.related_model, ScenarioItem):
+            only_fields = [sf.name for sf in ScenarioItem._meta.concrete_fields]
+        else:
+            only_fields = ["pk"]
+        found_objs = field.related_model._base_manager.filter(**f).only(*only_fields).distinct()
+        new_objs = set(found_objs).difference(gathered)
+        new.append((new_objs, field))
+        gathered.update(new_objs)
+    for new_objs, prev_field in new:
+        get_related_items(
+            list(new_objs),
+            excluded_models,
+            field_filter,
+            max_depth=max_depth,
+            _depth=_depth + 1,
+            _gathered=gathered,
+            _prev_field=prev_field,
+        )
+    return list(gathered)
+
+
+def get_items_to_be_deleted(instances: list[models.Model], *args, **kwargs) -> list[models.Model]:
+    custom_filter = kwargs.pop("field_filter", lambda x: False)
+
+    def filter_no_cascade(field):
+        on_delete = getattr(field, "on_delete", None)
+        if on_delete != models.CASCADE:
+            return True
+        return False or custom_filter(field)
+
+    return get_related_items(instances, *args, **kwargs, field_filter=filter_no_cascade)

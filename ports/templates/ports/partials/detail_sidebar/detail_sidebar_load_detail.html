@@ -10,7 +10,11 @@
 <details-sidebar-header class="block sticky top-0 bg-white border-b border-[#e2e8f0] p-[24px] z-[9999]">
   <div class="flex items-center justify-between gap-[8px]">
     <button
+      {% if instances %}
+        hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}?internal_ids={% for i in instances %}{{i.area.internal_id}}{% if not forloop.last %},{% endif %}{% endfor %}"
+      {% else %}
       hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instance.area.model_name  %}?internal_id={{instance.area.internal_id}}"
+        {% endif %}
       hx-target="#detailSidebar"
       hx-trigger="click"
       hx-indicator="#detailSidebar"
@@ -20,8 +24,15 @@
       class="flex items-center gap-[8px] hover:opacity-60 transition-opacity cursor-pointer"
     >
       <c-icon.arrow_left/>
-      <span class="font-semibold text-[14px] text-[#1e293b] name-elem">Zu Fläche {{instance.area.name}}</span>
-    </button>
+
+        <span class="font-semibold text-[14px] text-[#1e293b] name-elem">
+        {% if instances %}
+          Zurück zu Flächen
+        {% else %}
+          Zu Fläche {{instance.area.name}}
+        {% endif %}
+        </span>
+      </button>
     <button
             type="button"
         @click="$dispatch('hide-detail-sidebar')" class="flex-shrink-0 hover:opacity-60 transition-opacity">

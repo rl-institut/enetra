@@ -2,8 +2,6 @@ import datetime
 import logging
 import uuid
 from collections.abc import Callable
-from collections.abc import Iterable
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -20,9 +18,12 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
+from django.db import transaction
+from django.db.models import F
+from django.db.models import Value
+from django.db.models.functions import Greatest
 from django.db.models.functions import Now
 from django.db.models.signals import post_save
-from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
 from django.shortcuts import render  # noqa
@@ -103,25 +104,12 @@ class Project(models.Model):
             prefetch_projects_users([self])
         return self._users_cache
 
-    @atomic()
-    def safe_delete(self):
-        """Safely delete the project by safely deleting all scenarios referencing it.
-        This is needed because of DeletedItems which are created during deletion.
-        """
-        scenarios = Scenario.objects.filter(project=self)
-        for s in scenarios:
-            s.safe_delete()
-        self.delete()
-
 
 class Scenario(models.Model):
     # Instance which bundles ScenarioItems
     # Bundled with other scenarios in a common _Project_.
 
-    # FK project is set to NULL when project is deleted,
-    # since DeletedItems don't allow cascading delete.
-    # Use project.safe_delete instead.
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, default=None, null=True)
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
@@ -154,10 +142,6 @@ class Scenario(models.Model):
         geography=True,
     )
 
-    # Class variable which keeps track of scenarios which should be deleted
-    # This disables DeletedItem creation which is slow for large queries
-    _being_deleted: ClassVar[set[int]] = set()
-
     class Meta:
         permissions = (
             ("view", "view scenario"),
@@ -165,23 +149,6 @@ class Scenario(models.Model):
             ("delete", "delete scenario"),
             ("change", "change scenario"),
         )
-
-    @staticmethod
-    @contextmanager
-    def true_delete(scenario_ids: Iterable[int]):
-        """Context manager so no DeletedItems for these scenarios are created"""
-        ids = set(scenario_ids)
-        Scenario._being_deleted.update(ids)
-        try:
-            yield
-        finally:
-            Scenario._being_deleted.difference_update(ids)
-
-    @atomic()
-    def safe_delete(self):
-        """Disable DeletedItem creation during deletion"""
-        with self.true_delete([self.id]):
-            self.delete()
 
     def prepare_deepcopy(self):
         """Adjust the instance so it can be deepcopied
@@ -252,6 +219,9 @@ class ItemTemplate(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
             self.updated_user = self.manager
+        if self.pk:
+            self.updated_at = timezone.now()
+
         return super().save(*args, **kwargs)
 
     @classmethod
@@ -398,7 +368,8 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario_id = instance.scenario_id
     if sender == ChangedItem:
         return
-    if settings.REDIS_AVAILABLE:
+
+    def publish_change():
         try:
             import redis
             from redis.exceptions import RedisError
@@ -417,8 +388,16 @@ def update_scenario_post_save(sender, instance, **kwargs):
                 24 * 60 * 60,
                 "redis_failure_admin_mail",
             )
+
+    if settings.REDIS_AVAILABLE:
+        # Publish only after the surrounding transaction committed, otherwise clients refetch
+        # before the change is visible. Runs immediately when no transaction is active.
+        transaction.on_commit(publish_change)
+    # GREATEST keeps the timestamps monotonic when concurrent saves commit out of order
+    new_ts = Value(instance.updated_at, output_field=models.DateTimeField())
     Scenario.objects.filter(pk=scenario_id).update(
-        items_updated_at=instance.updated_at, updated_at=instance.updated_at
+        items_updated_at=Greatest(F("items_updated_at"), new_ts),
+        updated_at=Greatest(F("updated_at"), new_ts),
     )
 
 
@@ -462,9 +441,7 @@ class ChangedItem(ScenarioItem):
         changed_item = ChangedItem(
             **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
         )
-        content_type = ContentType.objects.get(
-            app_label=item._meta.app_label, model=item._meta.model_name
-        )
+        content_type = ContentType.objects.get_for_model(item)
         changed_item.content_type = content_type
         return changed_item
 
@@ -496,9 +473,8 @@ class DeletedItem(ScenarioItem):
         deleted_item = DeletedItem(
             **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
         )
-        content_type = ContentType.objects.get(
-            app_label=item._meta.app_label, model=item._meta.model_name
-        )
+        # use get_for_model to use cache
+        content_type = ContentType.objects.get_for_model(item)
         deleted_item.content_type = content_type
         return deleted_item
 
@@ -736,7 +712,7 @@ class SolarRadiation(models.Model):
     all_objects = models.Manager()
 
     def __str__(self):
-        return self.name
+        return self.name or (f"{self.id} SolarRadiation")
 
 
 class Load(ScenarioItem):
@@ -1119,8 +1095,7 @@ class AbstractCHP(models.Model):
     efficiency = models.FloatField(
         verbose_name=_("Thermische Effizienz"),
         default=1.0,
-        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
-        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
     )
 
@@ -1133,7 +1108,8 @@ class AbstractCHP(models.Model):
     power_to_heat_ratio = models.FloatField(
         verbose_name=_("Stromkennzahl"),
         default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
         help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
@@ -1363,7 +1339,7 @@ class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
 class Solar(AbstractSolar, ElectricComponent):
     template_model_name = SolarTemplate.model_name()
 
-    class Meta(ElectricComponentTemplate.Meta):
+    class Meta(ElectricComponent.Meta):
         verbose_name = _("Solaranlage")
 
 

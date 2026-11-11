@@ -200,20 +200,20 @@ function addAutoCalcSolarPower(el_spec_power, el_power_installed, el_surface_are
 
     el_power_installed.addEventListener("change", (event) => {
         if (el_spec_power.value) {
-            setCalculated(el_surface_area_installed, event.target.value / el_spec_power.value, event.target);
+            setCalculated(el_surface_area_installed, event.target.value / (el_spec_power.value/1000), event.target);
         }
     })
     el_surface_area_installed.addEventListener("change", (event) => {
         if (el_spec_power.value) {
-            setCalculated(el_power_installed, event.target.value * el_spec_power.value, event.target);
+            setCalculated(el_power_installed, event.target.value * (el_spec_power.value/1000), event.target);
         }
     })
     el_spec_power.addEventListener("change", (event) => {
         const spec_power_value = event.target.value;
         if (spec_power_value && el_surface_area_installed.value) {
-            setCalculated(el_power_installed, spec_power_value * el_surface_area_installed.value, event.target);
+            setCalculated(el_power_installed, (spec_power_value/1000) * el_surface_area_installed.value, event.target);
         } else if (spec_power_value && el_power_installed.value) {
-            setCalculated(el_surface_area_installed, el_power_installed.value / spec_power_value, event.target);
+            setCalculated(el_surface_area_installed, el_power_installed.value / (spec_power_value/1000), event.target);
         }
     })
 

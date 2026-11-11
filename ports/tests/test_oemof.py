@@ -11,7 +11,7 @@ class TestTasks(TestCase):
         project = models.Project.objects.create(name="empty project")
         scenario = models.Scenario.objects.create(name="empty scenario", project=project)
         tasks.oemof_task(scenario_id=scenario.id)
-        project.safe_delete()
+        project.delete()
 
     def test_placeholder_scenario(self):
         # test the whole oemof chain for the basic placeholder scenario
@@ -27,13 +27,13 @@ class TestTasks(TestCase):
         # timeindex: 24 hours (inclusive at both ends)
         time = scenario.result.resultdata_set.get(attribute="timeindex").value
         self.assertEqual(len(time), 25)
-        scenario.project.safe_delete()
+        scenario.project.delete()
 
     def test_db_to_energysystem(self):
         # test model creation for placeholder scenario
         scenario = create_placeholder_scenario.create_scenario()
         tasks.db_to_energysystem(scenario=scenario, started_at=timezone.now())
-        scenario.project.safe_delete()
+        scenario.project.delete()
 
     def test_store_results(self):
         # has already been part of oemof chain

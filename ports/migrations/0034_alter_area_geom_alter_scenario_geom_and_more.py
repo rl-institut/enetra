@@ -9,6 +9,8 @@ def remove_solar_profile(apps, schema_editor):
     Solar = apps.get_model("ports", "solar")
     Solar.objects.all().update(profile=None)
 
+    SolarTemplate = apps.get_model("ports", "solartemplate")
+    SolarTemplate.objects.all().update(profile=None)
 
 class Migration(migrations.Migration):
     dependencies = [

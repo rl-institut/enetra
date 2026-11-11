@@ -5,7 +5,6 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import chain
 
-from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth import logout
@@ -44,9 +43,11 @@ from core.models import InviteError
 from core.models import Role
 from ports.authorization import has_authorization
 from ports.forms import CreateProjectForm
+from ports.models import DeletedItem
 from ports.models import Project
 from ports.models import Scenario
 from ports.models import ScenarioItem
+from ports.util import get_items_to_be_deleted
 from ports.util import get_template_scenarios
 from ports.util import get_user_projects
 from ports.util import prefetch_projects_users
@@ -71,20 +72,20 @@ class LoginViewWithRemember(LoginView):
 def delete_account(request: HttpRequest) -> HttpResponse:
     """
     Deletion of account deletes all content managed by the user
-    This can lead cascading deletes of non user content
+    This can lead to cascading deletes of non user content
     """
     user = request.user
     # All scenarios insdie projects of the user and all scenarios managed by the user
     with atomic():
         scenarios = Scenario.objects.filter(Q(project__manager=user) | Q(manager=user))
-        with Scenario.true_delete(scenarios.values_list("id", flat=True)):
-            scenarios.delete()
+        to_be_deleted = get_items_to_be_deleted(list(scenarios))
+        deleted = []
+        for item in to_be_deleted:
+            if isinstance(item, ScenarioItem):
+                deleted.append(DeletedItem.from_scenario_item(item))
+        DeletedItem.objects.bulk_create(deleted)
+        scenarios.delete()
         Project.objects.filter(manager=user).delete()
-        port_models = apps.get_app_config("ports").get_models()
-        for Model in port_models:
-            if not issubclass(Model, ScenarioItem):
-                continue
-            Model.objects.filter(manager=user).delete()
         user.delete()
     logout(request)
     return redirect(reverse("core:landing_page"))

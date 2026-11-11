@@ -108,8 +108,8 @@
         {% comment %}
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
-        {% for field_name in instances.0.custom_fields %}
         {% with field=form.efficiency %} {% partial input-component %}{% endwith %}
+        {% for field_name in instances.0.custom_fields %}
         {% with field=form|get_value:field_name %} {% partial input-component %}{% endwith %}
         {% endfor %}
 

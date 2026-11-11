@@ -7,8 +7,8 @@
     hx-swap-oob='true'
 
 >
-    <c-accordion.trigger :value='value' class='font-semibold cursor-pointer rounded px-2 mb-2 bg-gray-100 shadow-sm' >{{grid.name}}</c-accordion.trigger>
-    <c-accordion.content :value='value' class='px-2'>
+    <c-accordion.trigger :value='grid.internal_id' class='font-semibold cursor-pointer rounded px-2 mb-2 bg-gray-100 shadow-sm' >{{grid.name}}</c-accordion.trigger>
+    <c-accordion.content :value='grid.internal_id' class='px-2'>
         <div class="flex flex-col gap-2">
             <p class="text-[#64748b] text-sm">Netzanschluss</p>
             <p class="text-[#64748b] text-sm">

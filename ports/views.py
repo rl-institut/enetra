@@ -50,6 +50,7 @@ from guardian.utils import clean_orphan_obj_perms
 from core.models import Invite
 from core.views import ensure_project_rights
 from ports.models import update_scenario_post_save
+from ports.util import get_items_to_be_deleted
 
 from . import models  # needed to get all component classes
 from . import tasks
@@ -976,7 +977,8 @@ class ObjectTemplatesView(View):
             form = self.Form(data=request.POST, instance=self.instance)
             self.context["form"] = form
             if form.is_valid():
-                self.instance = form.save()
+                with atomic():
+                    self.instance = form.save()
                 self.context["item"] = self.instance
                 # refresh the form, with the newly created instance.
                 form = self.Form(data=request.POST, instance=self.instance)
@@ -1379,10 +1381,11 @@ class DetailsView(View):
                     area_or_areas = Area.objects.filter(
                         scenario=self.scenario, internal_id__in=area_internal_ids
                     )
-                    Grid.areas.through.objects.filter(
-                        area__in=area_or_areas, grid__carrier=instance.carrier
-                    ).delete()
-                    instance.areas.add(*area_or_areas)
+                    with atomic():
+                        Grid.areas.through.objects.filter(
+                            area__in=area_or_areas, grid__carrier=instance.carrier
+                        ).delete()
+                        instance.areas.add(*area_or_areas)
                     # Trigger a refresh of the area, so the selects contain the new grid
                     extra_trigger = f"refresh-{area_internal_ids[0]}"
 
@@ -1475,9 +1478,14 @@ class DetailsView(View):
             response["HX-Reselect"] = "unset"
             response["HX-Reswap"] = "innerHTML"
             return response
+        to_be_deleted = get_items_to_be_deleted([self.instance])
+        deleted = []
+        for item in to_be_deleted:
+            deleted.append(DeletedItem.from_scenario_item(item))
         with atomic():
-            DeletedItem.from_scenario_item(self.instance).save()
+            DeletedItem.objects.bulk_create(deleted)
             self.instance.delete()
+
         self.context["status"] = "deleted"
         response = self.details_render(
             self.request,
@@ -1879,7 +1887,8 @@ class ApiView(View):
                 )
 
         if form.is_valid():
-            form.save()
+            with atomic():
+                form.save()
             return JsonResponse({"success": True, "message": "Changed"}, status=200)
         return JsonResponse({"success": False, "message": form.errors.as_text()}, status=200)
 
@@ -1919,7 +1928,7 @@ class ApiView(View):
         except:  # noqa
             success = False
         response = JsonResponse({"success": success, "message": "Deleted"}, status=200)
-        if isinstance(self.instance, Timeseries):
+        if success and isinstance(self.instance, Timeseries):
             response["HX-Trigger"] = ", ".join(
                 [
                     f"refresh-template-{internal_id}"
@@ -1935,9 +1944,12 @@ class ApiView(View):
             if self.Model == Project:
                 self.instance.internal_id = uuid4()
                 self.instance.name += " (Dupliziert)"
-                new_instance = duplicate_project(self.instance)
+
+                with atomic():
+                    new_instance = duplicate_project(self.instance)
             else:
-                new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
+                with atomic():
+                    new_instance = duplicate_scenario_with_permissions(self.instance, request.user)
             if request.GET.get("rename"):
                 # if the extra param rename is used, return a view with opened rename
                 # instead of the json response
@@ -2026,19 +2038,28 @@ def timeseries_change(request, scenario_internal_id: UUID, internal_id: UUID):
     if not is_authorized:
         return HttpResponseForbidden("Sie haben keine Befugnis für diese Funktion")
 
+    hx_trigger = None
     if request.method == "POST":
         form = ChangeTimeseriesForm(request.POST, instance=timeseries)
         if form.is_valid():
             form.save()
+            hx_trigger = ", ".join(
+                [
+                    f"refresh-template-{internal_id}"
+                    for internal_id in timeseries.load_set.all().values_list(
+                        "internal_id", flat=True
+                    )
+                ]
+            )
+
     else:
         form = ChangeTimeseriesForm(instance=timeseries)
 
     context = {"scenario": scenario, "ts": timeseries, "form": form}
     response = render(request, "ports/partials/timeseries_change_modal.html", context)
+    if hx_trigger:
+        response["HX-Trigger"] = hx_trigger
     # let all loads now of changed loads
-    response["HX-Trigger"] = ", ".join(
-        [f"refresh-template-{load.internal_id}" for load in timeseries.load_set.all()]
-    )
     return response
 
 

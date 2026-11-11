@@ -115,7 +115,11 @@ admin.site.register(Project, DynamicClass)
 
 
 methods["list_display"] = ("id", "name", "timestep", "timeseries_start")
-DynamicClass = type("SolarRadiationAdmin", (ModelAdmin,), methods)
+DynamicClass = type(
+    "SolarRadiationAdmin",
+    (ModelAdmin,),
+    {"get_queryset": lambda self, request: SolarRadiation.all_objects.all()},
+)
 admin.site.register(SolarRadiation, DynamicClass)
 
 methods["list_display"] = ("id", "name", "manager", "scenario_id")

@@ -93,6 +93,8 @@ urlpatterns = [
     path(
         "login/forgot_password/",
         PasswordResetView.as_view(
+            email_template_name="core/registration/password_reset_email.txt",
+            subject_template_name="core/registration/password_reset_subject.txt",
             template_name="core/registration/forgot-password.html",
             success_url=reverse_lazy("core:forgot_password_success"),
         ),

@@ -36,7 +36,7 @@ def create_scenario() -> Scenario:
     _uid = "00000000-0000-4000-0000-000000000000"
     s = Scenario.objects.filter(internal_id=_uid).first()
     if s:
-        s.safe_delete()
+        s.delete()
 
     new_project = Project.objects.create(name="TestProjekt", manager=user1)
     s = Scenario.objects.create(

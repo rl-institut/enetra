@@ -377,11 +377,14 @@ class SolarForm(ScopedModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=commit)
-        area_m2 = instance.area.geom.transform(25832, clone=True).area
-        if area_m2 < instance.surface_area_installed:
-            self["surface_area_installed"].warnings = [
-                "Die Fläche mit installierter Photovoltaik überschreitet die Fläche auf der sich die PV Anlage befindet. Dies kann z.B. bei Fassaden Photovoltaik normal sein. Bitte Prüfe deine Angabe."
-            ]
+        parent_area = instance.area
+        if instance.area.geom:
+            # transform the coordinates into european srid 25832 where coordinates are in meters ->  area is sq meters
+            area_m2 = parent_area.geom.transform(25832, clone=True).area
+            if instance.surface_area_installed and area_m2 < instance.surface_area_installed:
+                self["surface_area_installed"].warnings = [
+                    "Die Fläche mit installierter Photovoltaik überschreitet die Fläche auf der sich die PV Anlage befindet. Dies kann z.B. bei Fassaden Photovoltaik normal sein. Bitte Prüfe deine Angabe."
+                ]
         return instance
 
 
@@ -556,12 +559,26 @@ class ChangeTimeseriesForm(forms.ModelForm):
         required=False,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance:
+            self.initial.setdefault(
+                "timestep_minutes", self.instance.timeseries["timestep_minutes"]
+            )
+
     class Meta:
         model = Timeseries
         fields = ("name",)
         widgets = {
             "name": forms.TextInput(),
         }
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.timeseries["timestep_minutes"] = self.cleaned_data["timestep_minutes"]
+        if commit:
+            instance.save()
+        return instance
 
 
 class EnergyCostForm(ScopedModelForm):

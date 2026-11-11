@@ -37,7 +37,7 @@
     <p class="text-[11px] text-[#94a3b8]">Unterstützte Dateitypen: {{ upload_form.allowed_suffixes|join:", "|upper }}</p>
     <div id="templateError" >
         {% if upload_form.errors %}
-        <c-alert class=class attrs=attrs variant="danger" :icon=False >
+        <c-alert variant="danger" :icon=False >
             <c-slot name="title">Fehler</c-slot>
             {% for error in upload_form.errors.values %}
             <p>{{error}}</p>
