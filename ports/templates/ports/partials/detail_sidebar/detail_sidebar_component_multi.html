@@ -95,7 +95,9 @@
           </c-select.index>
         </div>
         {% partialdef input-component %}
+        {% with "Keine Veränderung vornehmen" as fieldPlaceholder  %}
             {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" %}
+        {% endwith %}
         {% endpartialdef %}
 
         {% comment %}
