@@ -1,17 +1,24 @@
 {% load constants %}
 {% events as EVENTS %}
-{% with "calculate-scenario-modal" as id %}
 <div x-data
      class="bg-[#f8fafc] content-stretch flex flex-col gap-[16px] items-center p-[16px]"
 
 >
   <!-- {/* Szenario berechnen Button */} -->
   <button
-        command="show-modal"
-        commandfor="{{ id }}"
-          class="w-full bg-[#0e7490] text-white font-bold text-[16px] hover:bg-[#0c647a] transition-colors py-[12px] rounded-full">
+    type="button"
+    hx-get="{% url "ports:calculate" scenario_internal_id=scenario.internal_id %}"
+    hx-target="#modal-container"
+    hx-swap="innerHTML"
+    hx-disabled-elt="this"
+    hx-indicator="find span"
+    class="w-full bg-[#0e7490] text-white font-bold text-[16px] hover:bg-[#0c647a] transition-colors py-[12px] rounded-full disabled:bg-gray-500">
+    <span class="loader htmx-indicator"></span>
     Szenario berechnen
   </button>
+
+
+
   <!-- {/* Changes Indicator */} -->
   {% comment %}
   I would like this better with an listener for this event fetching the
@@ -30,8 +37,6 @@
         <span class="w-full h-full">🔄️</span>
         {% include 'ports/partials/changes_count.html' with all_changes_count=all_changes_count %}
   </button>
-  <!-- {/* Calculation Modal */} -->
-        {% include 'ports/partials/scenario_calculation_modal.html' with id=id%}
 
 
 
@@ -49,4 +54,3 @@
         </c-alert>
       </div>
 </div>
-{% endwith %}

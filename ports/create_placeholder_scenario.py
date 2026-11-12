@@ -3,6 +3,10 @@ Can be used to help when implementing the frontend.
 Can be used for testing.
 """
 
+import datetime
+import math
+from zoneinfo import ZoneInfo
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import Polygon
@@ -17,7 +21,29 @@ from .models import Load
 from .models import Project
 from .models import Scenario
 from .models import Solar
+from .models import SolarRadiation
 from .models import Timeseries
+
+
+def get_or_create_solar_radiation() -> SolarRadiation:
+    """Use an existing active profile, otherwise create a synthetic clear sky year (hourly).
+
+    Radiation follows a sine between 6:00 and 18:00 with a peak of 800 W/m² at noon.
+    """
+    profile = SolarRadiation.objects.order_by("id").first()
+    if profile:
+        return profile
+    values = [
+        round(max(0.0, math.sin(math.pi * (hour % 24 - 6) / 12)) * 800, 1)
+        for hour in range(365 * 24)
+    ]
+    return SolarRadiation.objects.create(
+        name="Platzhalter Einstrahlung (synthetisch)",
+        description="Synthetisches Profil für Platzhalter-Szenarien",
+        timeseries=values,
+        timestep=60,
+        timeseries_start=datetime.datetime(2025, 1, 1, tzinfo=ZoneInfo("UTC")),
+    )
 
 
 def create_scenario() -> Scenario:
@@ -198,17 +224,38 @@ def create_scenario() -> Scenario:
         carrier=Heating.CarrierChoices.ELECTRICITY,
         manager=area1.manager,
     )
+    solar_radiation = get_or_create_solar_radiation()
     Solar.objects.create(
-        scenario=s, name="My Solar 1", area=area3, power_kw=20, manager=area3.manager
+        scenario=s,
+        name="My Solar 1",
+        area=area3,
+        power_kw=20,
+        manager=area3.manager,
+        profile=solar_radiation,
     )
     Solar.objects.create(
-        scenario=s, name="My Solar 2", area=area2, power_kw=20, manager=area2.manager
+        scenario=s,
+        name="My Solar 2",
+        area=area2,
+        power_kw=20,
+        manager=area2.manager,
+        profile=solar_radiation,
     )
     Solar.objects.create(
-        scenario=s, name="My Solar 3", area=area2, power_kw=20, manager=area2.manager
+        scenario=s,
+        name="My Solar 3",
+        area=area2,
+        power_kw=20,
+        manager=area2.manager,
+        profile=solar_radiation,
     )
     Solar.objects.create(
-        scenario=s, name="My Solar 4", area=area2, power_kw=20, manager=area2.manager
+        scenario=s,
+        name="My Solar 4",
+        area=area2,
+        power_kw=20,
+        manager=area2.manager,
+        profile=solar_radiation,
     )
 
     return s

@@ -150,9 +150,9 @@
         {% if instance.model_name == "solar" %}
         <script>
         var spec_power = document.getElementById("{{form.spec_power.auto_id}}");
-        var power_installed = document.getElementById("{{form.power_installed.auto_id}}");
+        var power_kw = document.getElementById("{{form.power_kw.auto_id}}");
         var surface_area_installed = document.getElementById("{{form.surface_area_installed.auto_id}}");
-        addAutoCalcSolarPower(spec_power,power_installed, surface_area_installed);
+        addAutoCalcSolarPower(spec_power,power_kw, surface_area_installed);
         </script>
 
         {{form.warnings}}

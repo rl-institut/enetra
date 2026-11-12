@@ -21,6 +21,11 @@ urlpatterns = [
         name="enetra_tool",
     ),
     path(
+        "<uuid:scenario_internal_id>/calculate/",
+        views.calculate_scenario,
+        name="calculate",
+    ),
+    path(
         "timeseries_upload/<uuid:scenario_internal_id>/",
         views.timeseries_upload,
         name="timeseries_upload",

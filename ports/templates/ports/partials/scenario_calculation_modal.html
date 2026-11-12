@@ -1,81 +1,87 @@
-<c-modal id="{{id}}"
-        closedby="any">
-    <!-- {/* Header */} -->
-    <div class=" flex w-full shrink-0 content-stretch items-center justify-between">
-      <p class=" shrink-0 font-['Inter:Regular',sans-serif] text-xl leading-normal font-normal text-[#1e293b] not-italic">
-        Szenario berechnen
-      </p>
-      <button commandfor="{{id}}"
-              command="close"
-              class=" size-6 shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-opacity hover:opacity-60">
-        <c-icon.close />
-      </button>
+<c-modal id="{{ id }}" closedby="any" class="w-[440px] overflow-y-auto ">
+  {# Header #}
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h2 class="text-lg font-semibold text-slate-800">{{ scenario.name }}</h2>
+      <p class="text-xs text-slate-500">Zuletzt geändert: {{ scenario.updated_at|date:"d.m.Y H:i" }}</p>
     </div>
-    <!-- {/* Content */} -->
-    <div class=" flex w-full shrink-0 flex-col content-stretch items-start gap-6 py-6">
-      <!-- {/* Changes Section */} -->
-      <div class=" flex w-full shrink-0 flex-col content-stretch items-start gap-2 rounded-[8px] bg-[#f8fafc] p-4 text-sm not-italic">
-        <p class=" w-full shrink-0 font-['Inter:Semi_Bold',sans-serif] leading-normal font-semibold whitespace-pre-wrap text-[#1e293b]">
-          Ihre Änderungen
-        </p>
-        <div class=" w-[min-content] min-w-full shrink-0 font-['Inter:Regular',sans-serif] leading-0 font-normal whitespace-pre-wrap text-[#64748b]">
-          <p class="mb-0 leading-6">Hinzugefügt:</p>
-          <ul class="mt-2 list-disc">
-            <li class="ms-5 mb-0">
-              <span class="leading-6">3 Potentialflächen</span>
-            </li>
-            <li class="ms-5 mb-0">
-              <span class="leading-6">2 PV-Anlagen (60 kWp gesamt)</span>
-            </li>
-            <li class="ms-5">
-              <span class="leading-6">1 Wärmepumpe (20 kW)</span>
-            </li>
-          </ul>
-        </div>
-        <div class=" mt-4 w-[min-content] min-w-full shrink-0 font-['Inter:Regular',sans-serif] leading-0 font-normal text-[#64748b]">
-          <p class="mb-0 leading-6 whitespace-pre-wrap">Entfernt:</p>
-          <ul class="mt-2 list-disc">
-            <li class="ms-5 whitespace-pre-wrap">
-              <span class="leading-6">1 Gaskessel (50 kW)</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-      <!-- {/* Hints Section */} -->
-      <div class=" flex w-full shrink-0 flex-col content-stretch items-start">
-        <div class=" w-full shrink-0 font-['Inter:Regular',sans-serif] text-sm leading-0 font-normal whitespace-pre-wrap text-[#64748b] not-italic">
-          <p class="mb-0 leading-6">Hinweise:</p>
-          <ul class="mt-2 list-disc">
-            <li class="ms-5 mb-0">
-              <span class="leading-6">Geschätzte Berechnungsdauer: ~30 Sekunden</span>
-            </li>
-            <li class="ms-5 mb-0">
-              <span class="leading-6">Stelle sicher, dass alle Daten vollständig sind</span>
-            </li>
-            <li class="ms-5">
-              <span class="leading-6">Die Berechnung kann nicht abgebrochen werden</span>
-            </li>
-          </ul>
-        </div>
-      </div>
+    <button type="button"
+            commandfor="{{ id }}"
+            command="close"
+            class="size-6 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors border-0 bg-transparent cursor-pointer p-0">
+      <c-icon.close />
+    </button>
+  </div>
+
+  {# Scenario overview #}
+  {% partialdef summary-item %}
+    {% if count %}<li>{{ count }} {{ name }}</li>{% endif %}
+  {% endpartialdef %}
+  <div class="flex flex-col gap-4 rounded-lg bg-slate-50 p-4 text-sm">
+    <div class="flex flex-col gap-1">
+      <p class="font-semibold text-slate-800">Flächen</p>
+      {% if building_areas or open_areas %}
+        <ul class="list-disc ps-5 text-slate-500 leading-6">
+          {% with count=building_areas|length name="Gebäudeflächen" %}{% partial summary-item %}{% endwith %}
+          {% with count=open_areas|length name="Freiflächen" %}{% partial summary-item %}{% endwith %}
+        </ul>
+      {% else %}
+        <p class="text-slate-500">Keine Flächen vorhanden</p>
+      {% endif %}
     </div>
-    <!-- {/* Buttons */} -->
-    <div class=" flex w-full shrink-0 flex-col content-stretch items-start gap-4">
-      <button
-              hx-post="{% url 'ports:start_solver' scenario_internal_id=scenario.internal_id %}"
-              hx-swap="none"
-              class=" flex w-full shrink-0 cursor-pointer content-stretch items-center justify-center rounded-[100px] border-0 bg-[#0e7490] px-4 py-3 transition-colors hover:bg-[#0c647a]">
-        <p class=" shrink-0 font-['Inter:Bold',sans-serif] text-4 leading-normal font-bold text-white not-italic">
-          Szenario berechnen
-        </p>
-      </button>
-      <button commandfor="{{id}}"
-              command="close"
-              class=" flex w-full shrink-0 cursor-pointer content-stretch items-center justify-center gap-2 rounded-[100px] border border-solid border-[#cbd5e1] bg-white px-4 py-2 transition-colors hover:bg-[#f8fafc]">
-        <c-icon.close />
-        <p class=" shrink-0 font-['Inter:Regular',sans-serif] text-sm leading-normal font-normal text-[#1e293b] not-italic">
-          Abbrechen
-        </p>
-      </button>
+    <div class="flex flex-col gap-1">
+      <p class="font-semibold text-slate-800">Komponenten</p>
+      {% if summaries %}
+        <ul class="list-disc ps-5 text-slate-500 leading-6">
+          {% for label in summaries %}<li>{{ label }}</li>{% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-slate-500">Keine Komponenten vorhanden</p>
+      {% endif %}
     </div>
+  </div>
+
+  {# Hints #}
+  <div class="flex flex-col gap-1 text-sm text-slate-500">
+    <p class="font-semibold text-slate-800">Hinweise</p>
+    <ul class="list-disc ps-5 leading-6">
+      <li>Geschätzte Berechnungsdauer: ~30 Sekunden</li>
+      <li>Stelle sicher, dass alle Daten vollständig sind</li>
+      <li>Die Berechnung kann nicht abgebrochen werden</li>
+    </ul>
+  </div>
+
+  {% if model_errors %}
+<c-alert :class="class" :attrs="attrs" variant="warning" :icon=False >
+<c-slot name="title">Warnung</c-slot>
+    <div class="flex flex-col gap-3 pt-2 font-normal">
+      {% include "ports/partials/error_list.html" with model_errors=model_errors %}
+    </div>
+</c-alert>
+
+  {% endif %}
+  {# Actions #}
+  <div class="flex flex-col gap-3"
+  >
+    <button type="button"
+            {% if model_errors %}
+            disabled
+            title="Simulation ist erst nach Behebung der obigen Fehler möglich"
+            {% endif %}
+            hx-post="{% url 'ports:start_solver' scenario_internal_id=scenario.internal_id %}"
+            hx-swap="none"
+            hx-on::after-request="htmx.closest(this, 'dialog').close()"
+            hx-indicator="find span"
+            hx-disabled-elt="this"
+            class="w-full rounded-full border-0 bg-[#0e7490] py-3 text-base font-bold text-white cursor-pointer transition-colors hover:bg-[#0c647a] disabled:cursor-not-allowed disabled:bg-gray-400">
+    <span class="loader htmx-indicator"></span>
+      Szenario berechnen
+    </button>
+    <button type="button"
+            commandfor="{{ id }}"
+            command="close"
+            class="w-full rounded-full border border-slate-200 bg-white py-2 text-sm text-slate-800 cursor-pointer transition-colors hover:bg-slate-50">
+      Abbrechen
+    </button>
+  </div>
 </c-modal>

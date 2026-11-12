@@ -101,7 +101,7 @@ Context: form (area form), scenario, area_internal_ids (comma separated), dialog
             hx-get="{% url "ports:details_create" model='grid' scenario_internal_id=scenario.internal_id %}"
             hx-vals='js:{area_internal_ids: "{{ area_internal_ids }}", {{SET_FIELD_PREFIX}}carrier: Alpine.$data(this).carrier.substring("{{GRID_PREFIX}}".length)}'
             hx-swap="innerHTML"
-            hx-target="#grid-modal-container"
+            hx-target="#modal-container"
             hx-select="unset"
             @click="$el.closest('dialog').close()"
             class="w-full cursor-pointer rounded-full border border-[#cbd5e1] bg-white py-2 text-sm text-[#1e293b] transition-colors hover:bg-[#f8fafc]">

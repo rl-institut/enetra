@@ -3,7 +3,9 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from collections.abc import Iterable
+from datetime import datetime
 
+import pandas as pd
 from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -11,6 +13,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
+from django.db import connection
 from django.db.models import Q
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
@@ -386,3 +389,57 @@ def get_items_to_be_deleted(instances: list[models.Model], *args, **kwargs) -> l
         return False or custom_filter(field)
 
     return get_related_items(instances, *args, **kwargs, field_filter=filter_no_cascade)
+
+
+def find_item(internal_id, scenario_id: int | None = None) -> type[ScenarioItem] | None:
+    """Return the ScenarioItem model whose table contains `internal_id` (one UNION ALL query).
+
+    ChangedItem/DeletedItem are skipped since they only reference other items' internal_ids.
+    """
+    from .models import ChangedItem
+    from .models import DeletedItem
+
+    item_models = {
+        m._meta.label: m
+        for m in apps.get_models()
+        if issubclass(m, ScenarioItem) and m not in (ChangedItem, DeletedItem)
+    }
+    qn = connection.ops.quote_name
+    where = "internal_id = %s" + (" AND scenario_id = %s" if scenario_id is not None else "")
+    params_per_model = [str(internal_id)] + ([scenario_id] if scenario_id is not None else [])
+    sql = " UNION ALL ".join(
+        f"SELECT %s AS model FROM {qn(m._meta.db_table)} WHERE {where}"
+        for m in item_models.values()
+    )
+    params = [p for label in item_models for p in (label, *params_per_model)]
+    with connection.cursor() as cursor:
+        cursor.execute(f"{sql} LIMIT 1", params)
+        row = cursor.fetchone()
+    return item_models[row[0]] if row else None
+
+
+def resample(
+    values: list[float],
+    timestep_orig: float,
+    start: datetime,
+    end: datetime,
+    time_step: int,
+) -> pd.Series:
+    """Align a profile to [start, end]: cut or forward fill, then resample to time_step."""
+    time_index = pd.date_range(start, end, freq=f"{timestep_orig}min")
+    # if there are to many values this shortens them
+    padded: list[float | None] = list(values[: len(time_index)])
+    # if there are not enough values: extend series with empty values, fill later
+    padded += [None] * (len(time_index) - len(padded))
+    # fill up missing values: retain last value
+    series = pd.Series(padded, index=time_index, dtype=float).ffill()
+    if timestep_orig == time_step:
+        return series
+    series = pd.Series(padded, index=time_index, dtype=float).ffill()
+    if time_step > timestep_orig:
+        series = series.resample(f"{time_step}min").mean()  # downsample: average
+    elif time_step < timestep_orig:
+        # .mean() only averages existing values; new timesteps from upsampling have none and become NaN
+        # use ffill instead
+        series = series.resample(f"{time_step}min").ffill()  # upsample: repeat value
+    return series
