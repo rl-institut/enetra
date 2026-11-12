@@ -1192,13 +1192,6 @@ class AbstractElectrolyzer(models.Model):
 
     list_icon = "icon.electrolyzer"
     icon = "icon.electrolyzer"
-    # carrier is always electricity
-    efficiency_thermal = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
 
     class Meta:
         abstract = True

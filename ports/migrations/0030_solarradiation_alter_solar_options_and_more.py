@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
 
 
     dependencies = [
-        ('ports', '0028_remove_chp_power_installed_and_more'),
+        ('ports', '0029_remove_electrolyzer_efficiency_thermal_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
