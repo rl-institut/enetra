@@ -361,7 +361,7 @@ def signup(request):
             token = signing.dumps(user.username)
             signup_url = request.build_absolute_uri(reverse("core:signup", query={"token": token}))
             user.email_user(
-                subject=_("Enetra Registrierung"),
+                subject=_("ENETRA Registrierung"),
                 message=render_to_string(
                     "core/registration/email_signup.txt",
                     {"host_url": settings.DJANGO_HOST_URL, "signup_url": signup_url},
