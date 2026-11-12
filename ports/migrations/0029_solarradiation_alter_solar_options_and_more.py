@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import migrations, models
 
 def remove_solar_profile(apps, schema_editor):
+    # profiles can not survive the migration since they change from Load to SolarRadiation
     Solar = apps.get_model("ports", "solar")
     Solar.objects.all().update(profile=None)
 
@@ -23,7 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(remove_solar_profile, migrations.RunPython.noop),
+        migrations.RunPython(remove_solar_profile, migrations.RunPython.noop, remove_solar_profile),
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
@@ -327,4 +328,6 @@ class Migration(migrations.Migration):
             model_name='energycost',
             constraint=models.UniqueConstraint(fields=('scenario',), name='unique_energycost_per_scenario'),
         ),
+        # must be run again. where reversing the migration the profiles need to be removed before changing the Profile type back to Load
+        migrations.RunPython(migrations.RunPython.noop, remove_solar_profile),
     ]
