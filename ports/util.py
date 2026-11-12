@@ -1,9 +1,12 @@
+import csv
+import datetime
 import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
 from collections.abc import Iterable
 
+import pandas as pd
 from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -29,10 +32,8 @@ logger = logging.getLogger(__name__)
 def process_file_to_solar_radiation(file):
     """Import timeseries data to SolarRadiation"""
 
-    import csv
-    import datetime
-
     with open(file) as f:
+        # find the columns with time and power values
         reader = csv.DictReader(f)
         time_col = None
         val_col = None
@@ -43,35 +44,39 @@ def process_file_to_solar_radiation(file):
                 val_col = col
         if not (time_col and val_col):
             raise ValueError("No column found for 'time' or 'power'")
-        f.seek(0)
-        k = iter(csv.DictReader(f))
-        row = next(k)
 
-        def toiso(x):
-            return datetime.datetime.fromisoformat(x)
-
-        start_time = toiso(row[time_col])
-        prev_time = start_time
-        row = next(k)
-        next_time = toiso(row[time_col])
+        # reading the file changed the stream position.
+        # reset it so we can start from the top
         f.seek(0)
         values = []
-        timestep = next_time - prev_time
-        prev_time = next_time
-        consistent = True
+        times = []
         for row in csv.DictReader(f):
             try:
                 values.append(float(row[val_col]))
+                times.append(row[time_col])
             except ValueError as e:
                 raise ValueError(
                     f"{file} has a value of {row[val_col]} which is not numeric"
                 ) from e
 
-            next_time = toiso(row[time_col])
-            if consistent and next_time - prev_time != timestep:
-                logger.warning(f"Timesteps are not consistent in file {file}")
-                consistent = False
-            prev_time = next_time
+        # let pandas handle the datetimes since local german times need handling of
+        # spring and autumn timezone changes.
+        timestamps = pd.to_datetime(values)
+        timestamps = timestamps.tz_localize(
+            "Europe/Berlin",
+            ambiguous="infer",
+            nonexistent="raise",
+        )
+        timestamps = timestamps.tz_convert("UTC")
+        timestep = timestamps[1] - timestamps[0]
+        start_time = timestamps[0]
+        for t2, t1 in zip(timestamps[1:], timestamps[:-1], strict=False):
+            # sometimes there are microseconds changes which should not lead to a warning
+            if (t2 - t1) - timestep > datetime.timedelta(milliseconds=1):
+                logger.warning(
+                    f"Timesteps are not consistent in file {file} at {t1}\n({t2 - t1 - timestep})"
+                )
+                break
         SolarRadiation.all_objects.create(
             name=file.stem,
             timeseries=values,
