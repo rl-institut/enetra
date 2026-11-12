@@ -1287,7 +1287,7 @@ class AbstractSolar(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch wenn eine Fläche mit installierte Photovoltaik angegeben ist."
+            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch, wenn eine Fläche mit installierter Photovoltaik angegeben ist."
         ),
     )  # W/m^2
 
