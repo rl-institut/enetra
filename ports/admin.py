@@ -114,13 +114,14 @@ DynamicClass = type("ProjectAdmin", (ModelAdmin,), methods)
 admin.site.register(Project, DynamicClass)
 
 
-methods["list_display"] = ("id", "name", "timestep", "timeseries_start")
-DynamicClass = type(
-    "SolarRadiationAdmin",
-    (ModelAdmin,),
-    {"get_queryset": lambda self, request: SolarRadiation.all_objects.all()},
-)
-admin.site.register(SolarRadiation, DynamicClass)
+class SolarRadiationAdmin(ModelAdmin):
+    list_display = ("id", "name", "timestep", "timeseries_start")
+
+    def get_queryset(self, request):
+        return SolarRadiation.all_objects.all()
+
+
+admin.site.register(SolarRadiation, SolarRadiationAdmin)
 
 methods["list_display"] = ("id", "name", "manager", "scenario_id")
 # Add all scenario items to the admin panel
