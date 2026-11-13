@@ -52,9 +52,6 @@ document.addEventListener("htmx:oobBeforeSwap", (event) => {
     });
 })
 
-
-
-
 // Cotton list items used to be individual Alpine components (x-data + x-effect per row) just to
 // dispatch these window events when (de)selected.Now the (c-list.index) delegates all input
 // handling to a single listener and calls this helper directly instead.

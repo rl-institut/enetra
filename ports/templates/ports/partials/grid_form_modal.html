@@ -15,10 +15,9 @@ this partial only renders the field loop + buttons, so both flows stay in sync.
       <c-icon.close />
     </button>
   </div>
-  <form id="{{ dialog_id }}-form"
-        class="flex flex-col gap-[16px] no-stepper">
+  <form id="{{ dialog_id }}-form" class="flex flex-col gap-[16px] no-stepper">
      {% for field in form.hidden_fields %}
-    {{field}}
+       {{field}}
      {% endfor %}
     <input type="hidden" name="area_internal_ids" value="{{ area_internal_ids }}">
 
