@@ -386,7 +386,7 @@ class SolarForm(ScopedModelForm):
             area_m2 = parent_area.geom.transform(25832, clone=True).area
             if instance.surface_area_installed and area_m2 < instance.surface_area_installed:
                 self["surface_area_installed"].warnings = [
-                    "Die Fläche mit installierter Photovoltaik überschreitet die Fläche auf der sich die PV Anlage befindet. Dies kann z.B. bei Fassaden Photovoltaik normal sein. Bitte Prüfe deine Angabe."
+                    "Die Fläche mit installierter Photovoltaik überschreitet die Fläche auf der sich die Anlage befindet. Dies kann z.B. bei Fassaden-Anlagen normal sein. Bitte Angabe prüfen."
                 ]
         return instance
 
@@ -733,11 +733,9 @@ class TimeseriesUploadForm(ScopedModelForm):
             for instance in instances:
                 authorized_instance = has_authorization(instance, self.scope_user, "details")
                 if not authorized_instance:
-                    break
-            if not authorized_instance:
-                raise ValidationError(
-                    "Sie sind nicht berechtigt diesem Objekt eine Zeitreihe hinzuzufügen"
-                )
+                    raise ValidationError(
+                        "Sie sind nicht berechtigt diesem Objekt eine Zeitreihe hinzuzufügen"
+                    )
         cleaned_data["from_instances"] = instances
         return cleaned_data
 

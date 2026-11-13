@@ -688,7 +688,7 @@ class SolarRadiation(models.Model):
 
     These can be referenced by Solar.
     They are public and server specified.
-    No need for
+    No need for authorization, scoping to scenarios or internal_ids
     """
 
     is_active = models.BooleanField(
@@ -697,7 +697,7 @@ class SolarRadiation(models.Model):
     name = models.TextField(
         blank=False,
         null=True,
-        help_text=_("Name der Zeitreihe für solare einstrahlung"),
+        help_text=_("Name der Zeitreihe"),
     )
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung der Zeitreihe.")
