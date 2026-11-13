@@ -341,7 +341,10 @@ class ScopedModelForm(forms.ModelForm):
             self.scope_querysets()
 
     def scope_querysets(self) -> None:
-        """Set the querysets of the relation fields the user may select from"""
+        """Set the querysets of the relation fields the user may select from
+
+        Overwrite this in the subclasses
+        """
         pass
 
     def own_or_current(self, field_name: str, model: type[ScenarioItem]) -> QuerySet:
