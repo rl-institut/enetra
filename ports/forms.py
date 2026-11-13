@@ -365,10 +365,6 @@ class ScopedModelForm(forms.ModelForm):
         return FormClass
 
 
-def get_timeseries_for_user(user: User, scenario: Scenario) -> QuerySet[Timeseries]:
-    return Timeseries.objects.filter(manager=user, scenario=scenario)
-
-
 class LoadForm(ScopedModelForm):
     def scope_querysets(self) -> None:
         # TODO: should the timeseries stay bound to the scenario OR

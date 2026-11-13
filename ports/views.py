@@ -69,7 +69,6 @@ from .forms import EnergyCostForm
 from .forms import ScenarioItemFormFactory
 from .forms import TemplateFormFactory
 from .forms import TimeseriesUploadForm
-from .forms import get_timeseries_for_user
 from .models import Area
 from .models import ChangedItem
 from .models import DeletedItem
@@ -89,6 +88,7 @@ from .util import duplicate_scenario
 from .util import duplicate_scenario_with_permissions
 from .util import get_template_model
 from .util import get_template_scenarios
+from .util import get_timeseries_for_user
 
 logger = logging.getLogger(__name__)
 

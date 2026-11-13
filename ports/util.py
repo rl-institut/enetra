@@ -15,6 +15,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
 from django.db.models import Q
+from django.db.models import QuerySet
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
 
@@ -25,6 +26,7 @@ from .models import Result
 from .models import Scenario
 from .models import ScenarioItem
 from .models import SolarRadiation
+from .models import Timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +249,14 @@ def prefetch_projects_users(projects: Iterable[Project]) -> None:
     for perm in group_perms:
         project = id_to_project[int(perm.object_pk)]
         project._users_cache[perm.permission.codename] = perm.group.user_set.all()
+
+
+def get_timeseries_for_user(user: User, scenario: Scenario) -> QuerySet[Timeseries]:
+    """Get the timeseries the user is allowed to access.
+
+    To be expanded when there is generic data for every user.
+    """
+    return Timeseries.objects.filter(manager=user, scenario=scenario)
 
 
 def get_user_projects(user: User):
