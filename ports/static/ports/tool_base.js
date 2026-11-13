@@ -83,10 +83,22 @@ function hideOtherDropDown(selector) {
 };
 
 
-// make child of div selects of class select2 select2 elements
+// make child selects of a div with class=="make-select2" select2 elements
 document.addEventListener("htmx:afterSettle", (event) => {
     // fires on the swapped in elements. Search these elements for select2
     const root = event.target;
+    initSelect2(root);
+}
+);
+
+// make child selects of a div with class=="make-select2" select2 elements
+document.addEventListener("DOMContentLoaded", () => {
+    const root = document;
+    initSelect2(root);
+}
+);
+
+function initSelect2(root) {
     const els = [...root.querySelectorAll('.make-select2')];
     if (root.matches?.('.make-select2')) els.unshift(root);   // root itself may match
     els.forEach(el => {
@@ -94,9 +106,8 @@ document.addEventListener("htmx:afterSettle", (event) => {
         const select_el = el.querySelector(':scope > select');
         $(select_el)?.select2({ width: "100%" })
     });
-}
-);
 
+}
 
 // give some functionality to c-list.items. since there might be hundreds, beeing efficient here improves render times
 // this makes list items disptach the appropriate getdetails event as well as listen to select events
@@ -119,7 +130,6 @@ document.addEventListener("htmx:afterSwap", (event) => {
 })
 
 document.addEventListener("htmx:oobBeforeSwap", (event) => {
-    console.log( 'added func')
     const el = event.target;
     var list_items;
     if (el.classList.contains("cotton-list-item")) {
@@ -142,4 +152,66 @@ function addListItemFunctionality(el) {
     console.assert(internal_id);
     window.addEventListener("select-instance-" + internal_id, () => { el.click(); })
     el._added_list_item_func = true
+}
+
+document.addEventListener('alpine:init', () => {
+    Alpine.store('templates', {
+        values: {},
+        urls: {},
+    });
+})
+
+function addAutoCalcSolarPower(el_spec_power, el_power_installed, el_surface_area_installed) {
+    // set the values of the installed power when changing the installed area and vice versa.
+    // changing the specific power, prioritizes changing the power if an area is given
+    // highlights the changed element and shows a short hint below it
+    const labelOf = (el) => document.querySelector(`label[for="${el.id}"]`)?.textContent.trim()
+        ?? el.closest(".group")?.querySelector("label")?.firstChild?.textContent.trim()
+        ?? el.name;
+
+    function applyHighlight(el, source_el) {
+        // restart the animation if it is still running
+        el.classList.remove("autofill-highlight");
+        void el.offsetWidth;
+        el.classList.add("autofill-highlight");
+        el.addEventListener("animationend", () => el.classList.remove("autofill-highlight"), { once: true });
+
+        // place the hint after the input wrapper (input + unit), fall back to directly after the input
+        const anchor = el.closest(".relative") ?? el;
+        anchor.parentElement.querySelector(":scope > .autofill-hint")?.remove();
+        const hint = document.createElement("p");
+        hint.className = "autofill-hint text-[12px] text-cyan-700";
+        hint.setAttribute("role", "status");
+        hint.textContent = `↻ Automatisch berechnet aus „${labelOf(source_el)}“`;
+        hint.addEventListener("animationend", () => hint.remove(), { once: true });
+        anchor.after(hint);
+    }
+
+    function setCalculated(el, value, source_el) {
+        el.value = Number.isFinite(value) ? +value.toFixed(4) : "";
+        // keep alpine state (template changed/unchanged indicator) in sync. "input" does not
+        // retrigger the "change" listeners below, so no feedback loop
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        applyHighlight(el, source_el);
+    }
+
+    el_power_installed.addEventListener("change", (event) => {
+        if (el_spec_power.value) {
+            setCalculated(el_surface_area_installed, event.target.value / (el_spec_power.value/1000), event.target);
+        }
+    })
+    el_surface_area_installed.addEventListener("change", (event) => {
+        if (el_spec_power.value) {
+            setCalculated(el_power_installed, event.target.value * (el_spec_power.value/1000), event.target);
+        }
+    })
+    el_spec_power.addEventListener("change", (event) => {
+        const spec_power_value = event.target.value;
+        if (spec_power_value && el_surface_area_installed.value) {
+            setCalculated(el_power_installed, (spec_power_value/1000) * el_surface_area_installed.value, event.target);
+        } else if (spec_power_value && el_power_installed.value) {
+            setCalculated(el_surface_area_installed, el_power_installed.value / (spec_power_value/1000), event.target);
+        }
+    })
+
 }

@@ -37,8 +37,6 @@
         Dieses Element wurde verändert oder gelöscht. Aktualisieren Sie die Ansicht, um die Änderungen sehen zu können.
         </c-alert>
       </div>
-
-
     {% if errors %}
     Errors
     {{ errors }}
@@ -67,20 +65,20 @@
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as form_url %}
         {% include "ports/partials/detail_item_ellipsis.html" with instance=instances.0 scenario=scenario hx_target=hx_target form_url=form_url %}
       {% endwith %}
-    </div>
-      </div>
       <button type="button"
               @click="$dispatch('hide-detail-sidebar')"
               class="flex-shrink-0 hover:opacity-60 transition-opacity">
         <c-icon.close />
       </button>
+    </div>
+      </div>
         {{form.non_field_errors}}
     <!-- {/* Building/Area Type Dropdown */} -->
     <div class="flex flex-col gap-[8px]">
       <label class="font-semibold text-[16px] text-[#1e293b]">{{ instances.0.get_area_type_display }} Options</label>
       <c-select.index classButton="border-[#cbd5e1]!" :inputName=form.usage.name :selectedValue=form.usage.value>
         {% for value, label in form.fields.usage.choices %}
-          <c-select.button selectValue={{ value }}>
+          <c-select.button selectValue={{ value|default:"" }}>
             {{ label }}
           </c-select.button>
         {% endfor %}
@@ -156,27 +154,27 @@
             </c-select.index>
             <button type="button"
                     hx-post="{% url 'ports:api_remove_carrier' scenario_internal_id=scenario.internal_id model='grid' %}"
-                    hx-vals='{"carrier": "{{ field.name|cut:"grid_" }}"}'
+                    hx-vals='{"carrier": "{{ field.name|cut:"grid_" }}", "area_internal_ids": "{{ internal_ids }}"}'
                     hx-swap="none"
                     class="text-[12px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right w-full">
               Netztyp von allen ausgewählten Flächen entfernen
             </button>
             {% endpartialdef %}
 
+            {% constant "GRID_FIELD_PREFIX" as GRID_PREFIX %}
             {% for field in form %}
-            {% if 'grid' in field.name %}
+            {% if GRID_PREFIX in field.name and field.value %}
             {% partial grid_select %}
             {% endif %}
             {% endfor %}
 
             <button type="button"
-                    hx-get="{% url "ports:grid_modal" scenario_internal_id=scenario.internal_id  areas_internal_ids=internal_ids %}"
-                    hx-swap="innerHTML"
-                    hx-target="#grid-modal-container"
-                    hx-select="unset"
+                    commandfor="grid-connect-modal-{{ internal_id }}"
+                    command="show-modal"
                     class="text-[14px] font-semibold text-[#0e7490] hover:opacity-80 transition-opacity text-right">
               + Anschluss
             </button>
+            {% include "ports/partials/detail_sidebar/grid_connect_modal.html" with dialog_id="grid-connect-modal-"|add:internal_id form_id="form_"|add:internal_id area_internal_ids=internal_ids %}
 
           </div>
           </netzanschluss>
@@ -185,10 +183,6 @@
     </details-sidebar-content>
   </form>
 
-<div id="grid-modal-container"
-hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
->
-</div>
 {% comment %}
 On CRUD actions this template is refetched. Below are the needed oob-swaps to keep the lists consistent.
 In case of a created element the list is appended through 'beforeend'

@@ -21,7 +21,7 @@ uvx djlint filepath --reformat
 ```
 to make use of uv tools
 
-enetra uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
+ENETRA uses shadcn-django for cotton component templates. It is not a dependency. Instead it can be used to kickstart cotton template creation
 > shadcn_django provides a CLI tool that allows you to initialize and add shadcn-style components to your Django templates.
 
 ## Tech Stack
@@ -124,7 +124,7 @@ uvx ruff check filepath [--fix]
             .venv\Scripts\activate
             ```
 
-    7. install pre-commit to make sure every git commit is ruff conform
+    7. install pre-commit to make sure every git commit is ruff compliant
         `pre-commit install`
         - to force commits during work in progress use
         `git commit --no-verify -m "commit message"`
@@ -135,7 +135,7 @@ uvx ruff check filepath [--fix]
         `ruff format --check`
         if the commmands are not recognized remember to activate the .venv or run with 'uv run'
 
-    8. Django uses an .env file to read user specif data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
+    8. Django uses an .env file to read user-specific data. This file has to be created by the user and is not shared through GitHub to make uploads of sensitive data impossible. Create a file named `.env` with the following input`
    ````text
     DJANGO_SECRET_KEY=_SomeSecureKey!$%sdsfkl
     DATABASE_URL=postgis://USERNAME:PASSWORD@HOST/DBNAME
@@ -187,7 +187,7 @@ uvx ruff check filepath [--fix]
  - the `api_timeseries` URL moved from `api/loadtemplate/...` to `api/timeseries/...` (same view, name unchanged - only the path changed)
 
 ## Permissions
-Enetra uses django-guardian for instance based permissions.
+ENETRA uses django-guardian for instance based permissions.
 Permissions can be given only on a group base right now.
 A scenario/project can have multiple users. Each user is part of the same <i>Scenario-Group</i>
 If a user creates an Instance (of an Area) he has all permissions for this instance. He is called the <i>manager</i> of this object
@@ -294,7 +294,7 @@ Now running the following line, builds and starts a docker container including c
 ```bash
 sudo docker compose up
 ```
-After this enetra will be available under http://127.0.0.1:8000/
+After this ENETRA will be available under http://127.0.0.1:8000/
 
 To stop containers and remove containers, networks, volumes, and images created by up, run
 ```bash

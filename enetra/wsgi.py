@@ -1,5 +1,5 @@
 """
-WSGI config for enetra project.
+WSGI config for ENETRA project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 

@@ -1,0 +1,111 @@
+{% load constants %}
+{% comment %}
+"+ Anschluss" modal of the area detail sidebars (single + multi).
+MUST be included inside the sidebar's area <form>: the grid selects are the regular grid_<carrier>
+fields of the area form, so "Speichern" is the normal area save (same endpoint, same swap).
+Context: form (area form), scenario, area_internal_ids (comma separated), dialog_id, form_id
+{% endcomment %}
+{% constant "GRID_FIELD_PREFIX" as GRID_PREFIX %}
+{% constant "SET_FIELD_PREFIX" as SET_FIELD_PREFIX %}
+<c-modal id="{{ dialog_id }}" closedby="any" class="w-[440px]">
+  <div class="flex items-center justify-between">
+    <p class="text-[20px] text-[#1e293b]">Netzanschluss hinzufügen</p>
+    <button type="button"
+            commandfor="{{ dialog_id }}"
+            command="close"
+            class="size-6 cursor-pointer border-0 bg-transparent p-0 transition-opacity hover:opacity-60">
+      <c-icon.close />
+    </button>
+  </div>
+
+  <div class="flex flex-col gap-4"
+       x-data="{
+         carrier: '',
+         counts: { {% for field in form %}{% if GRID_PREFIX in field.name and not field.value %}'{{ field.name }}': {{ field.field.queryset.count }},{% endif %}{% endfor %} },
+         get hasCarriers() { return Object.keys(this.counts).length > 0 },
+         get hasGrids() { return (this.counts[this.carrier] ?? 0) > 0 },
+       }">
+    {# not all grid types connected: offer selecting them from existing grids #}
+    <div x-show="hasCarriers" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-2">
+      <p class="text-sm font-semibold text-[#1e293b]">Netztyp</p>
+      <c-select.index placeholder="Netztyp wählen" x-effect="carrier = selectedValue">
+        {% for field in form %}
+        {% if GRID_PREFIX in field.name %}
+        {% if not field.value %}
+        <c-select.button :selectValue="field.name" class="flex items-center justify-between gap-2">
+          <span>{{ field.label }}</span>
+          <span title="Bestehende Netze dieses Typs"
+                class="rounded-full bg-slate-100 px-2 text-[11px] font-normal text-[#64748b]">{{ field.field.queryset.count }}</span>
+        </c-select.button>
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+      </c-select.index>
+    </div>
+
+    <div class="flex flex-col gap-2" :class="!carrier && 'invisible'">
+      <p class="text-sm font-semibold text-[#1e293b]">Netz</p>
+      {# one panel per carrier, stacked in the same cell #}
+      <div class="grid [&>*]:[grid-area:1/1]">
+        {% for field in form %}
+        {% if GRID_PREFIX in field.name and not field.value %}
+        <fieldset class="flex min-w-0 flex-col gap-1"
+                  :class="carrier !== '{{ field.name }}' && 'invisible'"
+                  :disabled="carrier !== '{{ field.name }}'">
+          {% if field.field.queryset.exists %}
+          <c-select.index :field="field" placeholder="Netz auswählen">
+            {% for value, label in field.field.choices %}
+            {% if value %}
+            <c-select.button :selectValue="value">{{ label }}</c-select.button>
+            {% endif %}
+            {% endfor %}
+          </c-select.index>
+          <p class="invisible text-[12px]">&nbsp;</p>
+          {% else %}
+          <c-select.index disabled :field="None" placeholder="Kein Netz dieses Typs vorhanden" />
+          <p class="text-[12px] text-[#64748b]">Bitte unten ein neues Netz erstellen.</p>
+          {% endif %}
+        </fieldset>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="button"
+            hx-post="{% url 'ports:details' scenario_internal_id=scenario.internal_id model='area' %}"
+            hx-select="#{{ form_id }}"
+            hx-target="#{{ form_id }}"
+            hx-swap="outerHTML"
+            hx-validate="true"
+            hx-disabled-elt="this"
+            :disabled="!hasGrids"
+            class="w-full cursor-pointer rounded-full border-0 bg-[#0e7490] py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0c647a] disabled:cursor-not-allowed disabled:bg-gray-400">
+      Speichern
+    </button>
+    </div>
+    {# all grid types connected: only offer creating a new grid #}
+    <p x-show="!hasCarriers" x-cloak class="text-sm text-[#64748b]">Alle Netztypen sind bereits verbunden.</p>
+
+    <div class="flex items-center gap-3 text-[12px] uppercase text-[#64748b]">
+      <span class="h-px flex-1 bg-[#e2e8f0]"></span>
+      oder
+      <span class="h-px flex-1 bg-[#e2e8f0]"></span>
+    </div>
+
+    {% comment %}
+      hx-vals sends the currently selected carrier as substring, so for a user selecting a carrier type and then deciding to create a new one,
+    the corresponding grid type is preselected
+    {% endcomment %}
+    <button type="button"
+            hx-get="{% url "ports:details_create" model='grid' scenario_internal_id=scenario.internal_id %}"
+            hx-vals='js:{area_internal_ids: "{{ area_internal_ids }}", {{SET_FIELD_PREFIX}}carrier: Alpine.$data(this).carrier.substring("{{GRID_PREFIX}}".length)}'
+            hx-swap="innerHTML"
+            hx-target="#grid-modal-container"
+            hx-select="unset"
+            @click="$el.closest('dialog').close()"
+            class="w-full cursor-pointer rounded-full border border-[#cbd5e1] bg-white py-2 text-sm text-[#1e293b] transition-colors hover:bg-[#f8fafc]">
+      Neues Netz erstellen und Fläche hinzufügen
+    </button>
+  </div>
+</c-modal>

@@ -7,10 +7,6 @@
   <div class="htmx-indicator bg-red-500 loader"></div>
   <input name="internal_ids" class='hidden' value='{{internal_ids}}'>
 
-  {% for item in instances  %}
-  {{item.name}}
-
-  {% endfor %}
   <div
     x-data="{show:false }"
     class="animate-in fade-in duration-1000"
@@ -46,7 +42,8 @@
           >Zurück zu ausgewählten Flächen</span
         >
       </button>
-
+      {% else %}
+      <div></div>
       {% endif %}
       <button
         type='button'
@@ -61,10 +58,14 @@
 
   <details-sidebar-content>
     <div class="px-4 py-4">
-      <div class="flex items-center justify-between mb-[24px]">
-        <h2 class="mb-[24px] text-[20px] font-bold text-[#1e293b]">
+      <div class="flex items-start justify-between mb-2">
+      <div class="flex flex-col">
+      <h2 class="text-xl font-bold text-[#1e293b] cursor-help"
+          title="{% for item in instances %}{{item.name}}{% if not forloop.last %}&#013;{% endif %}{% endfor %}">
           {{instances.0.verbose_name}}
-        </h2>
+      </h2>
+        <p class="text-sm">Mehrere ausgewählt</p>
+      </div>
 
         {% with hx_target="#form_"|add:internal_id %}
         {% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name  as form_url %}
@@ -76,11 +77,12 @@
         <div class="flex flex-col gap-[8px]">
           <label class="text-[14px] font-semibold text-[#1e293b]"
           >Komponente aus Vorlage</label>
-          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET.template}}">
+          {% constant "USE_TEMPLATE" as use_template %}
+          <c-select.index inputName="selectedTemplate" classButton="border-[#cbd5e1]!" selectedValue="{{request.GET|get_value_or_none:use_template|default:''}}">
             <c-select.button selectValue="">------</c-select.button>
             {% for template in templates %}
             <c-select.button selectValue="{{template.internal_id}}"
-              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}?template={{template.internal_id}}"
+              hx-get="{% url 'ports:details' scenario_internal_id=scenario.internal_id model=instances.0.model_name %}?{{use_template}}={{template.internal_id}}"
               hx-vals='{"internal_ids": "{{internal_ids}}"}'
               hx-target="#detailSidebar"
               hx-select="unset"
@@ -92,9 +94,10 @@
             {% endfor %}
           </c-select.index>
         </div>
-
         {% partialdef input-component %}
+        {% with "Keine Veränderung vornehmen" as fieldPlaceholder  %}
             {% include "ports/partials/detail_sidebar/detail_sidebar_component.html#input-component" %}
+        {% endwith %}
         {% endpartialdef %}
 
         {% comment %}
@@ -105,6 +108,7 @@
         {% comment %}
         # Iterate over custom fields which are not part of all ElectricalComponents
         {% endcomment %}
+        {% with field=form.efficiency %} {% partial input-component %}{% endwith %}
         {% for field_name in instances.0.custom_fields %}
         {% with field=form|get_value:field_name %} {% partial input-component %}{% endwith %}
         {% endfor %}
@@ -113,7 +117,6 @@
         {% partial input-component %}
         {% endwith %}
 
-        {% with field=form.efficiency %} {% partial input-component %}{% endwith %}
         {% with field=form.power_min %}{% partial input-component %}{% endwith %}
         {% with field=form.power_max %}{% partial input-component %}{% endwith %}
         {% with field=form.capex %}{% partial input-component %}{% endwith %}

@@ -1,0 +1,9 @@
+<c-vars class field></c-vars>
+{% if field.warnings %}
+<c-alert :class="class" :attrs="attrs" variant="warning" :icon=False >
+<c-slot name="title">Warnung</c-slot>
+    {% for warning in field.warnings %}
+    <span>{{warning}}</span>
+    {% endfor %}
+</c-alert>
+{% endif %}

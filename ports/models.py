@@ -1,9 +1,9 @@
 import datetime
 import logging
 import uuid
-from collections.abc import Iterable
-from contextlib import contextmanager
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from typing import ClassVar
 
 import pandas as pd
@@ -13,23 +13,54 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.mail import mail_admins
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
+from django.db import transaction
+from django.db.models import F
+from django.db.models import Value
+from django.db.models.functions import Greatest
 from django.db.models.functions import Now
-from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
-from django.db.transaction import atomic
 from django.dispatch import Signal
 from django.dispatch import receiver
-from django.forms import ModelForm
+from django.shortcuts import render  # noqa
+from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
+
+# Unit suffix shown next to a field's value, both on forms (ports/forms.py) and on
+# the {{ instance|display:"field" }} template filter (ports/templatetags/display.py).
+UNITS = {
+    "power_kw": "kW",
+    "efficiency": "[-]",
+    "efficiency_thermal": "[-]",
+    "power_min": "kW",
+    "power_max": "kW",
+    "capex": "€",
+    "opex": "€/a",
+    "azimut": "°",
+    "angle": "°",
+    "spec_power": "W/m²",
+    "surface_area_installed": "m²",
+    "surface_area_min": "m²",
+    "surface_area_max": "m²",
+    "co2_price": "€/t",
+    "electricity_price": "€/kWh",
+    "heat_price": "€/kWh",
+    "oil_price": "€/l",
+    "diesel_price": "€/l",
+    "gasoline_price": "€/l",
+    "hydrogen_price": "€/kg",
+    "ammonia_price": "€/kg",
+}
 
 
 # Each set of scenario is bundled via its project
@@ -73,25 +104,12 @@ class Project(models.Model):
             prefetch_projects_users([self])
         return self._users_cache
 
-    @atomic()
-    def safe_delete(self):
-        """Safely delete the project by safely deleting all scenarios referencing it.
-        This is needed because of DeletedItems which are created during deletion.
-        """
-        scenarios = Scenario.objects.filter(project=self)
-        for s in scenarios:
-            s.safe_delete()
-        self.delete()
-
 
 class Scenario(models.Model):
     # Instance which bundles ScenarioItems
     # Bundled with other scenarios in a common _Project_.
 
-    # FK project is set to NULL when project is deleted,
-    # since DeletedItems don't allow cascading delete.
-    # Use project.safe_delete instead.
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, default=None, null=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, default=None, null=True)
     id = models.BigAutoField(primary_key=True, blank=True)
     internal_id = models.UUIDField(
         db_index=True, unique=True, null=False, blank=True, default=uuid.uuid4
@@ -116,12 +134,13 @@ class Scenario(models.Model):
 
     # Area of the scenario / Port region
     geom = models.PolygonField(
-        default=None, null=True, blank=True, help_text=_("Geografische Ausdehnung des Szenarios.")
+        default=None,
+        null=True,
+        blank=True,
+        help_text=_("Geografische Ausdehnung des Szenarios."),
+        srid=4326,
+        geography=True,
     )
-
-    # Class variable which keeps track of scenarios which should be deleted
-    # This disables DeletedItem creation which is slow for large queries
-    _being_deleted: ClassVar[set[int]] = set()
 
     class Meta:
         permissions = (
@@ -130,26 +149,6 @@ class Scenario(models.Model):
             ("delete", "delete scenario"),
             ("change", "change scenario"),
         )
-
-    def group_name(self):
-        return f"Scenario_{self.id}_group"
-
-    @staticmethod
-    @contextmanager
-    def true_delete(scenario_ids: Iterable[int]):
-        """Context manager so no DeletedItems for these scenarios are created"""
-        ids = set(scenario_ids)
-        Scenario._being_deleted.update(ids)
-        try:
-            yield
-        finally:
-            Scenario._being_deleted.difference_update(ids)
-
-    @atomic()
-    def safe_delete(self):
-        """Disable DeletedItem creation during deletion"""
-        with self.true_delete([self.id]):
-            self.delete()
 
     def prepare_deepcopy(self):
         """Adjust the instance so it can be deepcopied
@@ -199,9 +198,32 @@ class ItemTemplate(models.Model):
     class Meta:
         abstract = True  # Important: makes this a base, not a table
 
+    # Per-field display formatters, keyed by field name, used by the {{ instance|display:"field" }}
+    # template filter (ports/templatetags/display.py). Subclasses override/extend this to
+    # customize how a field's value is shown, e.g. unit conversion (efficiency as a
+    # fraction -> "42.00 %"). Fields without an entry fall back to UNITS.get(field_name)
+    # as a suffix.
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {}
+
+    def display_value(self, field_name: str) -> str:
+        """Format field_name's current value for display, e.g. in a template via
+        {% load display %}{{ instance|display:"power_kw" }}.
+        Checks display_formatters first (e.g. unit conversion), then falls back to
+        a UNITS suffix, then the plain value. None/"" renders as "Keine Angabe".
+        """
+        value = getattr(self, field_name)
+        if value is None or value == "":
+            return "Keine Angabe"
+        formatter = self.display_formatters.get(field_name)
+        if formatter:
+            return formatter(value)
+        unit = UNITS.get(field_name)
+        return f"{number_format(value, 2)} {unit}" if unit else str(value)
+
     def save(self, *args, **kwargs):
         if self.pk is None and self.updated_user is None:
             self.updated_user = self.manager
+
         return super().save(*args, **kwargs)
 
     @classmethod
@@ -241,12 +263,6 @@ class ItemTemplate(models.Model):
         This is used for more efficient rendering on large loops"""
         return f"{self.icon_selected}-outline"
 
-    @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        return FormClass
-
     rud_url = "ports:templates"
 
     create_url = "ports:template_create"
@@ -259,7 +275,6 @@ class ScenarioItem(ItemTemplate):
     internal_id = models.UUIDField(db_index=True, null=False, default=uuid.uuid4)
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, db_index=True)
 
-    scenarioitem_post_delete = Signal()
     scenarioitem_post_save = Signal()
 
     # the item was authorized. It can be shown in the frontend
@@ -299,15 +314,10 @@ class ScenarioItem(ItemTemplate):
         models based on ElectricComponent but __init_subclass__ is"""
         super().__init_subclass__(**kwargs)
         post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
-        post_delete.connect(cls._send_scenarioitem_post_delete, sender=cls)
 
     @classmethod
     def _connect_signals(cls):
         post_save.connect(cls._send_scenarioitem_post_save, sender=cls)
-        post_delete.connect(cls._send_scenarioitem_post_delete, sender=cls)
-
-    def _send_scenarioitem_post_delete(sender, instance, **kwargs):
-        ScenarioItem.scenarioitem_post_delete.send(sender=sender, instance=instance)
 
     def _send_scenarioitem_post_save(sender, instance, **kwargs):
         ScenarioItem.scenarioitem_post_save.send(
@@ -352,22 +362,6 @@ class ScenarioItem(ItemTemplate):
     create_url = "ports:details_create"
 
 
-@receiver(ScenarioItem.scenarioitem_post_delete)
-def update_scenario_post_delete(sender: type[ScenarioItem], instance: ScenarioItem, **kwargs):
-    """Create a DeletedItem"""
-    # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
-    # Create a DeletedItem with all Scenario item values
-    # We use post_delete to only create these items when the item is really deleted.
-    # using pre_delete leads to errors if deletion fails
-    if sender in [DeletedItem, ChangedItem]:
-        return
-    # No DeletedItem creation in cases where the scenario is marked for deletion
-    if instance.scenario_id in Scenario._being_deleted:
-        return
-    deleted_item = DeletedItem.from_scenario_item(instance)
-    deleted_item.save()
-
-
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created
@@ -376,7 +370,8 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario_id = instance.scenario_id
     if sender == ChangedItem:
         return
-    if settings.REDIS_AVAILABLE:
+
+    def publish_change():
         try:
             import redis
             from redis.exceptions import RedisError
@@ -395,8 +390,16 @@ def update_scenario_post_save(sender, instance, **kwargs):
                 24 * 60 * 60,
                 "redis_failure_admin_mail",
             )
+
+    if settings.REDIS_AVAILABLE:
+        # Publish only after the surrounding transaction committed, otherwise clients refetch
+        # before the change is visible. Runs immediately when no transaction is active.
+        transaction.on_commit(publish_change)
+    # GREATEST keeps the timestamps monotonic when concurrent saves commit out of order
+    new_ts = Value(instance.updated_at, output_field=models.DateTimeField())
     Scenario.objects.filter(pk=scenario_id).update(
-        items_updated_at=instance.updated_at, updated_at=instance.updated_at
+        items_updated_at=Greatest(F("items_updated_at"), new_ts),
+        updated_at=Greatest(F("updated_at"), new_ts),
     )
 
 
@@ -405,7 +408,7 @@ def create_changeditem_post_save(sender, instance, **kwargs):
     """Create a ChangedItem"""
     # NOTE: Be sure to handle bouncing signals which can introduce infinite signal loops
     # Create a ChangedItem with all Scenarioitem values
-    # We use post_save to only create these items when the item is really deleted.
+    # We use post_save to only create these items when the item is really created
     if sender in [DeletedItem, ChangedItem]:
         return
     # Item was created. Dont create a ChangedItem
@@ -440,18 +443,16 @@ class ChangedItem(ScenarioItem):
         changed_item = ChangedItem(
             **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
         )
-        content_type = ContentType.objects.get(
-            app_label=item._meta.app_label, model=item._meta.model_name
-        )
+        content_type = ContentType.objects.get_for_model(item)
         changed_item.content_type = content_type
         return changed_item
 
 
 class DeletedItem(ScenarioItem):
     """Store basic information about deleted item.
+    These items are explicitly created on delete
 
-    This is an "easy" implementation, but its not very transparent to the developer.
-    A better approach might be deleting ScenarioItems via custom delete method. This would be more performant since it allows bulk creation, and the signal could be "turned" off for Scenario deletes. Each model would need an implementation of safe delete, since related models would need safe deletion as well, for proper cascading.
+    This keeps normal deletes fast during development and on the admin panel
 
     This gives explicit access to updates of items, which are not in the database anymore.
     Example:
@@ -467,16 +468,15 @@ class DeletedItem(ScenarioItem):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
 
     def __repr__(self):
-        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario.id} with uuid {self.internal_id}"
+        return f"DeletedItem with id {self.id} of type {self.content_type} in scenario {self.scenario_id} with uuid {self.internal_id}"
 
     @classmethod
     def from_scenario_item(cls, item: ScenarioItem) -> "DeletedItem":
         deleted_item = DeletedItem(
             **{f.name: getattr(item, f.name) for f in ScenarioItem._meta.fields if f.name != "id"}
         )
-        content_type = ContentType.objects.get(
-            app_label=item._meta.app_label, model=item._meta.model_name
-        )
+        # use get_for_model to use cache
+        content_type = ContentType.objects.get_for_model(item)
         deleted_item.content_type = content_type
         return deleted_item
 
@@ -489,7 +489,7 @@ class Area(ScenarioItem):
         OPEN = "open", "Freifläche"
 
     class OpenUsageChoices(models.TextChoices):
-        PV = "pv", "Photovolatik"
+        PV = "pv", "Photovoltaik"
         PARKING = "parking", "Parkfläche"
         GREEN = "green", "Grünfläche"
 
@@ -497,7 +497,9 @@ class Area(ScenarioItem):
         OFFICE = "office", "Büro"
         STORAGE = "storage", "Lager"
 
-    geom = models.PolygonField(null=True, blank=False, help_text=_("Geometrie der Fläche."))
+    geom = models.PolygonField(
+        null=True, blank=False, help_text=_("Geometrie der Fläche."), geography=True, srid=4326
+    )
     area_type = models.CharField(choices=AreaTypeChoices, null=True, help_text=_("Art der Fläche."))
     usage = models.CharField(
         choices=OpenUsageChoices.choices + BuildingUsageChoices.choices,
@@ -534,36 +536,10 @@ class Area(ScenarioItem):
             return "icon.area-list"
 
     @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm[ScenarioItem]], instance: "Area", **kwargs
-    ) -> type[ModelForm]:
-        # Usage is not required for multi area view
-        multi = kwargs.get("multi")
-        if not multi:
-            FormClass.base_fields["usage"].required = True
-        area_type = (instance and instance.area_type) or kwargs.get("area_type")
-        if not area_type:
-            raise MissingFormValueException(
-                "The area form needs an area_type to show the correct choices. The area_type can be provided by the instance or as kwarg"
-            )
-        if area_type == Area.AreaTypeChoices.BUILDING:
-            choices = Area.BuildingUsageChoices
-        else:
-            choices = Area.OpenUsageChoices
-        if multi:
-            # dict choices.choices = key: choice_value, value: choice_label->cant cast to dict directly
-            # textchoices expects choice_label:choice_value
-            choices = models.TextChoices(
-                "MultiUsageChoices",
-                {**{x[1]: x[0] for x in choices.choices}, "Keine Veränderung": ""},
-            )
-        FormClass.base_fields["usage"].choices = choices
-        return FormClass
-
-    @classmethod
     def create_new(cls, scenario: Scenario, manager: User, **kwargs):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
-        # TODO: Refactor into model method so this function stays clean
+        if manager is None or not manager.is_authenticated:
+            raise ImproperlyConfigured("create_new can only be called with an authenticated User")
         allowed_attributes = ["area_type"]
         extra_args = {}
         for att in allowed_attributes:
@@ -598,7 +574,7 @@ class Area(ScenarioItem):
 
 # FIXME: A load template is not part of an area. What permission state should it have?
 class Timeseries(ScenarioItem):
-    """Template for timeseries, mostly power series"""
+    """Template for timeseries"""
 
     timeseries = models.JSONField(help_text=_("Zeitreihendaten."))
     spec_load = models.FloatField(  # some specific characteristic, calculated for timeseries
@@ -647,14 +623,127 @@ class Timeseries(ScenarioItem):
         return self
 
 
+class EnergyCost(ScenarioItem):
+    """Energy carrier prices
+
+    units are defined in UNITS
+    """
+
+    co2_price = models.FloatField(
+        verbose_name=_("CO₂-Preis"), default=80, help_text=_("CO₂-Preis.")
+    )
+    electricity_price = models.FloatField(
+        verbose_name=_("Strom-Preis"), default=0.25, help_text=_("Strompreis.")
+    )
+    heat_price = models.FloatField(
+        verbose_name=_("Wärme-Preis"), default=0.12, help_text=_("Wärmepreis.")
+    )
+    oil_price = models.FloatField(verbose_name=_("Öl-Preis"), default=1.60, help_text=_("Ölpreis."))
+    diesel_price = models.FloatField(
+        verbose_name=_("Diesel-Preis"), default=1.65, help_text=_("Dieselpreis.")
+    )
+    gasoline_price = models.FloatField(
+        verbose_name=_("Benzin-Preis"), default=1.80, help_text=_("Benzinpreis.")
+    )
+    hydrogen_price = models.FloatField(
+        verbose_name=_("H₂-Preis"), default=7, help_text=_("Preis für Wasserstoff.")
+    )
+    ammonia_price = models.FloatField(
+        verbose_name=_("NH₃-Preis"), default=0.70, help_text=_("Preis für Ammoniak.")
+    )
+
+    def render_form(self):
+        from .forms import EnergyCostForm
+
+        form = EnergyCostForm(instance=self)
+        scenario = self.scenario
+        context = {"scenario": scenario, "form": form}
+
+        return render_to_string("ports/partials/energiekosten.html", context)
+
+    class Meta(ScenarioItem.Meta):
+        # retains the internal_id/scenario unique-together constraint from ScenarioItem.Meta,
+        # and additionally enforces a single EnergyCost row per Scenario.
+        constraints = [
+            *ScenarioItem.Meta.constraints,
+            models.UniqueConstraint(fields=["scenario"], name="unique_energycost_per_scenario"),
+        ]
+
+    @classmethod
+    def get_or_create_for_scenario(cls, scenario: Scenario) -> tuple["EnergyCost", bool]:
+        # helpful since EnergyCost is a singleton per scenario right now
+        instance, created = cls.objects.get_or_create(
+            scenario=scenario,
+            defaults={
+                "name": "Energiekosten",
+                "manager_id": scenario.manager_id,
+                "updated_user_id": scenario.manager_id,
+            },
+        )
+        return instance, created
+
+
+class SolarRadiation(models.Model):
+    """Global items to define Solar Radiation
+
+    These can be referenced by Solar.
+    They are public and server specified.
+    No need for authorization, scoping to scenarios or internal_ids
+    """
+
+    is_active = models.BooleanField(
+        default=True, help_text=_("Gibt an ob dieses Profil Nutzern zur Auswahl steht")
+    )
+    name = models.TextField(
+        blank=False,
+        null=True,
+        help_text=_("Name der Zeitreihe"),
+    )
+    description = models.TextField(
+        blank=True, null=True, help_text=_("Optionale Beschreibung der Zeitreihe.")
+    )
+    timeseries = models.JSONField("Zeitreihe", help_text=_("Zeitreihendaten in W/m²"))
+    timestep = models.FloatField(verbose_name="Zeitschritt in Minuten")
+    timeseries_start = models.DateTimeField(verbose_name="Startzeitpunkt der Zeitreihe")
+
+    class ActiveSolarRadiationManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(is_active=True)
+
+    objects = ActiveSolarRadiationManager()
+    all_objects = models.Manager()
+
+    def __str__(self):
+        return self.name or (f"{self.id} SolarRadiation")
+
+
 class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
+    class CarrierChoices(models.TextChoices):
+        ELECTRICITY = "electricity", "Strom"
+        DIESEL = "diesel", "Diesel"
+        OIL = "oil", "Öl"
+        GAS = "gas", "Gas"
+        HEAT = "heat", "Wärme"
+        H2 = "h2", "H2"
+
     area = models.ForeignKey(
-        Area, on_delete=models.CASCADE, help_text=_("Fläche, der diese Last zugeordnet ist.")
+        Area,
+        on_delete=models.CASCADE,
+        help_text=_("Fläche, der diese Last zugeordnet ist."),
     )
-    template = models.ForeignKey(
-        Timeseries, on_delete=models.CASCADE, help_text=_("Zeitreihenvorlage dieser Last.")
+    carrier = models.CharField(
+        verbose_name=_("Energieträger"),
+        choices=CarrierChoices,
+        help_text=_("Energieträger der Last."),
+        blank=False,
+        default=CarrierChoices.ELECTRICITY,
+    )
+    timeseries = models.ForeignKey(
+        Timeseries,
+        on_delete=models.CASCADE,
+        help_text=_("Zeitreihenvorlage dieser Last."),
     )
     # We could allow negative factors, but maybe its confusing
     factor = models.FloatField(
@@ -666,13 +755,6 @@ class Load(ScenarioItem):
     )  # scale template values
 
     @classmethod
-    def adjust_Form(
-        cls, FormClass: type[ModelForm["ScenarioItem"]], instance: "ScenarioItem", **kwargs
-    ) -> type[ModelForm]:
-        FormClass.base_fields["template"].queryset = kwargs["templates_queryset"]
-        return FormClass
-
-    @classmethod
     def create_new(
         cls,
         scenario: Scenario,
@@ -682,22 +764,26 @@ class Load(ScenarioItem):
     ):
         if area_internal_ids is None:
             area_internal_ids = []
+        if manager is None or not manager.is_authenticated:
+            raise ImproperlyConfigured("create_new can only be called with an authenticated User")
+
         areas = Area.objects.filter(scenario=scenario, internal_id__in=area_internal_ids)
         count = cls.objects.filter(scenario=scenario).count()
-        template = Timeseries.objects.filter(scenario=scenario).first()
+        timeseries = Timeseries.objects.filter(scenario=scenario, manager=manager).first()
 
-        if not template:
-            template = Timeseries.objects.create(
+        if not timeseries:
+            timeseries = Timeseries.objects.create(
                 scenario=scenario,
-                name="Empty template",
-                timeseries={"values": [1], "timestep_minutes": 15},
+                name="Konstante Zeitreihe",
+                manager=manager,
+                timeseries={"values": [1, 1], "timestep_minutes": 15},
                 spec_load=0,
             )
         loads = []
         for area in areas:
             count += 1
             new_name = f"Neue Last {count}"
-            extra_args = {"template": template, "area": area}
+            extra_args = {"timeseries": timeseries, "area": area}
             loads.append(
                 Load(
                     scenario=scenario,
@@ -709,8 +795,8 @@ class Load(ScenarioItem):
         return loads
 
     def resample(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
-        timestep_orig = self.template.timeseries.get("timestep_minutes", 15)
-        values = self.template.timeseries["values"]
+        timestep_orig = self.timeseries.timeseries.get("timestep_minutes", 15)
+        values = self.timeseries.timeseries["values"]
         time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")
         if len(values) < len(time_index):
             # not enough values: extend series with empty values, fill later
@@ -754,7 +840,7 @@ class Grid(ScenarioItem):
         blank=True,
         help_text=_("Netz, mit dem dieses Netz verbunden ist."),
     )
-    timeseries = models.ForeignKey(
+    load = models.ForeignKey(
         "Load",
         on_delete=models.SET_NULL,
         default=None,
@@ -764,6 +850,21 @@ class Grid(ScenarioItem):
     )
     areas = models.ManyToManyField(
         "Area", help_text=_("Flächen, die an dieses Netz angeschlossen sind.")
+    )
+
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
+        "load": lambda v: v.name,
+    }
+
+    power_max = models.FloatField(
+        verbose_name=_("Kapazität"),
+        default=None,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text=_(
+            "Maximale Leistung des Netzanschlusspunkts in kW. Muss größer oder gleich 0 sein."
+        ),
     )
 
 
@@ -824,6 +925,13 @@ class ElectricComponentTemplate(ItemTemplate):
     class Meta:
         abstract = True  # abstract table
 
+    # power_kw, power_min, power_max, capex, opex all use the
+    # UNITS-based default from ItemTemplate.display_value()
+    # efficiency needs the fraction -> percentage conversion, so it gets an explicit formatter.
+    display_formatters: ClassVar[dict[str, Callable[[Any], str]]] = {
+        "efficiency": lambda v: number_format(v * 100, 2) + " %",
+    }
+
     def clean(self):
         # parent clean for default field validation
         super().clean()
@@ -840,36 +948,6 @@ class ElectricComponentTemplate(ItemTemplate):
                     )
                 }
             )
-
-    def power_kw_verbose(self):
-        if not self.power_kw:
-            return "Keine Angabe"
-        return f"{self.power_kw} kW"
-
-    def efficiency_verbose(self):
-        if not self.efficiency:
-            return "Keine Angabe"
-        return f"{(self.efficiency * 100):.2f} %"
-
-    def power_min_verbose(self):
-        if not self.power_min:
-            return "Keine Angabe"
-        return f"{self.power_min} kW"
-
-    def power_max_verbose(self):
-        if not self.power_max:
-            return "Keine Angabe"
-        return f"{self.power_max} kW"
-
-    def capex_verbose(self):
-        if not self.capex:
-            return "Keine Angabe"
-        return f"{self.capex} €"
-
-    def opex_verbose(self):
-        if not self.opex:
-            return "Keine Angabe"
-        return f"{self.opex} €/a"
 
     def custom_fields(self):
         generic_field_names = {f.name for f in ElectricComponentTemplate._meta.get_fields()}
@@ -911,7 +989,11 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
 
     @classmethod
     def create_new(
-        cls, scenario: Scenario, manager: User, area_internal_ids: list[str | uuid.UUID], **kwargs
+        cls,
+        scenario: Scenario,
+        manager: User,
+        area_internal_ids: list[str | uuid.UUID],
+        **kwargs,
     ):
         """Create a new instance of the object, with Model specific defaults and allowed user facing attributes"""
         # TODO: Refactor into model method so this function stays clean
@@ -937,6 +1019,9 @@ class ElectricComponent(ScenarioItem, ElectricComponentTemplate):
 class AbstractGenerator(models.Model):
     """Transforms fuel into electricity"""
 
+    list_icon = "icon.generator"
+    icon = "icon.generator"
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
@@ -956,16 +1041,12 @@ class AbstractGenerator(models.Model):
         abstract = True
 
 
-class GeneratorTemplate(ElectricComponentTemplate, AbstractGenerator):
-    list_icon = "icon.generator"
-
+class GeneratorTemplate(AbstractGenerator, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Generator Vorlage")
 
 
-class Generator(ElectricComponent, AbstractGenerator):
-    list_icon = "icon.generator"
-    icon = "icon.generator"
+class Generator(AbstractGenerator, ElectricComponent):
     template_model_name = GeneratorTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -974,6 +1055,9 @@ class Generator(ElectricComponent, AbstractGenerator):
 
 class AbstractHeating(models.Model):
     """Transforms energy source to heat"""
+
+    list_icon = "icon.heating"
+    icon = "icon.heating"
 
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
@@ -995,17 +1079,12 @@ class AbstractHeating(models.Model):
         abstract = True
 
 
-class HeatingTemplate(ElectricComponentTemplate, AbstractHeating):
-    list_icon = "icon.heating"
-    icon = "icon.heating"
-
+class HeatingTemplate(AbstractHeating, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Heizung Vorlage")
 
 
-class Heating(ElectricComponent, AbstractHeating):
-    list_icon = "icon.heating"
-    icon = "icon.heating"
+class Heating(AbstractHeating, ElectricComponent):
     template_model_name = HeatingTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1015,21 +1094,34 @@ class Heating(ElectricComponent, AbstractHeating):
 class AbstractCHP(models.Model):
     """Combined heat and power (Blockheizkraftwerk)"""
 
+    list_icon = "icon.chp"
+    icon = "icon.chp"
+
     class CarrierChoices(models.TextChoices):
         DIESEL = "diesel", "Diesel"
         OIL = "oil", "Öl"
         GAS = "gas", "Gas"
+
+    # override of electric components efficiency
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
+        default=1.0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
 
     carrier = models.CharField(
         verbose_name=_("Energieträger"),
         choices=CarrierChoices,
         help_text=_("Energieträger, der von der Kraft-Wärme-Kopplung genutzt wird."),
     )
-    efficiency_thermal = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
+
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
         default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+        # https://de.wikipedia.org/wiki/Stromkennzahl for combustion engine up to 1.2
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
     @classmethod
@@ -1045,17 +1137,12 @@ class AbstractCHP(models.Model):
         abstract = True
 
 
-class CHPTemplate(ElectricComponentTemplate, AbstractCHP):
-    list_icon = "icon.chp"
-    icon = "icon.chp"
-
+class CHPTemplate(AbstractCHP, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
 
 
-class CHP(ElectricComponent, AbstractCHP):
-    list_icon = "icon.chp"
-    icon = "icon.chp"
+class CHP(AbstractCHP, ElectricComponent):
     template_model_name = CHPTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1065,28 +1152,35 @@ class CHP(ElectricComponent, AbstractCHP):
 class AbstractFuelCell(models.Model):
     """Transform H2 into electricity"""
 
-    # carrier is always hydrogen
-    efficiency_thermal = models.FloatField(
+    list_icon = "icon.fuelcell"
+    icon = "icon.fuelcell"
+
+    # override of electric components efficiency which would be used otherwise
+    efficiency = models.FloatField(
+        verbose_name=_("Thermische Effizienz"),
         default=1.0,
         validators=[MinValueValidator(0), MaxValueValidator(1)],
         help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
+    )
+
+    power_to_heat_ratio = models.FloatField(
+        verbose_name=_("Stromkennzahl"),
+        default=1.0,
+        # https://de.wikipedia.org/wiki/Stromkennzahl for fuel cell up to 3
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        help_text=_("Verhältnis aus elektrischer Energie zu nutzbarer Wärmeenergie."),
     )
 
     class Meta:
         abstract = True
 
 
-class FuelCellTemplate(ElectricComponentTemplate, AbstractFuelCell):
-    list_icon = "icon.fuelcell"
-    icon = "icon.fuelcell"
-
+class FuelCellTemplate(AbstractFuelCell, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Brennstoffzelle Vorlage")
 
 
-class FuelCell(ElectricComponent, AbstractFuelCell):
-    list_icon = "icon.fuelcell"
-    icon = "icon.fuelcell"
+class FuelCell(AbstractFuelCell, ElectricComponent):
     template_model_name = FuelCellTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1096,21 +1190,22 @@ class FuelCell(ElectricComponent, AbstractFuelCell):
 class AbstractElectrolyzer(models.Model):
     """Transform electricity into H2"""
 
+    list_icon = "icon.electrolyzer"
+    icon = "icon.electrolyzer"
+
     class Meta:
         abstract = True
 
 
-class ElectrolyzerTemplate(ElectricComponentTemplate, AbstractElectrolyzer):
-    list_icon = "icon.electrolyzer"
-    icon = "icon.electrolyzer"
-
+class ElectrolyzerTemplate(
+    AbstractElectrolyzer,
+    ElectricComponentTemplate,
+):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Elektrolyseur Vorlage")
 
 
-class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
-    list_icon = "icon.electrolyzer"
-    icon = "icon.electrolyzer"
+class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
     template_model_name = ElectrolyzerTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1120,13 +1215,19 @@ class Electrolyzer(ElectricComponent, AbstractElectrolyzer):
 class AbstractHeatpump(models.Model):
     """Transform electricity into heat"""
 
+    list_icon = "icon.heat_pump"
+    icon = "icon.heat_pump"
+
     # carrier is always electricity
     class HeatChoices(models.TextChoices):
         AIR = "air", "Luft"
         WATER = "water", "Wasser"
 
     heatsource = models.CharField(
-        choices=HeatChoices, blank=False, null=True, help_text=_("Wärmequelle der Wärmepumpe.")
+        choices=HeatChoices,
+        blank=False,
+        null=True,
+        help_text=_("Wärmequelle der Wärmepumpe."),
     )
 
     efficiency = models.FloatField(  # override efficiency to allow values > 1
@@ -1146,17 +1247,15 @@ class AbstractHeatpump(models.Model):
         abstract = True
 
 
-class HeatpumpTemplate(AbstractHeatpump, ElectricComponentTemplate):
-    list_icon = "icon.heat_pump"
-    icon = "icon.heat_pump"
-
+class HeatpumpTemplate(
+    AbstractHeatpump,
+    ElectricComponentTemplate,
+):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Wärmepumpe Vorlage")
 
 
 class Heatpump(AbstractHeatpump, ElectricComponent):
-    list_icon = "icon.heat_pump"
-    icon = "icon.heat_pump"
     template_model_name = HeatpumpTemplate.model_name()
 
     class Meta(ElectricComponent.Meta):
@@ -1164,52 +1263,48 @@ class Heatpump(AbstractHeatpump, ElectricComponent):
 
 
 class AbstractSolar(models.Model):
-    """Photovoltaics"""
+    """Photovoltaics
+    The profile is the 'Einstrahlungsprofil' for the plane of the pv module,
+    e.g. 30˚ Incline towards south, with the locale sun radiation power.
+    """
+
+    list_icon = "icon.solar"
+    icon = "icon.solar"
 
     profile = models.ForeignKey(
-        Load,
+        "SolarRadiation",
+        verbose_name="Einstrahlungsprofil",
         on_delete=models.SET_NULL,
         default=None,
         null=True,
         blank=True,
-        help_text=_("Lastprofil der Solaranlage."),
-    )
-    azimut = models.FloatField(
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(360)],
-        help_text=_(
-            "Ausrichtung der Solaranlage in Grad. Azimut muss ein Wert zwischen 0 und 360 betragen."
-        ),
-    )
-    angle = models.FloatField(
-        default=None,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(90)],
-        help_text=_(
-            "Neigungswinkel der Solaranlage in Grad. Winkel muss ein Wert zwischen 0 und 90 betragen."
-        ),
+        help_text=_("Spezifisches Einstrahlungsprofil in W/m²"),
     )
     spec_power = models.FloatField(
-        default=None,
+        default=210,
+        verbose_name="Spezifische Peak-Leistung",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Spezifische Leistung der Solaranlage in kW/m². Muss größer oder gleich 0 sein."
+            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch, wenn eine Fläche mit installierter Photovoltaik angegeben ist."
         ),
-    )  # kW/m^2
+    )  # W/m^2
+
     surface_area_installed = models.FloatField(
         default=None,
+        verbose_name="Fläche mit installierter Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_("Installierte Fläche der Solaranlage in m². Muss größer oder gleich 0 sein."),
+        help_text=_(
+            "Installierte Fläche der Solaranlage in m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch."
+        ),
     )  # m^2
+
     surface_area_min = models.FloatField(
         default=None,
+        verbose_name="Minimale Fläche mit Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
@@ -1217,6 +1312,7 @@ class AbstractSolar(models.Model):
     )  # m^2
     surface_area_max = models.FloatField(
         default=None,
+        verbose_name="Maximale Fläche mit Photovoltaik",
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
@@ -1227,20 +1323,15 @@ class AbstractSolar(models.Model):
         abstract = True
 
 
-class SolarTemplate(ElectricComponentTemplate, AbstractSolar):
-    list_icon = "icon.solar"
-    icon = "icon.solar"
-
+class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Solaranlage Vorlage")
 
 
-class Solar(ElectricComponent, AbstractSolar):
-    list_icon = "icon.solar"
-    icon = "icon.solar"
+class Solar(AbstractSolar, ElectricComponent):
     template_model_name = SolarTemplate.model_name()
 
-    class Meta(ElectricComponentTemplate.Meta):
+    class Meta(ElectricComponent.Meta):
         verbose_name = _("Solaranlage")
 
 
@@ -1253,9 +1344,14 @@ class AbstractStorage(models.Model):
         H2 = "h2", "H2"
 
     carrier = models.CharField(
-        choices=CarrierChoices, null=True, blank=False, help_text=_("Energieträger des Speichers.")
+        choices=CarrierChoices,
+        verbose_name=_("Energieträger"),
+        null=True,
+        blank=False,
+        help_text=_("Energieträger des Speichers."),
     )
     efficiency_load = models.FloatField(
+        verbose_name=_("Lade-Effizienz"),
         default=1.0,
         null=True,
         blank=False,
@@ -1263,6 +1359,7 @@ class AbstractStorage(models.Model):
         help_text=_("Wirkungsgrad beim Beladen. Muss ein Wert zwischen 0 und 1 sein."),
     )
     efficiency_store = models.FloatField(
+        verbose_name=_("Entlade-Effizienz"),
         default=1.0,
         null=True,
         blank=False,
@@ -1271,6 +1368,7 @@ class AbstractStorage(models.Model):
     )
     # capacity: unit depends on carrier. kWh for electricity and heat, liters for H2
     capacity_installed = models.FloatField(
+        verbose_name=_("Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
@@ -1280,21 +1378,23 @@ class AbstractStorage(models.Model):
         ),
     )
     capacity_min = models.FloatField(
+        verbose_name=_("Mindest-Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Minimale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+            "Minimale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein. Dieser Wert wird nur bei Optimierungen genutzt."
         ),
     )
     capacity_max = models.FloatField(
+        verbose_name=_("Maximal-Kapazität des Speichers"),
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Maximale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein."
+            "Maximale Kapazität des Speichers (kWh oder Liter, abhängig vom Energieträger). Muss größer oder gleich 0 sein. Dieser Wert wird nur bei Optimierungen genutzt."
         ),
     )
     capex = models.FloatField(
@@ -1324,18 +1424,20 @@ class AbstractStorage(models.Model):
         abstract = True
 
 
-class StorageTemplate(ItemTemplate, AbstractStorage):
+class StorageTemplate(AbstractStorage, ItemTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Speicher Vorlage")
 
 
-class Storage(ScenarioItem, AbstractStorage):  # order important (Meta)
+class Storage(AbstractStorage, ScenarioItem):  # order important (Meta)
     area = models.ForeignKey(
-        Area, on_delete=models.CASCADE, help_text=_("Fläche, der dieser Speicher zugeordnet ist.")
+        Area,
+        on_delete=models.CASCADE,
+        help_text=_("Fläche, der dieser Speicher zugeordnet ist."),
     )
     template_model_name = StorageTemplate.model_name()
 
-    class Meta(ElectricComponent.Meta):
+    class Meta(ScenarioItem.Meta):
         verbose_name = _("Speicher")
 
 

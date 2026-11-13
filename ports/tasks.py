@@ -188,8 +188,8 @@ def db_to_energysystem(scenario, started_at, **kwargs):
             outputs={bus_heat: solph.flows.Flow(), bus_el: solph.flows.Flow()},
             conversion_factors={
                 bus_in: 1,
-                bus_heat: chp.efficiency_thermal,
-                bus_el: chp.efficiency,
+                bus_heat: chp.efficiency,
+                bus_el: chp.efficiency * chp.power_to_heat_ratio,
             },
         )
         es.add(converter)
