@@ -49,6 +49,7 @@ from guardian.shortcuts import get_objects_for_user
 from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
+from core.models import Task
 from core.views import ensure_project_rights
 from ports.models import update_scenario_post_save
 from ports.util import get_items_to_be_deleted
@@ -818,8 +819,14 @@ def start_solver(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
     # TODO: more permission needed to start solver task?
-    task = tasks.oemof_task.delay(scenario.id)
-    return JsonResponse({"task_id": task.task_id})
+    task, _ = scenario.tasks.get_or_create(
+        type=Task.Type.RUN_SIMULATION, defaults={"celery_task_id": uuid4()}
+    )
+    if not task.celery_task_id:
+        task.celery_task_id = uuid4()
+        task.save(update_fields=["celery_task_id"])
+    tasks.oemof_task.apply_async(args=[scenario.id], task_id=task.celery_task_id)
+    return JsonResponse({"celery_task_id": task.celery_task_id})
 
 
 @login_required()

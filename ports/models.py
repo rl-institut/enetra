@@ -9,6 +9,7 @@ from typing import ClassVar
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -32,6 +33,8 @@ from django.utils import timezone
 from django.utils.formats import number_format
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+
+from core.models import Task
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +120,7 @@ class Scenario(models.Model):
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung des Szenarios.")
     )
+
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -128,8 +132,8 @@ class Scenario(models.Model):
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
-    # oemof solver task
-    task_id = models.UUIDField(default=None, null=True, blank=True)
+    # Reverse generic relation for the contenttype/ GenericForeignKey relation to tasks
+    tasks = GenericRelation(Task)
 
     # Area of the scenario / Port region
     geom = models.PolygonField(

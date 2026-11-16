@@ -1,6 +1,3 @@
-import datetime
-
-import pytz
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -11,7 +8,6 @@ from django.db.models.functions import Now
 from django.utils import timezone
 
 
-# Create your models here.
 class Task(models.Model):
     class Type(models.TextChoices):
         RUN_SIMULATION = "Simulation"
@@ -20,6 +16,9 @@ class Task(models.Model):
     parent_task = models.ForeignKey("Task", null=True, on_delete=models.CASCADE)
     type = models.CharField(max_length=100, choices=Type.choices)
 
+    # celery solver task
+    celery_task_id = models.UUIDField(default=None, null=True, blank=True)
+
     # This lets us attach a task to any object with a charfield
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField()
@@ -27,27 +26,17 @@ class Task(models.Model):
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
 
-
-# Maybe move to choices.py
-class Role(models.TextChoices):
-    MANAGER = "manager", "Ersteller"
-    EDITOR = "editor", "Bearbeiter"
-    OBSERVER = "observer", "Beobachter"
-
-
-class Progress(models.Model):
     class Status(models.TextChoices):
         FINISHED = "Fertig"
         FAILED = "Fehlgeschlagen"
         RUNNING = "Gestartet"
         WAITING = "Wartet"
 
-    task = models.ForeignKey(Task, null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(null=False, auto_now_add=True, db_default=Now())
-    status = models.CharField(choices=Status.choices)
+    status = models.CharField(choices=Status.choices, default=Status.WAITING)
     total_work = models.IntegerField(default=1, null=False)
     current_work = models.IntegerField(default=0, null=False)
-
+    message = models.CharField(max_length=100, null=True, default="In Warteschlange")
     errors = models.JSONField(default=list, null=True)
 
     def estimate_duration(self) -> None | float:
@@ -55,9 +44,7 @@ class Progress(models.Model):
         linear extrapolation of the current and total work"""
         if self.current_work == 0:
             return None
-        passed_duration_minutes = (
-            datetime.datetime.now(pytz.UTC) - self.created
-        ).total_seconds() / 60
+        passed_duration_minutes = (timezone.now() - self.created).total_seconds() / 60
         # Upper bound for estimation is first guess of duration when no progress was
         speed = self.current_work / passed_duration_minutes
         further_duration_minutes = (self.total_work - self.current_work) / speed
@@ -71,21 +58,28 @@ class Progress(models.Model):
             return 0
 
     def set_success(self):
-        self.status = Progress.Status.FINISHED
+        self.status = Task.Status.FINISHED
         self.current_work = self.total_work
         self.save()
 
     def set_failed(self):
-        self.status = Progress.Status.FAILED
+        self.status = Task.Status.FAILED
         self.save()
 
     def reset(self):
-        self.status = Progress.Status.WAITING
+        self.status = Task.Status.WAITING
         self.current_work = 0
         self.total_work = 1
-        self.created = Now()
+        self.created = timezone.now()
         self.errors = []
         self.save()
+
+
+# Maybe move to choices.py
+class Role(models.TextChoices):
+    MANAGER = "manager", "Ersteller"
+    EDITOR = "editor", "Bearbeiter"
+    OBSERVER = "observer", "Beobachter"
 
 
 class InviteError(Exception):
@@ -136,7 +130,7 @@ class Invite(models.Model):
         invite = Invite.objects.select_for_update().get(token=token)
         if user.email != invite.payload["email"]:
             raise InviteEmailMismatchError
-        if invite.expires_at and invite.expires_at < timezone.make_aware(datetime.datetime.now()):
+        if invite.expires_at and invite.expires_at < timezone.now():
             raise InviteExpiredError
         if invite.uses >= invite.max_uses:
             raise InviteUsedUpError

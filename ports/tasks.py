@@ -13,6 +13,7 @@ from django.db.models import Model
 from django.db.models import TextChoices
 from django.utils import timezone
 
+from core.models import Task
 from ports.util import resample as util_resample
 
 from .models import Grid
@@ -24,21 +25,44 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, ignore_result=True)
-def oemof_task(self, scenario_id, **kwargs):
-    scenario = Scenario.objects.get(id=scenario_id)
-    Scenario.objects.filter(id=scenario_id).update(task_id=self.request.id)
-    started_at = timezone.now()
-    es, flows, errors = db_to_energysystem(scenario, started_at, **kwargs)
-    if errors:
-        err_text = "\n".join(f"{e.item!r}: {e.type.label} {e.details}" for e in errors)
-        raise ImproperlyConfigured(
-            f"Can not start simulation when energysystem has errors: {err_text}"
-        )
+def oemof_task(self, scenario_id, **kwargs) -> None:
+    try:
+        scenario = Scenario.objects.get(id=scenario_id)
+        task: Task = scenario.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
+        if task:
+            task.total_work = 4
+            task.message("Aufbau des Energiesystems")
+            task.status = Task.Status.RUNNING
+            task.progress = 1
+            task.save()
 
-    model = solve_energysystem(es)
-    if model is not None:
-        store_results(scenario, model, flows, started_at)
-        # plot_result(scenario_id)
+        started_at = timezone.now()
+        es, flows, errors = db_to_energysystem(scenario, started_at, **kwargs)
+        if errors:
+            err_text = "\n".join(f"{e.item!r}: {e.type.label} {e.details}" for e in errors)
+            raise ImproperlyConfigured(
+                f"Can not start simulation when energysystem has errors: {err_text}"
+            )
+
+        if task:
+            task.message("Simulation des Energiesystems")
+            task.progress += 1
+            task.save()
+
+        model = solve_energysystem(es)
+        if model is not None:
+            if task:
+                task.message("Speicherung der Ergebnisse")
+                task.progress += 1
+                task.save()
+            store_results(scenario, model, flows, started_at)
+            # plot_result(scenario_id)
+        if task:
+            task.message("Simulation erfolgreich beendet")
+            task.set_success()
+    except:
+        task.set_failed()
+        raise
 
 
 def _model_error_choices() -> list[tuple[str, tuple[str, str]]]:
