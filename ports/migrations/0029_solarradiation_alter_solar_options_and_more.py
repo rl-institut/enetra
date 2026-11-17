@@ -327,4 +327,6 @@ class Migration(migrations.Migration):
             model_name='energycost',
             constraint=models.UniqueConstraint(fields=('scenario',), name='unique_energycost_per_scenario'),
         ),
+
+        migrations.RunPython( migrations.RunPython.noop, remove_solar_profile),
     ]
