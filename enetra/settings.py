@@ -404,7 +404,6 @@ DJANGO_HOST_URL = env("DJANGO_HOST_URL", default="").rstrip("/")
 
 if not DJANGO_HOST_URL:
     print("No DJANGO_HOST_URL set, emails might contain only partial links")
-
 # NOTE: Explicitly setting local development will use unsecure development defaults instead
 if env.bool("DJANGO_LOCAL_DEVELOPMENT", default=False):
     # NOTE: Development defaults

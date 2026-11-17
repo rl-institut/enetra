@@ -49,7 +49,6 @@ from guardian.shortcuts import get_objects_for_user
 from guardian.utils import clean_orphan_obj_perms
 
 from core.models import Invite
-from core.models import Task
 from core.views import ensure_project_rights
 from ports.models import update_scenario_post_save
 from ports.util import get_items_to_be_deleted
@@ -737,17 +736,27 @@ def calculate_scenario(request, scenario_internal_id: UUID):
     # TODO: darf jeder nutzer die simulation starten?
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden("Sie haben keine erlaubnis für dieses Projekt")
-    context = dict(id=f"{scenario.internal_id}-calculation-modal", scenario=scenario)
     template_name = "ports/partials/scenario_calculation_modal.html"
-    context |= get_home_context(user=request.user, scenario=scenario)
 
+    context = dict(id=f"{scenario.internal_id}-calculation-modal", scenario=scenario)
+    # User wants to simulate, only update of current status and button container is needed
+    if request.method == "POST":
+        tasks.start_simulation(scenario)
+        response = render(request, template_name=template_name, context=context)
+        return response
+
+    # only a partial response for the current status and button group is needed
+    if request.GET.get("update_progress"):
+        response = render(request, template_name=template_name, context=context)
+        return response
+
+    context |= get_home_context(user=request.user, scenario=scenario)
     es, flows, errors = tasks.db_to_energysystem(scenario, timezone.now())
 
     # group key -> {"title": str, "entries": {internal_id: (order, entry)}}
     # keyed by internal_id, so an instance is listed once per group
     # (e.g. an area with several components missing the same grid)
     groups: dict[tuple, dict] = group_errors(errors, scenario)
-
     context["model_errors"] = [
         {
             "title": group["title"],
@@ -776,6 +785,7 @@ def calculate_scenario(request, scenario_internal_id: UUID):
         response = render(request, template_name=template_name, context=context)
         return response
 
+    # Full page Render
     content = render_to_string(
         request=request,
         template_name=template_name,
@@ -819,14 +829,8 @@ def start_solver(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
     # TODO: more permission needed to start solver task?
-    task, _ = scenario.tasks.get_or_create(
-        type=Task.Type.RUN_SIMULATION, defaults={"celery_task_id": uuid4()}
-    )
-    if not task.celery_task_id:
-        task.celery_task_id = uuid4()
-        task.save(update_fields=["celery_task_id"])
-    tasks.oemof_task.apply_async(args=[scenario.id], task_id=task.celery_task_id)
-    return JsonResponse({"celery_task_id": task.celery_task_id})
+    celery_task = tasks.start_simulation(scenario)
+    return JsonResponse({"celery_task_id": celery_task.task_id})
 
 
 @login_required()

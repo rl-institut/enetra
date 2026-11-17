@@ -1,8 +1,10 @@
 import datetime
 import logging
+import time
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from uuid import uuid4
 
 import oemof.solph as solph
 import pandas as pd
@@ -24,17 +26,29 @@ from .models import Scenario
 logger = logging.getLogger(__name__)
 
 
+def start_simulation(scenario):
+    task, created = scenario.tasks.update_or_create(
+        type=Task.Type.RUN_SIMULATION, defaults={"celery_task_id": str(uuid4())}
+    )
+    if not created:
+        task.reset()
+    celery_task = oemof_task.apply_async(args=[scenario.id], task_id=task.celery_task_id)
+    return celery_task
+
+
 @shared_task(bind=True, ignore_result=True)
 def oemof_task(self, scenario_id, **kwargs) -> None:
+    task = None
     try:
         scenario = Scenario.objects.get(id=scenario_id)
         task: Task = scenario.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
         if task:
             task.total_work = 4
-            task.message("Aufbau des Energiesystems")
+            task.message = "Aufbau des Energiesystems"
             task.status = Task.Status.RUNNING
             task.progress = 1
             task.save()
+        time.sleep(2)
 
         started_at = timezone.now()
         es, flows, errors = db_to_energysystem(scenario, started_at, **kwargs)
@@ -44,24 +58,30 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
                 f"Can not start simulation when energysystem has errors: {err_text}"
             )
 
+        time.sleep(2)
         if task:
-            task.message("Simulation des Energiesystems")
+            task.message = "Simulation des Energiesystems"
             task.progress += 1
             task.save()
 
         model = solve_energysystem(es)
         if model is not None:
             if task:
-                task.message("Speicherung der Ergebnisse")
+                task.message = "Speicherung der Ergebnisse"
                 task.progress += 1
                 task.save()
             store_results(scenario, model, flows, started_at)
             # plot_result(scenario_id)
+
+        time.sleep(2)
         if task:
-            task.message("Simulation erfolgreich beendet")
+            task.message = "Simulation erfolgreich beendet"
             task.set_success()
+
+        time.sleep(2)
     except:
-        task.set_failed()
+        if task:
+            task.set_failed()
         raise
 
 

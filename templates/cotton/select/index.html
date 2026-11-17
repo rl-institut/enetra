@@ -45,13 +45,21 @@ casting selectedValue=None to str results in None. Generic None/null selects car
     </button>
     {% if field %}
     <div class="absolute inset-0 bg-red-200 {% if not debugWidget == True %}sr-only{% endif %}">
+      {% truthy_attrs 'required' field.field.required as field_attrs %}
       <c-field-with-attrs :field="field" class=""
       x-init="$el.value=selectedValue"
       x-effect="$el.value=selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
-      :attrs="{'{{field.field.required|yesno:'required,not-required'}}':''}"
+      :attrs="field_attrs"
       />
       </div>
     {% comment %}
+    new approach with simple_tag allows simple value toggling via
+      {% truthy_attrs 'required' field.field.required as field_attrs %}
+      <c-field-with-attrs
+      :attrs="field_attrs"
+      />
+
+
     The desired behaviour is for the select to show that no selection is made, potentially to require the selection, but also not show the "null" value as selectable item.
     Django by default does not pass "required" to the select item, if the choices do not contain an empty selection. Native selects would simply select the first option, if no option is "selected". To properly require a select without an empty selection choice, but not preselect some choice we need to pass required to the component itself this is kinda tricky, but possible.
     :attrs="{'foo':'bar'}" expands the attrs, so rendering {{attrs}} would yield foo='bar' as well.

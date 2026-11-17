@@ -1,3 +1,4 @@
+{% load constants core_extras %}
 <c-modal id="{{ id }}" closedby="any" class="w-[440px] overflow-y-auto ">
   {# Header #}
   <div class="flex items-start justify-between gap-4">
@@ -61,26 +62,54 @@
 
   {% endif %}
   {# Actions #}
-  <div class="flex flex-col gap-3"
+  <div id="simulate-button-container" class="flex flex-col gap-3"
+    {% if scenario.simulation_task.active %}
+      hx-get="{% url 'ports:calculate' scenario_internal_id=scenario.internal_id %}?update_progress=true"
+      hx-trigger="scenario_changed from:body"
+      hx-target="#simulate-button-container"
+      hx-select="#simulate-button-container"
+    {% endif %}
   >
-    <button type="button"
-            {% if model_errors %}
-            disabled
-            title="Simulation ist erst nach Behebung der obigen Fehler möglich"
-            {% endif %}
-            hx-post="{% url 'ports:start_solver' scenario_internal_id=scenario.internal_id %}"
-            hx-swap="none"
-            hx-on::after-request="htmx.closest(this, 'dialog').close()"
-            hx-indicator="find span"
-            hx-disabled-elt="this"
-            class="w-full rounded-full border-0 bg-[#0e7490] py-3 text-base font-bold text-white cursor-pointer transition-colors hover:bg-[#0c647a] disabled:cursor-not-allowed disabled:bg-gray-400">
-    <span class="loader htmx-indicator"></span>
-      Szenario berechnen
-    </button>
+    {% if scenario.simulation_task.active %}
+      {# running: spinner is hx-preserved so its animation survives the polling swaps #}
+      <div class="flex items-center gap-2 text-sm text-slate-500">
+        <span id="simulation-progress-spinner" class="loader shrink-0" hx-preserve></span>
+        {{ scenario.simulation_task.message }}
+      </div>
+    {% elif scenario.simulation_task and not scenario.simulation_task.finished %}
+      {# failed: not active and not finished #}
+      <c-alert variant="danger" title="Berechnung fehlgeschlagen" :icon=False>
+        <p class="pt-1">{{ scenario.simulation_task.message }}</p>
+      </c-alert>
+    {% elif scenario.simulation_task.finished %}
+      <c-alert variant="success" :title="scenario.simulation_task.message" :icon=False>
+        <a href="{% url 'ports:ergebnisse' scenario_internal_id=scenario.internal_id %}"
+           class="block pt-1 text-cyan-700 hover:underline">Zu den Ergebnissen</a>
+      </c-alert>
+    {% endif %}
+
+    {# title sits on the wrapper: c-button sets pointer-events-none when disabled, which hides tooltips #}
+    <div {% if model_errors %}title="Simulation ist erst nach Behebung der obigen Fehler möglich"
+         {% elif not scenario.can_simulate %}title="Die Simulation läuft bereits oder ist abgeschlossen"{% endif %}>
+        {% comment %}
+        duplicate keys work like OR
+        {% endcomment %}
+      {% truthy_attrs 'disabled' model_errors 'disabled' scenario.can_simulate|negate as simulate_button_attrs %}
+      <c-button type="button"
+                class="w-full"
+                hx-post="{% url 'ports:calculate' scenario_internal_id=scenario.internal_id %}"
+                hx-target="#simulate-button-container"
+                hx-select="#simulate-button-container"
+                hx-disabled-elt="this"
+                :attrs="simulate_button_attrs">
+        Szenario berechnen
+      </c-button>
+    </div>
     <button type="button"
             commandfor="{{ id }}"
             command="close"
-            class="w-full rounded-full border border-slate-200 bg-white py-2 text-sm text-slate-800 cursor-pointer transition-colors hover:bg-slate-50">
+            class="bg-white flex gap-2 items-center justify-center px-4 py-2 rounded-full w-full border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors text-slate-800 text-sm">
+      <c-icon.close class="w-4 h-4" />
       Abbrechen
     </button>
   </div>

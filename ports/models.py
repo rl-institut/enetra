@@ -162,6 +162,17 @@ class Scenario(models.Model):
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
 
+    def simulation_task(self) -> Task | None:
+        return self.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
+
+    def can_simulate(self):
+        task = self.simulation_task()
+        if not task:
+            return True
+        # allow to simulate again after failure or when tasks has no status for some reason
+        # dont allow to simulate when simulation is running, waiting or succeeded
+        return task.status in [Task.Status.FAILED, None]
+
     def is_baseline_scenario(self):
         # the first scenario in a project is by definition the baseline scenario
         return self.project.scenario_set.order_by("id").first() == self
@@ -365,6 +376,27 @@ class ScenarioItem(ItemTemplate):
     create_url = "ports:details_create"
 
 
+def publish_change(scenario_id: int):
+    try:
+        import redis
+        from redis.exceptions import RedisError
+
+        r = redis.from_url(settings.REDIS_URL)
+        r.publish(f"scenario:{scenario_id}", "changed")
+    except RedisError as e:
+        # should redis fail, the scenario is updated still
+
+        # lazy import to avoid circular import
+        from ports.util import throttle
+
+        msg = repr(e)
+        throttle(
+            lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
+            24 * 60 * 60,
+            "redis_failure_admin_mail",
+        )
+
+
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created
@@ -373,31 +405,10 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario_id = instance.scenario_id
     if sender == ChangedItem:
         return
-
-    def publish_change():
-        try:
-            import redis
-            from redis.exceptions import RedisError
-
-            r = redis.from_url(settings.REDIS_URL)
-            r.publish(f"scenario:{scenario_id}", "changed")
-        except RedisError as e:
-            # should redis fail, the scenario is updated still
-
-            # lazy import to avoid circular import
-            from ports.util import throttle
-
-            msg = repr(e)
-            throttle(
-                lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
-                24 * 60 * 60,
-                "redis_failure_admin_mail",
-            )
-
     if settings.REDIS_AVAILABLE:
         # Publish only after the surrounding transaction committed, otherwise clients refetch
         # before the change is visible. Runs immediately when no transaction is active.
-        transaction.on_commit(publish_change)
+        transaction.on_commit(lambda: publish_change(scenario_id))
     # GREATEST keeps the timestamps monotonic when concurrent saves commit out of order
     new_ts = Value(instance.updated_at, output_field=models.DateTimeField())
     Scenario.objects.filter(pk=scenario_id).update(

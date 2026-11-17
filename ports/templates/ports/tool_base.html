@@ -23,9 +23,11 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
       {% include "ports/partials/scenario_select.html" %}
 
       <div id="modal-container"
-        hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
+        hx-on::after-settle="
+        if (event.target != this) return;
+        htmx.find(this, 'dialog').showModal()"
         {% if modal_content %}
-        x data
+        x-data
         x-init="$el.querySelector('dialog')?.showModal()"
         {% endif %}
         >

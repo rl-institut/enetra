@@ -22,7 +22,8 @@ class Task(models.Model):
     # This lets us attach a task to any object with a charfield
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField()
-    # on_delete=CASCADE is the behaviour of GenericForeignKey.
+
+    # on_delete=CASCADE is the behavior of GenericForeignKey.
     # Changing that is possible via signals
     content_object = GenericForeignKey("content_type", "object_id")
 
@@ -50,6 +51,12 @@ class Task(models.Model):
         further_duration_minutes = (self.total_work - self.current_work) / speed
         return further_duration_minutes
 
+    def active(self) -> bool:
+        return self.status in [self.Status.RUNNING, self.Status.WAITING]
+
+    def finished(self) -> bool:
+        return self.status == self.Status.FINISHED
+
     def get_progress(self) -> float:
         """Return a progress, which should be between 0 and 100."""
         try:
@@ -70,6 +77,7 @@ class Task(models.Model):
         self.status = Task.Status.WAITING
         self.current_work = 0
         self.total_work = 1
+        self.message = "In Warteschlange"
         self.created = timezone.now()
         self.errors = []
         self.save()
