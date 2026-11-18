@@ -15,6 +15,7 @@ function rerouteServerEventsToElement(url) {
     // which trigger events the dom can listen too
     const event_source = htmx.createEventSource(url);
     event_source.addEventListener("scenario_changed", e => {
+        console.log('Received a change event through SSE')
         document.body.dispatchEvent(
             new CustomEvent("scenario_changed", {
                 detail: e.data

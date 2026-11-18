@@ -65,7 +65,10 @@
   <div id="simulate-button-container" class="flex flex-col gap-3"
     {% if scenario.simulation_task.active %}
       hx-get="{% url 'ports:calculate' scenario_internal_id=scenario.internal_id %}?update_progress=true"
-      hx-trigger="scenario_changed from:body"
+      {% comment %}
+      sparse polling every 10 seconds. The sse stream receives scenario_changed events when the progress changes
+      {% endcomment %}
+      hx-trigger="every 10s, scenario_changed from:body"
       hx-target="#simulate-button-container"
       hx-select="#simulate-button-container"
     {% endif %}

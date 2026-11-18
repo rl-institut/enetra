@@ -16,6 +16,7 @@ from django.db.models import TextChoices
 from django.utils import timezone
 
 from core.models import Task
+from ports.models import publish_change
 from ports.util import resample as util_resample
 
 from .models import Grid
@@ -48,6 +49,7 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
             task.status = Task.Status.RUNNING
             task.progress = 1
             task.save()
+            publish_change(scenario.id)
         time.sleep(2)
 
         started_at = timezone.now()
@@ -63,6 +65,7 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
             task.message = "Simulation des Energiesystems"
             task.progress += 1
             task.save()
+            publish_change(scenario.id)
 
         model = solve_energysystem(es)
         if model is not None:
@@ -70,6 +73,8 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
                 task.message = "Speicherung der Ergebnisse"
                 task.progress += 1
                 task.save()
+                publish_change(scenario.id)
+
             store_results(scenario, model, flows, started_at)
             # plot_result(scenario_id)
 
@@ -77,6 +82,7 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
         if task:
             task.message = "Simulation erfolgreich beendet"
             task.set_success()
+            publish_change(scenario.id)
 
         time.sleep(2)
     except:
