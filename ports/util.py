@@ -87,8 +87,6 @@ def process_file_to_solar_radiation(file):
             timeseries_start=start_time,
         )
 
-    pass
-
 
 def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User):
     """Import Geojson to scenarios
