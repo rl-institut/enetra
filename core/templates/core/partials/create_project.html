@@ -17,6 +17,7 @@
   ">
 
     <form
+    autocomplete="off"
     hx-post="{% url 'ports:create_project' %}"
     hx-swap="outerHTML"
     hx-select="form"
@@ -69,7 +70,8 @@
     </div>
     <!-- {/* Buttons */} -->
     <div class="content-stretch flex flex-col pt-2 gap-1 items-start relative shrink-0 w-full">
-      <button type="submit"
+      <button
+        type="submit"
         class="bg-[#0e7490] content-stretch flex items-center justify-center px-4 py-3 relative rounded-[100px] shrink-0 w-full border-0 cursor-pointer hover:bg-[#0c647a] transition-colors"
         hx-disabled-elt="this"
         hx-validate="true"
@@ -81,11 +83,11 @@
         {% if success %}
         x-data='{result: "✓ Gespeichert"}' x-init="setTimeout(()=>window.location.reload(), 50)"
         {% elif errors %}
-        x-data='{result: "❌️ Fehlgeschlagen"}' x-init="setTimeout(()=>result='Speichern', 2000)"
+        x-data='{result: "❌️ Fehlgeschlagen"}' x-init="setTimeout(()=>result='💾️ Speichern', 2000)"
         {% else %}
         x-data='{result: "💾️ Speichern"}'
         {% endif %}
-        @htmx:before-request="result='Speichern'"
+        @htmx:before-request="result='💾️ Speichern'"
       >
         <span class='htmx-indicator loader align-middle'></span>
         <span class='my-hide animate-in fade-in duration-1000 my-hide align-middle min-w-fit' x-text="result" ></span>

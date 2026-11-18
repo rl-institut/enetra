@@ -24,6 +24,7 @@ from .models import ElectricComponent
 from .models import Project
 from .models import Scenario
 from .models import ScenarioItem
+from .models import SolarRadiation
 from .util import process_geojson_dict_to_scenarios
 
 logger = logging.getLogger(__name__)
@@ -113,8 +114,16 @@ DynamicClass = type("ProjectAdmin", (ModelAdmin,), methods)
 admin.site.register(Project, DynamicClass)
 
 
-methods["list_display"] = ("id", "name", "manager", "scenario_id")
+class SolarRadiationAdmin(ModelAdmin):
+    list_display = ("id", "name", "timestep", "timeseries_start")
 
+    def get_queryset(self, request):
+        return SolarRadiation.all_objects.all()
+
+
+admin.site.register(SolarRadiation, SolarRadiationAdmin)
+
+methods["list_display"] = ("id", "name", "manager", "scenario_id")
 # Add all scenario items to the admin panel
 for subclass in ScenarioItem.__subclasses__():
     if subclass == ElectricComponent:

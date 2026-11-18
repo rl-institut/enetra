@@ -1,4 +1,4 @@
-
+{% load display %}
 <c-vars instance ></c-vars>
 <div style="display: flex;
 align-items: center;
@@ -10,7 +10,7 @@ margin-bottom: 8px"
     {{ icon }}
     <div>
         <div class="font-['Inter',sans-serif] font-semibold text-[14px] text-[#1e293b]">
-            {{ title|default:"Kein Title" }}
+            {{ title|default:"Kein Titel" }}
         </div>
 
         <div class="font-['Inter',sans-serif] text-[12px] text-[#64748b]">
@@ -55,10 +55,10 @@ margin-bottom: 8px"
         {% partial "key-value-row" %}
         {% endwith %}
 
-        {% with key="Kapazität" value=instance.capacity_verbose  %}
+        {% with key="Kapazität" value=instance|display:"power_kw"  %}
         {% partial "key-value-row" %}
         {% endwith %}
-        {% with key="Effizienz" value=instance.efficiency_verbose  %}
+        {% with key="Effizienz" value=instance|display:"efficiency"  %}
         {% partial "key-value-row" %}
         {% endwith %}
     {% endif %}

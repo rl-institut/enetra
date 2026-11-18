@@ -1,5 +1,5 @@
 """
-ASGI config for enetra project.
+ASGI config for ENETRA project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 

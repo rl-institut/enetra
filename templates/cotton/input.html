@@ -9,7 +9,7 @@ helper to return a component which is easily styled but uses a form.field as inp
 {% endcomment %}
 <c-vars  field></c-vars>
 {% if field|widget_type|lower == 'select' %}
-<c-select.index  :inputName=field.name :selectedValue="field.value" :attrs=attrs >
+<c-select.index  :inputName=field.name :selectedValue="field.value" :disabled="field.field.disabled" :attrs=attrs >
   {% for value, label in field.field.choices %}
   {% comment %}
   if value is None we dont want the value to be stringified to "None"

@@ -1,4 +1,4 @@
-<c-vars image containerClass="" debugWidget=False selectedValue inputName classButton="" random field placeholder="Keine Auswahl"></c-vars>
+<c-vars image containerClass="" debugWidget=False selectedValue inputName classButton="" random field disabled placeholder="Keine Auswahl"></c-vars>
 {% load widget_tweaks %}
 {% load core_extras %}
 {% gen_uuid as uid %}
@@ -7,6 +7,10 @@ NOTE: and @Bryan
 I added the modern anchor css to make sure the dropdown/select expands in a direction where it can viewed without being cut of. Same logic would be nice for hovers. Might want to double check the implementation
 The implementation can be found inside the custom css tailwind brackets
 
+
+disabled: shows the current value, but the dropdown can't be opened and the input is disabled.
+Like native disabled inputs, the value is not submitted (Django falls back to the initial value of disabled fields).
+Usage: <c-select disabled ...> or :disabled="field.field.disabled"
 
 casting selectedValue=None to str results in None. Generic None/null selects carry ''/empty string as value. this way the element with value '' is found
 {% endcomment %}
@@ -17,14 +21,14 @@ casting selectedValue=None to str results in None. Generic None/null selects car
    {{attrs}}
 >
   <div class="relative w-full">
-    <button @click="show=!show"
+    <button {% if disabled %}disabled aria-disabled="true"{% else %}@click="show=!show"{% endif %}
             @click.outside="show=false"
         type="button"
         :class="invalid && 'border-red-500!'"
         class="
         relative
-        cursor-pointer
-        {{classButton}} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full hover:bg-[#f8fafc] transition-colors
+        {% if disabled %}cursor-not-allowed bg-[#f1f5f9] opacity-70{% else %}cursor-pointer hover:bg-[#f8fafc]{% endif %}
+        {{classButton}} border border-[#94a3b8] border-solid content-stretch flex items-center justify-between px-[16px] py-[12px]  rounded-[3px] w-full transition-colors
         "
      >
       <p x-html="selectedElement.innerHTML || placeholder "
@@ -69,6 +73,7 @@ casting selectedValue=None to str results in None. Generic None/null selects car
     x-effect="$el.value=selectedValue;$el.dispatchEvent(new Event('change', { bubbles: true })); $el.dispatchEvent(new Event('input', { bubbles: true }))"
     name="{{inputName}}"
     value="{{selectedValue}}"
+    {% if disabled %}disabled{% endif %}
   >
   {% endif %}
 

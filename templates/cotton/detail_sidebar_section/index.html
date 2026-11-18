@@ -10,6 +10,9 @@
             <c-expand.icon class='w-[19px] h-[19px]' />
         </c-slot>
         <div class="flex flex-col gap-[8px] pt-[8px] w-full" hx-disinherit="*">
+          {% if content %}
+           {{content}}
+          {% else %}
            {% for item in items %}
 
           <button
@@ -84,6 +87,7 @@
             + Hinzufügen
           </button>
         {% endif %}
-        </div>
+      {% endif %}
+    </div>
       </c-expand.index>
       </div>
