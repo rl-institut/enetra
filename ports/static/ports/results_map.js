@@ -34,16 +34,20 @@ function showResultsMap(map_id, carto_api_token, areas) {
     for (let area of areas) {
         // coordinates: latlng -> lnglat
         const coords = area.geom.coordinates[0].map(c => [c[1], c[0]]);
-        let desc = '<div>';
-        for (let [category, components] of Object.entries(area.components)) {
-            desc += '<b>' + category + '</b><ul>';
-            for (let component of components) {
-                desc += '<li>' + component.name;
+        let poly = L.polygon(coords).addTo(layers);
+        if (Object.keys(area.components).length > 0) {
+            console.log(area.name, area.components);
+            let desc = '<div>';
+            for (let [category, components] of Object.entries(area.components)) {
+                desc += '<b>' + category + '</b><ul>';
+                for (let component of components) {
+                    desc += '<li>' + component.name;
+                }
+                desc += '</ul>';
             }
-            desc += '</ul>';
+            desc += '</div>';
+            poly.bindPopup(desc);
         }
-        desc += '</div>';
-        L.polygon(coords).bindPopup(desc).addTo(layers);
         L.marker(centroid(coords), {
             icon: makeLabelIcon(area.name, 1),
             interactive: false,
