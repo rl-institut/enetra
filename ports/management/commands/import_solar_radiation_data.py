@@ -11,9 +11,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--dir",
+            "dir",
             type=Path,
-            help="Directory to scan",
+            help="Directory to scan (required)",
         )
 
     def handle(self, *args, **options):
@@ -26,6 +26,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"Scanning {file} ...")
                 process_file_to_solar_radiation(file)
                 count += 1
-        self.stdout.write(self.style.SUCCESS(f"Done. {count} file(s) imported."))
         if not count:
             self.stdout.write(self.style.WARNING("No csv files found )"))
+        else:
+            self.stdout.write(self.style.SUCCESS(f"Done. {count} file(s) imported."))
