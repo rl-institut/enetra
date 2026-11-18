@@ -1,6 +1,5 @@
 import datetime
 import logging
-import time
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -50,7 +49,6 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
             task.progress = 1
             task.save()
             publish_change(scenario.id)
-        time.sleep(2)
 
         started_at = timezone.now()
         es, flows, errors = db_to_energysystem(scenario, started_at, **kwargs)
@@ -60,7 +58,6 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
                 f"Can not start simulation when energysystem has errors: {err_text}"
             )
 
-        time.sleep(2)
         if task:
             task.message = "Simulation des Energiesystems"
             task.progress += 1
@@ -78,13 +75,11 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
             store_results(scenario, model, flows, started_at)
             # plot_result(scenario_id)
 
-        time.sleep(2)
         if task:
             task.message = "Simulation erfolgreich beendet"
             task.set_success()
             publish_change(scenario.id)
 
-        time.sleep(2)
     except:
         if task:
             task.set_failed()
