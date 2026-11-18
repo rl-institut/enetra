@@ -25,7 +25,7 @@
           {% url items.0.rud_url scenario_internal_id=scenario.internal_id model=items.0.model_name as rud_url %}
           <div class="flex flex-col p-[12px] py-2 border-b border-[#cbd5e1]">
               <form>
-                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" hiddenInputName='internal_ids' modeCallback="$dispatch('hide-detail-sidebar');"
+                <c-list.index id="{{listId}}" count title="{{title}}" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" modeCallback="$dispatch('hide-detail-sidebar');"
                   hx-target="#detailSidebar"
                   hx-indicator="#detailSidebar"
                   hx-swap="innerHTML scroll:top"

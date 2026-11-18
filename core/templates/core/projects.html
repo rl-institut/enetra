@@ -55,6 +55,8 @@
 
             <button
               command="show-modal" commandfor="project-create-modal"
+              x-data
+              @click="$el.parentElement.querySelector('dialog form').reset()"
               class="select-none ml-auto px-6 py-2 bg-cyan-700 hover:bg-cyan-800 transition-colors duration-150 rounded-full flex items-center gap-2 shrink-0 cursor-pointer">
               <i data-lucide="plus-circle" class="w-4 h-4 text-white"></i>
               <span class="text-sm font-semibold text-white">Projekt erstellen</span>

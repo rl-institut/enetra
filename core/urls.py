@@ -1,4 +1,6 @@
 from django.contrib.auth.views import LogoutView
+from django.contrib.auth.views import PasswordResetCompleteView
+from django.contrib.auth.views import PasswordResetConfirmView
 from django.contrib.auth.views import PasswordResetView
 from django.shortcuts import render
 from django.urls import path
@@ -91,6 +93,8 @@ urlpatterns = [
     path(
         "login/forgot_password/",
         PasswordResetView.as_view(
+            email_template_name="core/registration/password_reset_email.txt",
+            subject_template_name="core/registration/password_reset_subject.txt",
             template_name="core/registration/forgot-password.html",
             success_url=reverse_lazy("core:forgot_password_success"),
         ),
@@ -100,6 +104,23 @@ urlpatterns = [
         "login/forgot_password_success/",
         lambda x: render(x, template_name="core/registration/forgot-password-success.html"),
         name="forgot_password_success",
+    ),
+    # Link from the reset email: set a new password
+    path(
+        "login/reset/<uidb64>/<token>/",
+        PasswordResetConfirmView.as_view(
+            template_name="core/registration/reset-password.html",
+            success_url=reverse_lazy("core:reset_password_complete"),
+        ),
+        name="reset_password",
+    ),
+    path(
+        "login/reset/done/",
+        PasswordResetCompleteView.as_view(
+            template_name="core/registration/reset-password.html",
+            extra_context={"saved": True},
+        ),
+        name="reset_password_complete",
     ),
 ]
 

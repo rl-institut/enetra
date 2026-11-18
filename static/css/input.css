@@ -17,6 +17,19 @@
     }
 }
 
+.no-stepper input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    /* Firefox */
+}
+
+.no-stepper input[type="number"]::-webkit-outer-spin-button,
+.no-stepper input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    /* Chrome/Safari/Edge */
+    margin: 0;
+}
+
 .map-label-icon {
     background: transparent !important;
     border: none !important;
@@ -84,6 +97,51 @@
         opacity: 1;
 
     }
+}
+
+/* Highlight for inputs whose value was calculated automatically (e.g. solar power <-> area) */
+@keyframes autofillFlash {
+    0% {
+        background-color: var(--color-cyan-100);
+        border-color: var(--color-cyan-500);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-cyan-500) 35%, transparent);
+    }
+
+    70% {
+        background-color: var(--color-cyan-50);
+        border-color: var(--color-cyan-400);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-cyan-500) 15%, transparent);
+    }
+
+    100% {
+        background-color: white;
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+.autofill-highlight {
+    animation: autofillFlash 2s ease-out;
+}
+
+@keyframes autofillHint {
+    0% {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    10%,
+    80% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.autofill-hint {
+    animation: autofillHint 3s ease-out forwards;
 }
 
 .my-slide-in-from-bottom {
@@ -170,7 +228,7 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.177 0.105 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);

@@ -7,6 +7,7 @@
         <ul id="detail-ellipsis-drop-down-{{ instance.internal_id }}"
           @hide="showDropDown=false;"
         class="drop-down absolute right-0 top-full min-w-[140px] list-none rounded-md border border-[#ddd] bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-50">
+      {% if not instances %}
       <li>
         <button hx-delete="{{ form_url }}"
                 hx-confirm="Wollen Sie {{ instance.name }} wirklich löschen?"
@@ -16,6 +17,7 @@
           DELETE
         </button>
       </li>
+      {% endif %}
       <li>
         <button type="button"
                 hx-trigger="click, refresh-{{instance.internal_id}} from:body"
@@ -24,6 +26,7 @@
                 hx-target="{{hx_target}}"
                 hx-include="{{hx_target}}"
                 hx-swap="outerHTML"
+                hx-push-url="true"
                 class="w-full mt-3 text-[#0e7490] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-center cursor-pointer hover:text-[#0891b2] transition-colors">
           REFRESH
         </button>
