@@ -3,17 +3,10 @@
 from django.db.migrations import RunPython
 import django.contrib.gis.db.models.fields
 import django.core.validators
-import django.db.migrations.operations.special
 import django.db.models.deletion
 import uuid
 from django.conf import settings
 from django.db import migrations, models
-
-
-# Functions from the following migrations need manual copying.
-# Move them and any dependencies into this file, then update the
-# RunPython operations to refer to the local versions:
-# ports.migrations.0030_solarradiation_alter_solar_options_and_more
 
 
 def remove_solar_profile(apps, schema_editor):
@@ -26,8 +19,6 @@ def remove_solar_profile(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [('ports', '0030_solarradiation_alter_solar_options_and_more'), ('ports', '0031_alter_solar_spec_power_alter_solarradiation_name_and_more'), ('ports', '0032_alter_area_geom_alter_scenario_geom')]
-
     dependencies = [
         ('ports', '0029_remove_electrolyzer_efficiency_thermal_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -37,7 +28,6 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             code=remove_solar_profile,
             reverse_code=RunPython.noop,
-            atomic=remove_solar_profile,
         ),
         migrations.AlterField(
             model_name='area',

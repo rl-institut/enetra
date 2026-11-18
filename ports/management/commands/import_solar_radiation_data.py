@@ -27,6 +27,6 @@ class Command(BaseCommand):
                 process_file_to_solar_radiation(file)
                 count += 1
         if not count:
-            self.stdout.write(self.style.WARNING("No csv files found )"))
+            self.stdout.write(self.style.WARNING("No csv files found"))
         else:
             self.stdout.write(self.style.SUCCESS(f"Done. {count} file(s) imported."))
