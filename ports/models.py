@@ -139,7 +139,6 @@ class Scenario(models.Model):
         blank=True,
         help_text=_("Geografische Ausdehnung des Szenarios."),
         srid=4326,
-        geography=True,
     )
 
     class Meta:
@@ -498,7 +497,7 @@ class Area(ScenarioItem):
         STORAGE = "storage", "Lager"
 
     geom = models.PolygonField(
-        null=True, blank=False, help_text=_("Geometrie der Fläche."), geography=True, srid=4326
+        null=True, blank=False, help_text=_("Geometrie der Fläche."), srid=4326
     )
     area_type = models.CharField(choices=AreaTypeChoices, null=True, help_text=_("Art der Fläche."))
     usage = models.CharField(
