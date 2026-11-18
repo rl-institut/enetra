@@ -43,7 +43,6 @@ logger = logging.getLogger(__name__)
 UNITS = {
     "power_kw": "kW",
     "efficiency": "[-]",
-    "efficiency_thermal": "[-]",
     "power_min": "kW",
     "power_max": "kW",
     "capex": "€",
@@ -142,7 +141,6 @@ class Scenario(models.Model):
         blank=True,
         help_text=_("Geografische Ausdehnung des Szenarios."),
         srid=4326,
-        geography=True,
     )
 
     class Meta:
@@ -512,7 +510,7 @@ class Area(ScenarioItem):
         STORAGE = "storage", "Lager"
 
     geom = models.PolygonField(
-        null=True, blank=False, help_text=_("Geometrie der Fläche."), geography=True, srid=4326
+        null=True, blank=False, help_text=_("Geometrie der Fläche."), srid=4326
     )
     area_type = models.CharField(choices=AreaTypeChoices, null=True, help_text=_("Art der Fläche."))
     usage = models.CharField(
@@ -702,7 +700,7 @@ class SolarRadiation(models.Model):
 
     These can be referenced by Solar.
     They are public and server specified.
-    No need for
+    No need for authorization, scoping to scenarios or internal_ids
     """
 
     is_active = models.BooleanField(
@@ -711,7 +709,7 @@ class SolarRadiation(models.Model):
     name = models.TextField(
         blank=False,
         null=True,
-        help_text=_("Name der Zeitreihe für solare einstrahlung"),
+        help_text=_("Name der Zeitreihe"),
     )
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung der Zeitreihe.")
@@ -1211,13 +1209,6 @@ class AbstractElectrolyzer(models.Model):
 
     list_icon = "icon.electrolyzer"
     icon = "icon.electrolyzer"
-    # carrier is always electricity
-    efficiency_thermal = models.FloatField(
-        verbose_name=_("Thermische Effizienz"),
-        default=1.0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        help_text=_("Thermischer Wirkungsgrad. Muss ein Wert zwischen 0 und 1 sein."),
-    )
 
     class Meta:
         abstract = True
@@ -1317,7 +1308,7 @@ class AbstractSolar(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
         help_text=_(
-            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch wenn eine Fläche mit installierte Photovoltaik angegeben ist."
+            "Spezifische Peak-Leistung der Solaranlage in W/m². Muss größer oder gleich 0 sein. Die Eingabe aktualisiert die installierte Leistung automatisch, wenn eine Fläche mit installierter Photovoltaik angegeben ist."
         ),
     )  # W/m^2
 

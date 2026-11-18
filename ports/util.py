@@ -1,3 +1,4 @@
+import csv
 import logging
 import time
 from collections import defaultdict
@@ -15,6 +16,7 @@ from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
 from django.db import connection
 from django.db.models import Q
+from django.db.models import QuerySet
 from guardian.shortcuts import assign_perm
 from guardian.utils import get_group_obj_perms_model
 
@@ -25,6 +27,7 @@ from .models import Result
 from .models import Scenario
 from .models import ScenarioItem
 from .models import SolarRadiation
+from .models import Timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +35,8 @@ logger = logging.getLogger(__name__)
 def process_file_to_solar_radiation(file):
     """Import timeseries data to SolarRadiation"""
 
-    import csv
-    import datetime
-
     with open(file) as f:
+        # find the columns with time and power values
         reader = csv.DictReader(f)
         time_col = None
         val_col = None
@@ -46,43 +47,47 @@ def process_file_to_solar_radiation(file):
                 val_col = col
         if not (time_col and val_col):
             raise ValueError("No column found for 'time' or 'power'")
-        f.seek(0)
-        k = iter(csv.DictReader(f))
-        row = next(k)
 
-        def toiso(x):
-            return datetime.datetime.fromisoformat(x)
-
-        start_time = toiso(row[time_col])
-        prev_time = start_time
-        row = next(k)
-        next_time = toiso(row[time_col])
+        # reading the file changed the stream position.
+        # reset it so we can start from the top
         f.seek(0)
         values = []
-        timestep = next_time - prev_time
-        prev_time = next_time
-        consistent = True
+        times = []
         for row in csv.DictReader(f):
             try:
                 values.append(float(row[val_col]))
+                times.append(row[time_col])
             except ValueError as e:
                 raise ValueError(
                     f"{file} has a value of {row[val_col]} which is not numeric"
                 ) from e
 
-            next_time = toiso(row[time_col])
-            if consistent and next_time - prev_time != timestep:
-                logger.warning(f"Timesteps are not consistent in file {file}")
-                consistent = False
-            prev_time = next_time
+        # let pandas handle the datetimes since local german times need handling of
+        # spring and autumn timezone changes.
+        timestamps = pd.to_datetime(values)
+        timestamps = timestamps.tz_localize(
+            "Europe/Berlin",
+            ambiguous="infer",
+            nonexistent="raise",
+        )
+        timestamps = timestamps.tz_convert("UTC")
+        timestep = timestamps[1] - timestamps[0]
+        timestep_sec = timestep.total_seconds()
+        start_time = timestamps[0]
+        for t2, t1 in zip(timestamps[1:], timestamps[:-1], strict=False):
+            delta_sec = (t2 - t1).total_seconds()
+            # sometimes there are microseconds changes which should not lead to a warning
+            if abs(delta_sec - timestep_sec) > 1:
+                logger.warning(
+                    f"Timesteps are not consistent in file {file} at {t1}\n({t2 - t1 - timestep})"
+                )
+                break
         SolarRadiation.all_objects.create(
             name=file.stem,
             timeseries=values,
             timestep=timestep.total_seconds() / 60,
             timeseries_start=start_time,
         )
-
-    pass
 
 
 def process_geojson_dict_to_scenarios(regions: dict, buildings: dict, user: User):
@@ -245,6 +250,14 @@ def prefetch_projects_users(projects: Iterable[Project]) -> None:
     for perm in group_perms:
         project = id_to_project[int(perm.object_pk)]
         project._users_cache[perm.permission.codename] = perm.group.user_set.all()
+
+
+def get_timeseries_for_user(user: User, scenario: Scenario) -> QuerySet[Timeseries]:
+    """Get the timeseries the user is allowed to access.
+
+    To be expanded when there is generic data for every user.
+    """
+    return Timeseries.objects.filter(manager=user, scenario=scenario)
 
 
 def get_user_projects(user: User):

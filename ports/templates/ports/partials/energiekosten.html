@@ -21,7 +21,7 @@
         <p x-show="show">
           {% comment %}
           the template is also directly rendered_to_string without a request in cases of updates.
-          In this case we dont want to show Gespeihert
+          In this case we dont want to show Gespeichert
           {% endcomment %}
           {% if request.method == "GET" or not request.method %}
           Speichern

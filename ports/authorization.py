@@ -98,7 +98,7 @@ def has_authorization(
     # based only on areas for now
     if isinstance(item, Grid):
         # Grids need generic project authorization since, they are not scoped to areas.
-        # in contrast to timeseries they are related to "areas", therefore should can be selected from all areas
+        # in contrast to timeseries they are related to "areas", therefore can be selected from all areas
         # the selection mutates Grid.areas and just viewing the grid would not be enough
         project = item.scenario.project
         if not project:

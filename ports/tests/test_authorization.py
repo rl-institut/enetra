@@ -24,6 +24,7 @@ class HasAuthorizationAreaScopedItemsTest(TestCase):
     def setUpTestData(cls):
         cls.owner = User.objects.create_user("owner", password="pass")
         cls.colleague = User.objects.create_user("colleague", password="pass")
+        cls.outsider = User.objects.create_user("outsider", password="pass")
 
         cls.project = Project.objects.create(name="Test Projekt")
         cls.scenario = Scenario.objects.create(name="Test Scenario", project=cls.project)
@@ -60,6 +61,7 @@ class HasAuthorizationAreaScopedItemsTest(TestCase):
             ),
         )
         self.assertTrue(has_authorization(load, self.colleague, "details"))
+        self.assertFalse(has_authorization(load, self.outsider, "details"))
 
     def test_colleague_with_area_permission_is_authorized_for_a_grid_in_that_area(self):
         # grid is only guarded by project "details"
@@ -72,3 +74,4 @@ class HasAuthorizationAreaScopedItemsTest(TestCase):
         grid.areas.add(self.area)
 
         self.assertTrue(has_authorization(grid, self.colleague, "details"))
+        self.assertFalse(has_authorization(grid, self.outsider, "details"))
