@@ -404,31 +404,81 @@ def get_items_to_be_deleted(instances: list[models.Model], *args, **kwargs) -> l
     return get_related_items(instances, *args, **kwargs, field_filter=filter_no_cascade)
 
 
-def find_item(internal_id, scenario_id: int | None = None) -> type[ScenarioItem] | None:
-    """Return the ScenarioItem model whose table contains `internal_id` (one UNION ALL query).
+def find_item_model(
+    internal_id, scenario_id: int | None = None
+) -> dict[type[ScenarioItem], list[int]]:
+    """Find all ScenarioItems matching `internal_id` (one UNION ALL query).
+
+    `internal_id` may be a full UUID or a prefix of its canonical text form
+    (lowercase, hyphenated, e.g. "3f2a" or "3f2a9c1e-7b").
+    Returns {model: [ids of matching rows]}, empty if nothing matches.
 
     ChangedItem/DeletedItem are skipped since they only reference other items' internal_ids.
     """
     from .models import ChangedItem
     from .models import DeletedItem
 
+    # get all models with their full names (labels) as key, e.g. ports.solar
     item_models = {
         m._meta.label: m
         for m in apps.get_models()
         if issubclass(m, ScenarioItem) and m not in (ChangedItem, DeletedItem)
     }
+
+    # Match partial and full internal_id
+    where = "internal_id::text LIKE %s" + (
+        " AND scenario_id = %s" if scenario_id is not None else ""
+    )
+    params_per_model = [f"{str(internal_id).lower()}%"] + (
+        [scenario_id] if scenario_id is not None else []
+    )
     qn = connection.ops.quote_name
-    where = "internal_id = %s" + (" AND scenario_id = %s" if scenario_id is not None else "")
-    params_per_model = [str(internal_id)] + ([scenario_id] if scenario_id is not None else [])
+    # One SELECT per concrete item table, each tagged with its model label so the
+    # matching row tells us which model it came from.
     sql = " UNION ALL ".join(
-        f"SELECT %s AS model FROM {qn(m._meta.db_table)} WHERE {where}"
+        f"SELECT %s AS model, id FROM {qn(m._meta.db_table)} WHERE {where}"
         for m in item_models.values()
     )
+    # Params repeat per sub-select: label first, then the WHERE params (same order as above).
     params = [p for label in item_models for p in (label, *params_per_model)]
     with connection.cursor() as cursor:
-        cursor.execute(f"{sql} LIMIT 1", params)
-        row = cursor.fetchone()
-    return item_models[row[0]] if row else None
+        # the query looks like
+        # SELECT 'ports.Area' AS model, id FROM "ports_area" WHERE internal_id::text LIKE 'XXXX%'
+        # UNION ALL SELECT 'ports.Timeseries' AS model, id FROM ...
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+    # group the matching ids by model, each row is (label, id)
+    found = defaultdict(list)
+    for label, item_id in rows:
+        found[item_models[label]].append(item_id)
+    return dict(found)
+
+
+def get_item(internal_id, scenario_id: int | None = None) -> QuerySet[ScenarioItem]:
+    """Get the scenario item matching exactly the (partial) internal_id, optionally within a scenario.
+
+    Raises ValueError if nothing matches or the matches span several models.
+    Raises ValueError if multiple matches exist
+    """
+    items = get_items(internal_id, scenario_id)
+    if items.count() > 1:
+        raise ValueError(f"internal_id {internal_id!r} matches several items")
+    return items.first()
+
+
+def get_items(internal_id, scenario_id: int | None = None) -> QuerySet[ScenarioItem]:
+    """Get the scenario items matching a (partial) internal_id, optionally within a scenario.
+
+    Raises ValueError if nothing matches or the matches span several models.
+    """
+    found = find_item_model(internal_id, scenario_id)
+    if not found:
+        raise ValueError(f"No item found for internal_id {internal_id!r}")
+    if len(found) > 1:
+        names = ", ".join(m.__name__ for m in found)
+        raise ValueError(f"internal_id {internal_id!r} matches items of several models: {names}")
+    ((Model, ids),) = found.items()
+    return Model.objects.filter(id__in=ids)
 
 
 def resample(
