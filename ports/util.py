@@ -1,5 +1,4 @@
 import csv
-import datetime
 import logging
 import time
 from collections import defaultdict
@@ -71,10 +70,12 @@ def process_file_to_solar_radiation(file):
         )
         timestamps = timestamps.tz_convert("UTC")
         timestep = timestamps[1] - timestamps[0]
+        timestep_sec = timestep.total_seconds()
         start_time = timestamps[0]
         for t2, t1 in zip(timestamps[1:], timestamps[:-1], strict=False):
+            delta_sec = (t2 - t1).total_seconds()
             # sometimes there are microseconds changes which should not lead to a warning
-            if (t2 - t1) - timestep > datetime.timedelta(milliseconds=1):
+            if abs(delta_sec - timestep_sec) > 1:
                 logger.warning(
                     f"Timesteps are not consistent in file {file} at {t1}\n({t2 - t1 - timestep})"
                 )
