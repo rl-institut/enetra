@@ -64,7 +64,7 @@ def process_file_to_solar_radiation(file):
 
         # let pandas handle the datetimes since local german times need handling of
         # spring and autumn timezone changes.
-        timestamps = pd.to_datetime(values)
+        timestamps = pd.to_datetime(times)
         timestamps = timestamps.tz_localize(
             "Europe/Berlin",
             ambiguous="infer",
@@ -454,16 +454,15 @@ def find_item_model(
     return dict(found)
 
 
-def get_item(internal_id, scenario_id: int | None = None) -> QuerySet[ScenarioItem]:
-    """Get the scenario item matching exactly the (partial) internal_id, optionally within a scenario.
+def get_item(internal_id, scenario_id: int | None = None) -> ScenarioItem:
+    """Get the scenario item matching the (partial) internal_id, optionally within a scenario.
 
+    When searching for items inside scenarios which were duplicated, use the scenario_id to restrict the search
     Raises ValueError if nothing matches or the matches span several models.
-    Raises ValueError if multiple matches exist
+    Raises Model.MultipleObjectsReturned if multiple matches exist
     """
     items = get_items(internal_id, scenario_id)
-    if items.count() > 1:
-        raise ValueError(f"internal_id {internal_id!r} matches several items")
-    return items.first()
+    return items.get()
 
 
 def get_items(internal_id, scenario_id: int | None = None) -> QuerySet[ScenarioItem]:
