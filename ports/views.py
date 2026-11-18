@@ -618,7 +618,7 @@ def scenario_results(request, scenario_internal_id: UUID):
                 str(model_qs.model._meta.verbose_name): [
                     {
                         "name": c.name,
-                        "power": c.power_installed or c.power_kw,
+                        "power": c.power_kw,
                     }
                     for c in model_qs.order_by("id")
                 ]

@@ -54,7 +54,6 @@ UNITS = {
     "power_kw": "kW",
     "efficiency": "[-]",
     "efficiency_thermal": "[-]",
-    "power_installed": "kW",
     "power_min": "kW",
     "power_max": "kW",
     "capex": "€",
