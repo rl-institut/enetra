@@ -42,6 +42,7 @@ from core.models import Invite
 from core.models import InviteError
 from core.models import Role
 from ports.authorization import has_authorization
+from ports.create_placeholder_scenario import _create_placeholder_scenario
 from ports.forms import CreateProjectForm
 from ports.models import DeletedItem
 from ports.models import Project
@@ -140,6 +141,19 @@ def ensure_project_rights(func: Callable) -> Callable:
         return func(*args, **kwargs, project=project)
 
     return wrapped_function
+
+
+@login_required()
+@require_http_methods(["POST"])
+def create_test_project(request: HttpRequest) -> HttpResponse:
+    """Create an example project with a filled example scenario for the current user."""
+    with atomic():
+        scenario = _create_placeholder_scenario(request.user)
+    return redirect(
+        reverse(
+            "core:project_overview", kwargs={"project_internal_id": scenario.project.internal_id}
+        )
+    )
 
 
 @login_required()

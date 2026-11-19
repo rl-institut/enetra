@@ -65,6 +65,11 @@ urlpatterns = [
         name="projects",
     ),
     path(
+        "create_test_project/",
+        views.create_test_project,
+        name="create_test_project",
+    ),
+    path(
         "invite/",
         views.handle_invite,
         name="invite",

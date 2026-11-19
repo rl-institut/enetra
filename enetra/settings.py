@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import json
+import sys
 from pathlib import Path
 
 import django_stubs_ext
@@ -20,6 +21,9 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 
 django_stubs_ext.monkeypatch()
+
+# True when running "manage.py test" or pytest (incl. xdist workers)
+TESTING = "test" in sys.argv[1:2] or "pytest" in sys.modules
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
