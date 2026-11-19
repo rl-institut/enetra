@@ -335,39 +335,42 @@ def db_to_energysystem(
         flows[(converter, bus_out)] = (component, bus_grids[bus_out])
 
     for generator in scenario.generator_set.select_related("area"):
-        values_ok = values_or_err(generator, "efficiency")
-        # fuel -> electricity
-        add_converter(
-            generator, generator.carrier, Grid.CarrierChoices.ELECTRICITY, generator.efficiency
-        )
+        if values_or_err(generator, "efficiency"):
+            # fuel -> electricity
+            add_converter(
+                generator, generator.carrier, Grid.CarrierChoices.ELECTRICITY, generator.efficiency
+            )
     for heating in scenario.heating_set.select_related("area"):
-        values_ok = values_or_err(heating, "efficiency")
-        # energy source -> heat
-        add_converter(heating, heating.carrier, Grid.CarrierChoices.HEAT, heating.efficiency)
+        if values_or_err(heating, "efficiency"):
+            # energy source -> heat
+            add_converter(heating, heating.carrier, Grid.CarrierChoices.HEAT, heating.efficiency)
     for fuel_cell in scenario.fuelcell_set.select_related("area"):
-        values_ok = values_or_err(fuel_cell, "efficiency")
-        # H2 -> electricity
-        add_converter(
-            fuel_cell,
-            Grid.CarrierChoices.H2,
-            Grid.CarrierChoices.ELECTRICITY,
-            fuel_cell.efficiency,
-        )
+        if values_or_err(fuel_cell, "efficiency"):
+            # H2 -> electricity
+            add_converter(
+                fuel_cell,
+                Grid.CarrierChoices.H2,
+                Grid.CarrierChoices.ELECTRICITY,
+                fuel_cell.efficiency,
+            )
     for electrolyzer in scenario.electrolyzer_set.select_related("area"):
-        values_ok = values_or_err(electrolyzer, "efficiency")
-        # electricity -> H2
-        add_converter(
-            electrolyzer,
-            Grid.CarrierChoices.ELECTRICITY,
-            Grid.CarrierChoices.H2,
-            electrolyzer.efficiency,
-        )
+        if values_or_err(electrolyzer, "efficiency"):
+            # electricity -> H2
+            add_converter(
+                electrolyzer,
+                Grid.CarrierChoices.ELECTRICITY,
+                Grid.CarrierChoices.H2,
+                electrolyzer.efficiency,
+            )
     for heatpump in scenario.heatpump_set.select_related("area"):
-        values_ok = values_or_err(heatpump, "efficiency")
-        # electricity -> heat
-        add_converter(
-            heatpump, Grid.CarrierChoices.ELECTRICITY, Grid.CarrierChoices.HEAT, heatpump.efficiency
-        )
+        if values_or_err(heatpump, "efficiency"):
+            # electricity -> heat
+            add_converter(
+                heatpump,
+                Grid.CarrierChoices.ELECTRICITY,
+                Grid.CarrierChoices.HEAT,
+                heatpump.efficiency,
+            )
 
     for chp in scenario.chp_set.select_related("area"):
         # fuel -> heat and electricity
