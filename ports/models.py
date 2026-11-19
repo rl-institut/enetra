@@ -164,9 +164,11 @@ class Scenario(models.Model):
         return self.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
 
     def outdated(self) -> bool:
-        if not self.result:
+        try:
+            result = self.result
+        except Result.DoesNotExist:
             return False
-        return self.result.started_at < self.items_updated_at
+        return result.started_at < self.items_updated_at
 
     def can_simulate(self):
         task = self.simulation_task()
