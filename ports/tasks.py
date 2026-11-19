@@ -76,10 +76,13 @@ def oemof_task(self, scenario_id, **kwargs) -> None:
             # plot_result(scenario_id)
 
         if task:
-            task.message = "Simulation erfolgreich beendet"
-            task.set_success()
+            if model:
+                task.message = "Simulation erfolgreich beendet"
+                task.set_success()
+            else:
+                task.message = "Simulation fehlgeschlagen"
+                task.set_failed()
             publish_change(scenario.id)
-
     except:
         if task:
             task.set_failed()
