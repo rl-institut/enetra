@@ -98,7 +98,7 @@ def _create_placeholder_scenario(
 
     area1 = Area.objects.create(
         scenario=s,
-        name="Büro Anlage",
+        name="Büro",
         geom=Polygon(
             (
                 [13.333282, 52.53887],
@@ -190,7 +190,7 @@ def _create_placeholder_scenario(
     )
     grid_pv = Grid.objects.create(
         scenario=s,
-        name="Netz für PV Anlagen",
+        name="Netz für PV",
         carrier=Grid.CarrierChoices.ELECTRICITY,
         connected_to=grid_el,
     )
@@ -198,7 +198,7 @@ def _create_placeholder_scenario(
     grid_pv.areas.add(area2, area3)
     grid_diesel = Grid.objects.create(
         scenario=s,
-        name="Diesel Pipeline",
+        name="Diesel-Pipeline",
         carrier=Grid.CarrierChoices.DIESEL,
     )
     grid_diesel.areas.add(area1, area2)
@@ -237,7 +237,7 @@ def _create_placeholder_scenario(
     solar_radiation = get_or_create_solar_radiation()
     Solar.objects.create(
         scenario=s,
-        name="PV Anlage 1",
+        name="PV 1",
         area=area3,
         power_kw=20,
         manager=area3.manager,
@@ -245,7 +245,7 @@ def _create_placeholder_scenario(
     )
     Solar.objects.create(
         scenario=s,
-        name="PV Anlage 2",
+        name="PV 2",
         area=area2,
         power_kw=20,
         manager=area2.manager,
@@ -253,7 +253,7 @@ def _create_placeholder_scenario(
     )
     Solar.objects.create(
         scenario=s,
-        name="PV Anlage 3",
+        name="PV 3",
         area=area2,
         power_kw=20,
         manager=area2.manager,
@@ -261,7 +261,7 @@ def _create_placeholder_scenario(
     )
     Solar.objects.create(
         scenario=s,
-        name="PV Anlage 4",
+        name="PV 4",
         area=area2,
         power_kw=20,
         manager=area2.manager,
