@@ -741,7 +741,13 @@ def calculate_scenario(request, scenario_internal_id: UUID):
     context = dict(id=f"{scenario.internal_id}-calculation-modal", scenario=scenario)
     # User wants to simulate, only update of current status and button container is needed
     if request.method == "POST":
-        tasks.start_simulation(scenario)
+        if scenario.can_simulate():
+            tasks.start_simulation(scenario)
+        else:
+            # edge case response when client side guard is not working or bypassed
+            return HttpResponseForbidden(
+                "Sie dürfen dieses Szenario nicht simulieren. Gründe hierfür sind das es bereits simuliert wurde, gerade simuliert wird, oder in der Warteschlange ist."
+            )
         response = render(request, template_name=template_name, context=context)
         return response
 
@@ -829,6 +835,7 @@ def start_solver(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
     # TODO: more permission needed to start solver task?
+    # TODO: Raw request for simulation? Keep api? Check for "can_simulate"?
     celery_task = tasks.start_simulation(scenario)
     return JsonResponse({"celery_task_id": celery_task.task_id})
 
