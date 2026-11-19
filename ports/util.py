@@ -425,7 +425,7 @@ def find_item_model(
     ]
 
     found = dict()
-    q_filter = dict(internal_id__contains=internal_id)
+    q_filter = dict(internal_id__startswith=internal_id)
     if scenario_id:
         q_filter["scenario_id"] = scenario_id
     for model in item_models:
