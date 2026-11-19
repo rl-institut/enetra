@@ -85,10 +85,19 @@
         <p class="pt-1">{{ scenario.simulation_task.message }}</p>
       </c-alert>
     {% elif scenario.simulation_task.finished %}
+      {% if scenario.outdated %}
+        <c-alert variant="warning" title="Veraltete Ergebnisse">
+          Das Szenario wurde nach der Simulation verändert.
+          Die angezeigten Ergebnisse entsprechen nicht dem aktuellen Stand des Szenarios.
+        <a href="{% url 'ports:ergebnisse' scenario_internal_id=scenario.internal_id %}"
+           class="block pt-1 text-cyan-700 hover:underline" >Zu den Ergebnissen</a>
+        </c-alert>
+      {% else %}
       <c-alert variant="success" :title="scenario.simulation_task.message" :icon=False>
         <a href="{% url 'ports:ergebnisse' scenario_internal_id=scenario.internal_id %}"
-           class="block pt-1 text-cyan-700 hover:underline">Zu den Ergebnissen</a>
+           class="block pt-1 text-cyan-700 hover:underline" >Zu den Ergebnissen</a>
       </c-alert>
+      {% endif %}
     {% endif %}
 
     {# title sits on the wrapper: c-button sets pointer-events-none when disabled, which hides tooltips #}

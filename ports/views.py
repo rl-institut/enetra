@@ -842,8 +842,6 @@ def scenario_results(request, scenario_internal_id: UUID):
     if result is None:
         # scenario not simulated yet
         raise Http404()
-    if result.started_at < scenario.items_updated_at:
-        return HttpResponse("Outdated simulation", status=500)
     result_data = result.resultdata_set.all()
     # get areas information (geometry, components)
     areas = [

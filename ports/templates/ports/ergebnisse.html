@@ -40,6 +40,13 @@
           <span class="text-sm font-semibold">Zum Projekt</span>
         </a>
 
+        {% if scenario.outdated %}
+        <c-alert variant="warning" title="Veraltete Ergebnisse">
+          Das Szenario wurde nach der Simulation verändert.
+          Die angezeigten Ergebnisse entsprechen nicht dem aktuellen Stand des Szenarios.
+        </c-alert>
+        {% endif %}
+
         <!-- Page Header -->
         <div class="select-none flex items-end justify-between gap-8">
           <div class="flex flex-col gap-1">

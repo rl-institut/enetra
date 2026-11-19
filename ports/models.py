@@ -163,13 +163,19 @@ class Scenario(models.Model):
     def simulation_task(self) -> Task | None:
         return self.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
 
+    def outdated(self) -> bool:
+        if not self.result:
+            return False
+        return self.result.started_at < self.items_updated_at
+
     def can_simulate(self):
         task = self.simulation_task()
         if not task:
             return True
         # allow to simulate again after failure or when tasks has no status for some reason
         # dont allow to simulate when simulation is running, waiting or succeeded
-        return task.status in [Task.Status.FAILED, None]
+        # also allow a new simulation if the scenario is outdated
+        return task.status in [Task.Status.FAILED, None] or self.outdated()
 
     def is_baseline_scenario(self):
         # the first scenario in a project is by definition the baseline scenario
