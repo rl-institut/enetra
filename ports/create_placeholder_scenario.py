@@ -69,11 +69,19 @@ def create_scenario() -> Scenario:
     return s
 
 
-def _create_placeholder_scenario(user1, user2, uid: UUID | None = None) -> Scenario:
+def _create_placeholder_scenario(
+    user1: User, user2: User | None = None, uid: UUID | str | None = None
+) -> Scenario:
+    """Create an example project with a filled scenario.
+
+    user1 manages the project and part of the items, user2 the remaining items.
+    Without user2, user1 manages everything.
+    """
+    user2 = user2 or user1
     uid = uid or uuid4()
-    new_project = Project.objects.create(name="Test Projekt", manager=user1)
+    new_project = Project.objects.create(name="Beispielprojekt", manager=user1)
     s = Scenario.objects.create(
-        name="TestScenario", internal_id=uid, manager=user1, project=new_project
+        name="Beispielszenario", internal_id=uid, manager=user1, project=new_project
     )
     EnergyCost.get_or_create_for_scenario(s)
     # Group might exist already, since developer might switch back and force between migrations states
@@ -158,11 +166,6 @@ def _create_placeholder_scenario(user1, user2, uid: UUID | None = None) -> Scena
         area_type=Area.AreaTypeChoices.OPEN,
         manager=user1,
     )
-
-    user1_areas = Area.objects.filter(manager=user1)
-    user2_areas = Area.objects.filter(manager=user2)
-    assign_perm("details", user1, user1_areas)
-    assign_perm("details", user2, user2_areas)
 
     Timeseries.objects.create(
         scenario=s,
