@@ -14,7 +14,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   # psycopg dependencies
   libpq-dev \
   # needed for git dependencies
-  git
+  git \
+  # cbc solver
+  coinor-cbc coinor-libcbc-dev
+
 
 
 # Requirements are installed here to ensure they will be cached.
