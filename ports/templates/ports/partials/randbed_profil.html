@@ -5,7 +5,7 @@
     <div class="flex flex-col gap-4">
           <c-button type="button" variant="default" class="rounded-full! text-sm!"
             hx-get="{% url "ports:timeseries_upload" scenario_internal_id=scenario.internal_id %}"
-            hx-target="#upload-timeseries-modal-container"
+            hx-target="#modal-container"
             hx-swap="innerHTML"
           >Neue Zeitreihe Hochladen</c-button>
           {% comment %}
@@ -19,8 +19,5 @@
             <div class="p-4 rounded-2 bg-white text-sm text-[#64748b]">Keine Zeitreihen vorhanden</div>
             {% endfor %}
         </div>
-        <div id="rename-timeseries-modal-container"
-            hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
-        ></div>
     </div>
 </div>

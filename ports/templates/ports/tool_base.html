@@ -17,15 +17,23 @@ rerouteServerEventsToElement("{% url 'ports:scenario_updates' scenario.internal_
 {% endblock header %}
 {% block sideBar %}
   <div>
-    <div class='bg-blue-50 z-[9999]'>
+    <div class='bg-blue-50 z-[9999]' >
       <!-- TODO: what is logic for colors? -->
       <!-- TODO: what is logic for pictures? -->
       {% include "ports/partials/scenario_select.html" %}
 
-      <div id="grid-modal-container" hx-on::after-settle="htmx.find(this, 'dialog').showModal()"></div>
-      <div id="upload-timeseries-modal-container"
-          hx-on::after-settle="htmx.find(this, 'dialog').showModal()"
-      ></div>
+      <div id="modal-container"
+        hx-on::after-settle="
+        if (event.target != this) return;
+        htmx.find(this, 'dialog').showModal()"
+        {% if modal_content %}
+        x-data
+        x-init="$el.querySelector('dialog')?.showModal()"
+        {% endif %}
+        >
+        {{modal_content}}
+      </div>
+
       {% comment %}
 
       <div

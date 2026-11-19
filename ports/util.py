@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from collections.abc import Iterable
+from datetime import datetime
 
 import pandas as pd
 from django.apps.registry import apps
@@ -62,7 +63,7 @@ def process_file_to_solar_radiation(file):
 
         # let pandas handle the datetimes since local german times need handling of
         # spring and autumn timezone changes.
-        timestamps = pd.to_datetime(values)
+        timestamps = pd.to_datetime(times)
         timestamps = timestamps.tz_localize(
             "Europe/Berlin",
             ambiguous="infer",
@@ -400,3 +401,88 @@ def get_items_to_be_deleted(instances: list[models.Model], *args, **kwargs) -> l
         return False or custom_filter(field)
 
     return get_related_items(instances, *args, **kwargs, field_filter=filter_no_cascade)
+
+
+def find_item_model(
+    internal_id, scenario_id: int | None = None
+) -> dict[type[ScenarioItem], list[int]]:
+    """Find all ScenarioItems matching `internal_id` (one UNION ALL query).
+
+    `internal_id` may be a full UUID or a prefix of its canonical text form
+    (lowercase, hyphenated, e.g. "3f2a" or "3f2a9c1e-7b").
+    Returns {model: [ids of matching rows]}, empty if nothing matches.
+
+    ChangedItem/DeletedItem are skipped since they only reference other items' internal_ids.
+    """
+    from .models import ChangedItem
+    from .models import DeletedItem
+
+    # get all models with their full names (labels) as key, e.g. ports.solar
+    item_models = [
+        m
+        for m in apps.get_models()
+        if issubclass(m, ScenarioItem) and m not in (ChangedItem, DeletedItem)
+    ]
+
+    found = dict()
+    q_filter = dict(internal_id__contains=internal_id)
+    if scenario_id:
+        q_filter["scenario_id"] = scenario_id
+    for model in item_models:
+        items = model.objects.filter(**q_filter).values_list("id", flat=True)
+        if items:
+            found[model] = items
+    return found
+
+
+def get_item(internal_id, scenario_id: int | None = None) -> ScenarioItem:
+    """Get the scenario item matching the (partial) internal_id, optionally within a scenario.
+
+    When searching for items inside scenarios which were duplicated, use the scenario_id to restrict the search
+    Raises ValueError if nothing matches or the matches span several models.
+    Raises Model.MultipleObjectsReturned if multiple matches exist
+    """
+    items = get_items(internal_id, scenario_id)
+    return items.get()
+
+
+def get_items(internal_id, scenario_id: int | None = None) -> QuerySet[ScenarioItem]:
+    """Get the scenario items matching a (partial) internal_id, optionally within a scenario.
+
+    Raises ValueError if nothing matches or the matches span several models.
+    """
+    found = find_item_model(internal_id, scenario_id)
+    if not found:
+        raise ValueError(f"No item found for internal_id {internal_id!r}")
+    if len(found) > 1:
+        names = ", ".join(m.__name__ for m in found)
+        raise ValueError(f"internal_id {internal_id!r} matches items of several models: {names}")
+    ((Model, ids),) = found.items()
+    return Model.objects.filter(id__in=ids)
+
+
+def resample(
+    values: list[float],
+    timestep_orig: float,
+    start: datetime,
+    end: datetime,
+    time_step: int,
+) -> pd.Series:
+    """Align a profile to [start, end]: cut or forward fill, then resample to time_step."""
+    time_index = pd.date_range(start, end, freq=f"{timestep_orig}min")
+    # if there are to many values this shortens them
+    padded: list[float | None] = list(values[: len(time_index)])
+    # if there are not enough values: extend series with empty values, fill later
+    padded += [None] * (len(time_index) - len(padded))
+    # fill up missing values: retain last value
+    series = pd.Series(padded, index=time_index, dtype=float).ffill()
+    if timestep_orig == time_step:
+        return series
+    series = pd.Series(padded, index=time_index, dtype=float).ffill()
+    if time_step > timestep_orig:
+        series = series.resample(f"{time_step}min").mean()  # downsample: average
+    elif time_step < timestep_orig:
+        # .mean() only averages existing values; new timesteps from upsampling have none and become NaN
+        # use ffill instead
+        series = series.resample(f"{time_step}min").ffill()  # upsample: repeat value
+    return series

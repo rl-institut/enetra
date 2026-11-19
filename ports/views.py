@@ -40,6 +40,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.formats import number_format
 from django.utils.http import urlsplit
 from django.views.decorators.http import require_http_methods
 from django.views.generic import View
@@ -660,6 +661,150 @@ def home(request):
     )
 
 
+def group_errors(errors, scenario):
+    """Transform errors into groups to be rendered.
+
+    Each group has an error title
+    Each item gets a label
+    Each item gets a action which happens on click. In most cases it selects the item via js.
+    Some items are not listed and fetched via htmx instead and inserted into a modal or the sidebar.
+
+    """
+    ErrorType = tasks.ModelErrorType
+    groups: dict[tuple, dict] = {}
+
+    def add(key: tuple, title: str, instance: ScenarioItem, label: str) -> None:
+        group = groups.setdefault(key, {"title": title, "entries": {}})
+        url = reverse(
+            "ports:details",
+            kwargs={"scenario_internal_id": scenario.internal_id, "model": instance.model_name()},
+        )
+        group["entries"].setdefault(
+            instance.internal_id,
+            (
+                (instance.created_at, instance.pk),
+                {
+                    "label": label,
+                    "internal_id": instance.internal_id,
+                    # fallback when no list item listens to select-instance-<internal_id>
+                    "url": f"{url}?internal_id={instance.internal_id}",
+                    # grids are edited in a modal, everything else in the detail sidebar
+                    "target": "#modal-container"
+                    if isinstance(instance, Grid)
+                    else "#detailSidebar",
+                },
+            ),
+        )
+
+    for e in errors:
+        item = e.item
+        # bus related types exist per carrier, so the type label is the group title
+        if e.type.name.startswith("MISSING_BUS_"):
+            # list the area, the component only lacks the area's grid connection
+            add((e.type,), e.type.label, item.area, item.area.name)
+        elif e.type.name.startswith("MULTIPLE_BUSSES_"):
+            grid_names = ", ".join(grid.name for grid in e.details["grids"])
+            add((e.type,), e.type.label, item, f"{item.name} ({grid_names})")
+        elif e.type in (
+            ErrorType.INVALID_CONNECTION_CARRIER,
+            ErrorType.INVALID_CONNECTION_SCENARIO,
+        ):
+            add((e.type,), e.type.label, item, f"{item.name} → {item.connected_to.name}")
+        elif e.type == ErrorType.MISSING_VALUE:
+            field_names = ", ".join(
+                str(item._meta.get_field(name).verbose_name) for name in e.details["fields"]
+            )
+            add(
+                (e.type, item.model_name()),
+                f"{item._meta.verbose_name_plural}: {e.type.label}",
+                item,
+                f"{item.name} ({field_names})",
+            )
+        else:
+            add(
+                (e.type, item.model_name()),
+                f"{item._meta.verbose_name_plural}: {e.type.label}",
+                item,
+                item.name,
+            )
+    return groups
+
+
+@login_required()
+def calculate_scenario(request, scenario_internal_id: UUID):
+    scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
+    # TODO: darf jeder nutzer die simulation starten?
+    if not has_authorization(scenario.project, request.user, "details"):
+        return HttpResponseForbidden("Sie haben keine erlaubnis für dieses Projekt")
+    template_name = "ports/partials/scenario_calculation_modal.html"
+
+    context = dict(id=f"{scenario.internal_id}-calculation-modal", scenario=scenario)
+    # User wants to simulate, only update of current status and button container is needed
+    if request.method == "POST":
+        if scenario.can_simulate():
+            tasks.start_simulation(scenario)
+        else:
+            # edge case response when client side guard is not working or bypassed
+            return HttpResponseForbidden(
+                "Sie dürfen dieses Szenario nicht simulieren. Gründe hierfür sind das es bereits simuliert wurde, gerade simuliert wird, oder in der Warteschlange ist."
+            )
+        response = render(request, template_name=template_name, context=context)
+        return response
+
+    # only a partial response for the current status and button group is needed
+    if request.GET.get("update_progress"):
+        response = render(request, template_name=template_name, context=context)
+        return response
+
+    context |= get_home_context(user=request.user, scenario=scenario)
+    es, flows, errors = tasks.db_to_energysystem(scenario, timezone.now())
+
+    # group key -> {"title": str, "entries": {internal_id: (order, entry)}}
+    # keyed by internal_id, so an instance is listed once per group
+    # (e.g. an area with several components missing the same grid)
+    groups: dict[tuple, dict] = group_errors(errors, scenario)
+    context["model_errors"] = [
+        {
+            "title": group["title"],
+            # oldest first, pk as tie breaker for items created in the same transaction
+            "errors": [entry for _, entry in sorted(group["entries"].values(), key=lambda x: x[0])],
+        }
+        for group in groups.values()
+    ]
+
+    summaries = []
+    for value in context["electric_components"].values():
+        if not value:
+            continue
+        name = value[0]._meta.verbose_name
+        if len(value) > 1:
+            name = value[0]._meta.verbose_name_plural
+        if getattr(value[0], "power_kw", None):
+            label = f"{len(value)} {name} ({number_format(sum(x.power_kw for x in value if x.power_kw))} kW Gesamtleistung)"
+        else:
+            label = f"{len(value)} {name}"
+
+        summaries.append(label)
+    context["summaries"] = summaries
+
+    if request.headers.get("HX-Request"):
+        response = render(request, template_name=template_name, context=context)
+        return response
+
+    # Full page Render
+    content = render_to_string(
+        request=request,
+        template_name=template_name,
+        context=context,
+    )
+    context["modal_content"] = content
+    return render(
+        request,
+        "ports/tool_base.html",
+        context,
+    )
+
+
 def enetra_tool(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     debug_buttons = render_to_string("ports/partials/user_debug_buttons.html", {}, request)
@@ -690,9 +835,9 @@ def start_solver(request, scenario_internal_id: UUID):
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
     # TODO: more permission needed to start solver task?
-    # TODO: check if another task is already running
-    task = tasks.oemof_task.delay(scenario.id)
-    return JsonResponse({"task_id": task.task_id})
+    # TODO: Raw request for simulation? Keep api? Check for "can_simulate"?
+    celery_task = tasks.start_simulation(scenario)
+    return JsonResponse({"celery_task_id": celery_task.task_id})
 
 
 @login_required()
@@ -700,12 +845,11 @@ def scenario_results(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
-    result = scenario.result
-    if result is None:
+    try:
+        result = scenario.result
+    except ObjectDoesNotExist as err:
         # scenario not simulated yet
-        raise Http404()
-    if result.started_at < scenario.items_updated_at:
-        return HttpResponse("Outdated simulation", status=500)
+        raise Http404() from err
     result_data = result.resultdata_set.all()
     # get areas information (geometry, components)
     areas = [

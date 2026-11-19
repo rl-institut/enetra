@@ -29,6 +29,15 @@ class TestTasks(TestCase):
         self.assertEqual(len(time), 25)
         scenario.project.delete()
 
+    def test_placeholder_scenario_finer_timestep_than_profiles(self):
+        # hourly solar radiation in a 15 min simulation must not produce NaN flows
+        scenario = create_placeholder_scenario.create_scenario()
+        self.assertTrue(scenario.solar_set.filter(profile__timestep=60).exists())
+        tasks.oemof_task(scenario_id=scenario.id, days=1, ts=15)
+        time = scenario.result.resultdata_set.get(attribute="timeindex").value
+        self.assertEqual(len(time), 97)
+        scenario.project.delete()
+
     def test_db_to_energysystem(self):
         # test model creation for placeholder scenario
         scenario = create_placeholder_scenario.create_scenario()

@@ -15,6 +15,7 @@ function rerouteServerEventsToElement(url) {
     // which trigger events the dom can listen too
     const event_source = htmx.createEventSource(url);
     event_source.addEventListener("scenario_changed", e => {
+        console.log('Received a change event through SSE')
         document.body.dispatchEvent(
             new CustomEvent("scenario_changed", {
                 detail: e.data
@@ -214,4 +215,17 @@ function addAutoCalcSolarPower(el_spec_power, el_power_installed, el_surface_are
         }
     })
 
+}
+
+function selectInstanceOrFetch(internal_id, url, target) {
+    // List items listen to select-instance-<internal_id> (see addListItemFunctionality), selecting
+    // them also updates the list and map state. Items without a list item (e.g. grids) get their
+    // details fetched directly into target instead.
+    const input = document.querySelector(`.cotton-list-item-input[value="${internal_id}"]`);
+    if (input?.closest(".cotton-list-item")?._added_list_item_func) {
+        window.dispatchEvent(new CustomEvent("select-instance-" + internal_id));
+        return;
+    }
+    if (target === "#detailSidebar") window.dispatchEvent(new CustomEvent("show-detail-sidebar"));
+    htmx.ajax("GET", url, { target: target, swap: "innerHTML scroll:top" });
 }

@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 from typing import ClassVar
 
-import pandas as pd
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -34,6 +34,8 @@ from django.utils.formats import number_format
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
+from core.models import Task
+
 logger = logging.getLogger(__name__)
 
 # Unit suffix shown next to a field's value, both on forms (ports/forms.py) and on
@@ -41,7 +43,6 @@ logger = logging.getLogger(__name__)
 UNITS = {
     "power_kw": "kW",
     "efficiency": "[-]",
-    "efficiency_thermal": "[-]",
     "power_min": "kW",
     "power_max": "kW",
     "capex": "€",
@@ -118,6 +119,7 @@ class Scenario(models.Model):
     description = models.TextField(
         blank=True, null=True, help_text=_("Optionale Beschreibung des Szenarios.")
     )
+
     # Set to now() on the database side
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -129,8 +131,8 @@ class Scenario(models.Model):
         User, on_delete=models.SET_NULL, default=None, null=True, related_name="+"
     )
 
-    # oemof solver task
-    task_id = models.UUIDField(default=None, null=True, blank=True)
+    # Reverse generic relation for the contenttype/ GenericForeignKey relation to tasks
+    tasks = GenericRelation(Task)
 
     # Area of the scenario / Port region
     geom = models.PolygonField(
@@ -157,6 +159,28 @@ class Scenario(models.Model):
 
     def changed_event(self):
         return f"{self._meta.model_name}-{self.internal_id}-changed"
+
+    def simulation_task(self) -> Task | None:
+        return self.tasks.filter(type=Task.Type.RUN_SIMULATION).first()
+
+    def outdated(self) -> bool:
+        try:
+            result = self.result
+        except Result.DoesNotExist:
+            return False
+        return result.started_at < self.items_updated_at
+
+    def can_simulate(self):
+        task = self.simulation_task()
+        if not task:
+            return True
+
+        # dont allow to simulate while the task is running/waiting
+        if task.status in [Task.Status.RUNNING, Task.Status.WAITING]:
+            return False
+
+        # allow to simulate again after failure, task does not exist or result is outdated
+        return task.status in [Task.Status.FAILED, None] or self.outdated()
 
     def is_baseline_scenario(self):
         # the first scenario in a project is by definition the baseline scenario
@@ -361,6 +385,27 @@ class ScenarioItem(ItemTemplate):
     create_url = "ports:details_create"
 
 
+def publish_change(scenario_id: int):
+    try:
+        import redis
+        from redis.exceptions import RedisError
+
+        r = redis.from_url(settings.REDIS_URL)
+        r.publish(f"scenario:{scenario_id}", "changed")
+    except RedisError as e:
+        # should redis fail, the scenario is updated still
+
+        # lazy import to avoid circular import
+        from ports.util import throttle
+
+        msg = repr(e)
+        throttle(
+            lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
+            24 * 60 * 60,
+            "redis_failure_admin_mail",
+        )
+
+
 @receiver(ScenarioItem.scenarioitem_post_save)
 def update_scenario_post_save(sender, instance, **kwargs):
     """Update the scenario if a ScenarioItem was created
@@ -369,31 +414,10 @@ def update_scenario_post_save(sender, instance, **kwargs):
     scenario_id = instance.scenario_id
     if sender == ChangedItem:
         return
-
-    def publish_change():
-        try:
-            import redis
-            from redis.exceptions import RedisError
-
-            r = redis.from_url(settings.REDIS_URL)
-            r.publish(f"scenario:{scenario_id}", "changed")
-        except RedisError as e:
-            # should redis fail, the scenario is updated still
-
-            # lazy import to avoid circular import
-            from ports.util import throttle
-
-            msg = repr(e)
-            throttle(
-                lambda: mail_admins("Redis Error for enetra", msg, fail_silently=True),
-                24 * 60 * 60,
-                "redis_failure_admin_mail",
-            )
-
     if settings.REDIS_AVAILABLE:
         # Publish only after the surrounding transaction committed, otherwise clients refetch
         # before the change is visible. Runs immediately when no transaction is active.
-        transaction.on_commit(publish_change)
+        transaction.on_commit(lambda: publish_change(scenario_id))
     # GREATEST keeps the timestamps monotonic when concurrent saves commit out of order
     new_ts = Value(instance.updated_at, output_field=models.DateTimeField())
     Scenario.objects.filter(pk=scenario_id).update(
@@ -719,6 +743,10 @@ class SolarRadiation(models.Model):
 class Load(ScenarioItem):
     """Power timeseries, derived from a Timeseries"""
 
+    class Meta(ScenarioItem.Meta):
+        verbose_name = _("Last")
+        verbose_name_plural = _("Lasten")
+
     class CarrierChoices(models.TextChoices):
         ELECTRICITY = "electricity", "Strom"
         DIESEL = "diesel", "Diesel"
@@ -793,21 +821,14 @@ class Load(ScenarioItem):
             )
         return loads
 
-    def resample(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
+    def resample_and_factor(self, start: datetime.datetime, end: datetime.datetime, time_step: int):
+        """Resample the timeseries and apply the self.factor"""
+        from .util import resample as util_resample
+
         timestep_orig = self.timeseries.timeseries.get("timestep_minutes", 15)
         values = self.timeseries.timeseries["values"]
-        time_index = pd.date_range(start, end, freq=f"{timestep_orig}Min")
-        if len(values) < len(time_index):
-            # not enough values: extend series with empty values, fill later
-            values += [None] * (len(time_index) - len(values))
-        elif len(values) > len(time_index):
-            # too many values: shorten series
-            values = values[: len(time_index)]
-        series = pd.Series(values, index=time_index) * self.factor
-        series.ffill(inplace=True)  # fill up missing values: retain last value
-        if timestep_orig != time_step:
-            # resample if needed (adjust timestep)
-            series = series.resample(f"{time_step}Min").mean()
+        series = util_resample(values, timestep_orig, start, end, time_step)
+        series = series * self.factor
         return series
 
 
@@ -1043,6 +1064,7 @@ class AbstractGenerator(models.Model):
 class GeneratorTemplate(AbstractGenerator, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Generator Vorlage")
+        verbose_name_plural = _("Generator Vorlagen")
 
 
 class Generator(AbstractGenerator, ElectricComponent):
@@ -1050,6 +1072,7 @@ class Generator(AbstractGenerator, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Generator")
+        verbose_name_plural = _("Generatoren")
 
 
 class AbstractHeating(models.Model):
@@ -1081,6 +1104,7 @@ class AbstractHeating(models.Model):
 class HeatingTemplate(AbstractHeating, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Heizung Vorlage")
+        verbose_name_plural = _("Heizung Vorlagen")
 
 
 class Heating(AbstractHeating, ElectricComponent):
@@ -1088,6 +1112,7 @@ class Heating(AbstractHeating, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Heizung")
+        verbose_name_plural = _("Heizungen")
 
 
 class AbstractCHP(models.Model):
@@ -1139,6 +1164,7 @@ class AbstractCHP(models.Model):
 class CHPTemplate(AbstractCHP, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung Vorlage")
+        verbose_name_plural = _("Kraft-Wärme-Kopplung Vorlagen")
 
 
 class CHP(AbstractCHP, ElectricComponent):
@@ -1146,6 +1172,7 @@ class CHP(AbstractCHP, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Kraft-Wärme-Kopplung")
+        verbose_name_plural = _("Kraft-Wärme-Kopplungen")
 
 
 class AbstractFuelCell(models.Model):
@@ -1177,6 +1204,7 @@ class AbstractFuelCell(models.Model):
 class FuelCellTemplate(AbstractFuelCell, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Brennstoffzelle Vorlage")
+        verbose_name_plural = _("Brennstoffzelle Vorlagen")
 
 
 class FuelCell(AbstractFuelCell, ElectricComponent):
@@ -1184,6 +1212,7 @@ class FuelCell(AbstractFuelCell, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Brennstoffzelle")
+        verbose_name_plural = _("Brennstoffzellen")
 
 
 class AbstractElectrolyzer(models.Model):
@@ -1202,6 +1231,7 @@ class ElectrolyzerTemplate(
 ):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Elektrolyseur Vorlage")
+        verbose_name_plural = _("Elektrolyseur Vorlagen")
 
 
 class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
@@ -1209,6 +1239,7 @@ class Electrolyzer(AbstractElectrolyzer, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Elektrolyseur")
+        verbose_name_plural = _("Elektrolyseure")
 
 
 class AbstractHeatpump(models.Model):
@@ -1252,6 +1283,7 @@ class HeatpumpTemplate(
 ):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Wärmepumpe Vorlage")
+        verbose_name_plural = _("Wärmepumpe Vorlagen")
 
 
 class Heatpump(AbstractHeatpump, ElectricComponent):
@@ -1259,6 +1291,7 @@ class Heatpump(AbstractHeatpump, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Wärmepumpe")
+        verbose_name_plural = _("Wärmepumpen")
 
 
 class AbstractSolar(models.Model):
@@ -1325,6 +1358,7 @@ class AbstractSolar(models.Model):
 class SolarTemplate(AbstractSolar, ElectricComponentTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Solaranlage Vorlage")
+        verbose_name_plural = _("Solaranlage Vorlagen")
 
 
 class Solar(AbstractSolar, ElectricComponent):
@@ -1332,6 +1366,7 @@ class Solar(AbstractSolar, ElectricComponent):
 
     class Meta(ElectricComponent.Meta):
         verbose_name = _("Solaranlage")
+        verbose_name_plural = _("Solaranlagen")
 
 
 class AbstractStorage(models.Model):
@@ -1426,6 +1461,7 @@ class AbstractStorage(models.Model):
 class StorageTemplate(AbstractStorage, ItemTemplate):
     class Meta(ElectricComponentTemplate.Meta):
         verbose_name = _("Speicher Vorlage")
+        verbose_name_plural = _("Speicher Vorlagen")
 
 
 class Storage(AbstractStorage, ScenarioItem):  # order important (Meta)
@@ -1438,6 +1474,7 @@ class Storage(AbstractStorage, ScenarioItem):  # order important (Meta)
 
     class Meta(ScenarioItem.Meta):
         verbose_name = _("Speicher")
+        verbose_name_plural = _("Speicher")
 
 
 # ------------------------------------------------------------------------------

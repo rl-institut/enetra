@@ -137,7 +137,7 @@
         </div>
           <c-button type="button" variant="default" class="rounded-full! text-sm!"
             hx-get="{% url "ports:timeseries_upload" scenario_internal_id=scenario.internal_id %}?from_model={{instance.model_name}}&internal_ids_from_model={{internal_ids|default:internal_id}}"
-            hx-target="#upload-timeseries-modal-container"
+            hx-target="#modal-container"
             hx-swap="innerHTML"
           >Neue Zeitreihe Hochladen</c-button>
       </div>

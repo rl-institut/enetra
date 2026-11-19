@@ -1,0 +1,17 @@
+{% for group in model_errors %}
+<div class="flex flex-col gap-1">
+  <p class="font-semibold">{{ group.title }}</p>
+  <ul class="list-disc ps-5 leading-6 marker:text-yellow-500">
+    {% for error in group.errors %}
+      <li>
+        <button type="button"
+                title="Zum Element springen"
+                hx-on:click="this.closest('dialog').close(); selectInstanceOrFetch('{{ error.internal_id }}', '{{ error.url|escapejs }}', '{{ error.target }}')"
+                class="-mx-1 rounded px-1 text-left underline decoration-dotted underline-offset-2 cursor-pointer transition-colors hover:bg-yellow-100 hover:text-yellow-900 hover:decoration-solid focus-visible:outline-1 focus-visible:outline-yellow-600">
+          {{ error.label }}
+        </button>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endfor %}
