@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   # needed for git dependencies
   git
 
-
 # Requirements are installed here to ensure they will be cached.
 # Caprover does not support mounting yet. see https://github.com/caprover/caprover/issues/1582
 # RUN --mount=type=cache,target=/root/.cache/uv \
@@ -57,6 +56,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   # wait-for-it \
   sudo vim ssh bash-completion which\
   binutils libproj-dev gdal-bin \
+  # cbc solver
+  coinor-cbc coinor-libcbc-dev\
   # cleaning up unused files
   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
   && rm -rf /var/lib/apt/lists/*

@@ -624,6 +624,10 @@ async def scenario_updates(request, scenario_internal_id: UUID):
     # set explicitly that no compression (gzipmiddleware) takes place.
     # gzip gathers the streaming response into chunks to be large enough for efficient compression. we dont want that but the stream to be flushed on each yield
     response["Content-Encoding"] = "Identity"
+    # stop nginx from buffering
+    response["X-Accel-Buffering"] = "no"
+    response["Cache-Control"] = "no-cache"
+
     return response
 
 
