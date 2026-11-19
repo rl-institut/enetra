@@ -845,10 +845,11 @@ def scenario_results(request, scenario_internal_id: UUID):
     scenario = get_object_or_404(Scenario, internal_id=scenario_internal_id)
     if not has_authorization(scenario.project, request.user, "details"):
         return HttpResponseForbidden()
-    result = scenario.result
-    if result is None:
+    try:
+        result = scenario.result
+    except ObjectDoesNotExist as err:
         # scenario not simulated yet
-        raise Http404()
+        raise Http404() from err
     result_data = result.resultdata_set.all()
     # get areas information (geometry, components)
     areas = [
