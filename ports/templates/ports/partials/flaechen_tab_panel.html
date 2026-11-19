@@ -9,7 +9,7 @@
     </div>
     <div>
     <form>
-      {% url building_areas.0.rud_url scenario_internal_id=scenario.internal_id model=building_areas.0.model_name as rud_url %}
+      {% url 'ports:details' scenario_internal_id=scenario.internal_id model='area' as rud_url %}
       <c-list.index id='flaechen-tab-building-area-list' count title="Meine Gebäude" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null"  modeCallback="$dispatch('hide-detail-sidebar');"
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
@@ -51,7 +51,8 @@
             hx-on::load="{{ createItemCallback }}"
         >
           <c-slot name="singleModeIcon">
-            {% include "ports/partials/list_item_ellipsis.html" with delete_url=rud_url %}
+            {% url item.rud_url scenario_internal_id=scenario.internal_id model=item.model_name as delete_url %}
+            {% include "ports/partials/list_item_ellipsis.html" with delete_url=delete_url %}
           </c-slot>
           </c-list.item>
         {% else %}
@@ -111,7 +112,7 @@
       </div>
 
     <form>
-      {% url open_areas.0.rud_url scenario_internal_id=scenario.internal_id model=open_areas.0.model_name as rud_url %}
+      {% url 'ports:details' scenario_internal_id=scenario.internal_id model='area' as rud_url %}
       <c-list.index id='flaechen-tab-open-area-list' count title="Meine Freiflächen" @detail-sidebar-closed.document="$el.querySelectorAll('input:checked').forEach(el=>{el.checked=false; dispatchItemSelection(el.value, false)}); selected = null" modeCallback="$dispatch('hide-detail-sidebar');"
         hx-target="#detailSidebar"
         hx-indicator="#detailSidebar"
