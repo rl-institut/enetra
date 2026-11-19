@@ -224,8 +224,8 @@ ADMINS = tuple(
     tuple(entry.split(":", 1)) for entry in env.list("DJANGO_ADMINS", default=()) if entry
 )
 LOGIN_URL = "core:login"
-LOGIN_REDIRECT_URL = "/landing/"  # redirect to landing page after login
-LOGOUT_REDIRECT_URL = "/landing/"  # redirect to landing page after logout as well
+LOGIN_REDIRECT_URL = "/projects/"  # redirect to projects page after login
+LOGOUT_REDIRECT_URL = "/landing/"  # redirect to landing page after logout
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
