@@ -14,7 +14,6 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
-from django.db import connection
 from django.db.models import Q
 from django.db.models import QuerySet
 from guardian.shortcuts import assign_perm
@@ -419,39 +418,21 @@ def find_item_model(
     from .models import DeletedItem
 
     # get all models with their full names (labels) as key, e.g. ports.solar
-    item_models = {
-        m._meta.label: m
+    item_models = [
+        m
         for m in apps.get_models()
         if issubclass(m, ScenarioItem) and m not in (ChangedItem, DeletedItem)
-    }
+    ]
 
-    # Match partial and full internal_id
-    where = "internal_id::text LIKE %s" + (
-        " AND scenario_id = %s" if scenario_id is not None else ""
-    )
-    params_per_model = [f"{str(internal_id).lower()}%"] + (
-        [scenario_id] if scenario_id is not None else []
-    )
-    qn = connection.ops.quote_name
-    # One SELECT per concrete item table, each tagged with its model label so the
-    # matching row tells us which model it came from.
-    sql = " UNION ALL ".join(
-        f"SELECT %s AS model, id FROM {qn(m._meta.db_table)} WHERE {where}"
-        for m in item_models.values()
-    )
-    # Params repeat per sub-select: label first, then the WHERE params (same order as above).
-    params = [p for label in item_models for p in (label, *params_per_model)]
-    with connection.cursor() as cursor:
-        # the query looks like
-        # SELECT 'ports.Area' AS model, id FROM "ports_area" WHERE internal_id::text LIKE 'XXXX%'
-        # UNION ALL SELECT 'ports.Timeseries' AS model, id FROM ...
-        cursor.execute(sql, params)
-        rows = cursor.fetchall()
-    # group the matching ids by model, each row is (label, id)
-    found = defaultdict(list)
-    for label, item_id in rows:
-        found[item_models[label]].append(item_id)
-    return dict(found)
+    found = dict()
+    q_filter = dict(internal_id__contains=internal_id)
+    if scenario_id:
+        q_filter["scenario_id"] = scenario_id
+    for model in item_models:
+        items = model.objects.filter(**q_filter).values_list("id", flat=True)
+        if items:
+            found[model] = items
+    return found
 
 
 def get_item(internal_id, scenario_id: int | None = None) -> ScenarioItem:
