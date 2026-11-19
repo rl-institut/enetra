@@ -5,6 +5,8 @@ Can be used for testing.
 
 import datetime
 import math
+from uuid import UUID
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from django.contrib.auth.models import Group
@@ -63,10 +65,15 @@ def create_scenario() -> Scenario:
     s = Scenario.objects.filter(internal_id=_uid).first()
     if s:
         s.delete()
+    s = _create_placeholder_scenario(user1, user2, _uid)
+    return s
 
-    new_project = Project.objects.create(name="TestProjekt", manager=user1)
+
+def _create_placeholder_scenario(user1, user2, uid: UUID | None = None) -> Scenario:
+    uid = uid or uuid4()
+    new_project = Project.objects.create(name="Test Projekt", manager=user1)
     s = Scenario.objects.create(
-        name="TestScenario", internal_id=_uid, manager=user1, project=new_project
+        name="TestScenario", internal_id=uid, manager=user1, project=new_project
     )
     EnergyCost.get_or_create_for_scenario(s)
     # Group might exist already, since developer might switch back and force between migrations states
@@ -83,7 +90,7 @@ def create_scenario() -> Scenario:
 
     area1 = Area.objects.create(
         scenario=s,
-        name="Building Area 1",
+        name="Büro Anlage",
         geom=Polygon(
             (
                 [13.333282, 52.53887],
@@ -133,13 +140,13 @@ def create_scenario() -> Scenario:
     )
     area3 = Area.objects.create(
         scenario=s,
-        name="Building Area 2",
+        name="Lagerhalle",
         area_type=Area.AreaTypeChoices.BUILDING,
         manager=user2,
     )
     Area.objects.create(
         scenario=s,
-        name="Open Area 1",
+        name="Freifläche",
         area_type=Area.AreaTypeChoices.OPEN,
         usage=Area.OpenUsageChoices.GREEN,
         manager=user2,
@@ -147,7 +154,7 @@ def create_scenario() -> Scenario:
 
     Area.objects.create(
         scenario=s,
-        name="Open Area 2",
+        name="Parkplatz",
         area_type=Area.AreaTypeChoices.OPEN,
         manager=user1,
     )
@@ -159,14 +166,14 @@ def create_scenario() -> Scenario:
 
     Timeseries.objects.create(
         scenario=s,
-        name="Constant load 1 (by fo)",
+        name="Zeitreihe 1",
         manager=user1,
         timeseries={"timestep_minutes": 15, "values": [1, 4, 99, 99]},
         spec_load=1,
     )
     template2 = Timeseries.objects.create(
         scenario=s,
-        name="Constant load 1 (by ba)",
+        name="Geometrische Folge",
         manager=user2,
         timeseries={"timestep_minutes": 5, "values": [1, 2, 4]},
         spec_load=1,
@@ -174,13 +181,13 @@ def create_scenario() -> Scenario:
     load1 = Load.objects.create(scenario=s, name="Eine Last", area=area1, timeseries=template2)
     grid_el = Grid.objects.create(
         scenario=s,
-        name="electric grid",
+        name="Elektrisches Netz",
         carrier=Grid.CarrierChoices.ELECTRICITY,
         load=load1,
     )
     grid_pv = Grid.objects.create(
         scenario=s,
-        name="PV grid",
+        name="Netz für PV Anlagen",
         carrier=Grid.CarrierChoices.ELECTRICITY,
         connected_to=grid_el,
     )
@@ -188,20 +195,20 @@ def create_scenario() -> Scenario:
     grid_pv.areas.add(area2, area3)
     grid_diesel = Grid.objects.create(
         scenario=s,
-        name="diesel pipe",
+        name="Diesel Pipeline",
         carrier=Grid.CarrierChoices.DIESEL,
     )
     grid_diesel.areas.add(area1, area2)
     grid_heat = Grid.objects.create(
         scenario=s,
-        name="heating",
+        name="Wärmenetz 1",
         carrier=Grid.CarrierChoices.HEAT,
     )
     grid_heat.areas.add(area2)
 
     Generator.objects.create(
         scenario=s,
-        name="My Generator 1",
+        name="Dieselgenerator 1",
         area=area1,
         power_kw=20,
         carrier=Generator.CarrierChoices.DIESEL,
@@ -210,7 +217,7 @@ def create_scenario() -> Scenario:
 
     Generator.objects.create(
         scenario=s,
-        name="My Generator 2",
+        name="Dieselgenerator 2",
         area=area2,
         power_kw=20,
         carrier=Generator.CarrierChoices.DIESEL,
@@ -218,7 +225,7 @@ def create_scenario() -> Scenario:
     )
     Heating.objects.create(
         scenario=s,
-        name="My Heating 1",
+        name="Elektrische Heizung",
         area=area2,
         power_kw=20,
         carrier=Heating.CarrierChoices.ELECTRICITY,
@@ -227,7 +234,7 @@ def create_scenario() -> Scenario:
     solar_radiation = get_or_create_solar_radiation()
     Solar.objects.create(
         scenario=s,
-        name="My Solar 1",
+        name="PV Anlage 1",
         area=area3,
         power_kw=20,
         manager=area3.manager,
@@ -235,7 +242,7 @@ def create_scenario() -> Scenario:
     )
     Solar.objects.create(
         scenario=s,
-        name="My Solar 2",
+        name="PV Anlage 2",
         area=area2,
         power_kw=20,
         manager=area2.manager,
@@ -243,7 +250,7 @@ def create_scenario() -> Scenario:
     )
     Solar.objects.create(
         scenario=s,
-        name="My Solar 3",
+        name="PV Anlage 3",
         area=area2,
         power_kw=20,
         manager=area2.manager,
@@ -251,11 +258,10 @@ def create_scenario() -> Scenario:
     )
     Solar.objects.create(
         scenario=s,
-        name="My Solar 4",
+        name="PV Anlage 4",
         area=area2,
         power_kw=20,
         manager=area2.manager,
         profile=solar_radiation,
     )
-
     return s
